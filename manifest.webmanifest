@@ -1,0 +1,13 @@
+{
+  "name":"Taxi Planner V68",
+  "short_name":"Taxi Planner",
+  "start_url":"./",
+  "scope":"./",
+  "display":"standalone",
+  "background_color":"#f3f5f7",
+  "theme_color":"#17324d",
+  "description":"Taxi Planner V68 met planner, chauffeur, ouderportaal en Live Centrum.",
+  "icons":[
+    {"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}
