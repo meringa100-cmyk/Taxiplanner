@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V69</title>
+<title>Taxi Planner V70</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -153,10 +153,22 @@ button[onclick^="chauffeurDelay"]:active{
 .replacement-chip{display:inline-block;padding:4px 8px;border-radius:999px;background:#dcecff;font-size:12px;font-weight:700}
 .replacement-trip.done{background:#eef8ef;border-color:#b8d8bc}
 </style>
+
+<style id="v70-child-cards-css">
+.child-card-v70{border:1px solid #d9dee7;border-radius:12px;margin:8px 0;background:#fff;overflow:hidden}
+.child-head-v70{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 14px;background:#f7f9fb;border:0;text-align:left;cursor:pointer;font-size:15px}
+.child-head-v70 .arrow{font-size:13px;transition:transform .2s}
+.child-card-v70.open .arrow{transform:rotate(180deg)}
+.child-details-v70{display:none;padding:12px 14px;border-top:1px solid #e4e8ed;background:#fff}
+.child-card-v70.open .child-details-v70{display:block}
+.child-meta-v70{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.child-meta-v70 span{padding:4px 7px;border-radius:8px;background:#eef2f6;font-size:12px}
+.child-info-v70{margin:6px 0;color:#45515d;font-size:13px}
+</style>
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V69</h1>
+<h1>🚕 Taxi Planner V70</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1228,6 +1240,34 @@ function openChild(id){
  <button onclick="editChild('${id}')">✏️ Profiel bewerken</button> <button onclick="closeModal()">Sluiten</button>`;
  document.getElementById('modal').classList.remove('hidden');
 }
+function toggleChildCard(id){
+ const el=document.getElementById('childcard-'+id);
+ if(el) el.classList.toggle('open');
+}
+function childCardHtml(k){
+ return `<div class="child-card-v70" id="childcard-${k.id}">
+   <button class="child-head-v70" type="button" onclick="toggleChildCard('${k.id}')">
+     <span>👦 <b>${k.name}</b><br><small>${k.time} • ${k.school} • ${statusText(k.status)}</small></span>
+     <span class="arrow">▼</span>
+   </button>
+   <div class="child-details-v70">
+     <div class="child-meta-v70"><span>🚕 ${k.driver}</span><span>📍 ${k.address}</span><span>${k.fixed?'🔒 Vast':'🔄 Vrij planbaar'}</span></div>
+     <div class="child-info-v70"><b>Benadering:</b> ${k.approach}</div>
+     <div class="child-info-v70"><b>Veiligheid:</b> ${k.safety}</div>
+     <div class="child-info-v70"><b>Belangrijk:</b> ${k.important}</div>
+     <div class="actions"><button onclick="openChild('${k.id}')">📋 Volledige informatie</button></div>
+   </div>
+ </div>`;
+}
+function openChild(id){
+ const k=find(id);if(!k)return;
+ document.getElementById('modalBox').innerHTML=`<h2>👦 ${k.name}</h2>
+ <p><b>Ophaaltijd:</b> ${k.time}</p><p><b>Chauffeur:</b> ${k.driver}</p><p><b>Adres:</b> ${k.address}</p><p><b>School:</b> ${k.school}</p>
+ <p><b>Status:</b> ${statusText(k.status)}</p><p><b>Vaste relatie:</b> ${k.fixed?'Ja':'Nee'}</p>
+ <h3>Chauffeurinformatie</h3><p><b>Hoe benaderen:</b> ${k.approach}</p><p><b>Veiligheid:</b> ${k.safety}</p><p><b>Belangrijk:</b> ${k.important}</p>
+ <button onclick="editChild('${id}')">✏️ Profiel bewerken</button> <button onclick="closeModal()">Sluiten</button>`;
+ document.getElementById('modal').classList.remove('hidden');
+}
 function editChild(id){
  const k=find(id);if(!k)return;
  document.getElementById('modalBox').innerHTML=`<h2>✏️ Profiel ${k.name}</h2>
@@ -1348,6 +1388,19 @@ function makeCollapsible(id,title,subtitle){
 </script>
 <script>
 if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));}
+</script>
+
+<script id="v70-force-update">
+(function(){
+ const V='taxi-planner-v70-force-1';
+ async function update(){
+  try{
+   if('caches' in window){const ks=await caches.keys();await Promise.all(ks.filter(k=>k.indexOf('taxi-planner-')===0&&k!==V).map(k=>caches.delete(k)));}
+   if('serviceWorker' in navigator){const regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.map(r=>r.update()));}
+  }catch(e){console.log('V70 update',e);}
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',update,{once:true});else update();
+})();
 </script>
 </body>
 </html>
