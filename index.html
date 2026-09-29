@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V68</title>
+<title>Taxi Planner V69</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -156,7 +156,7 @@ button[onclick^="chauffeurDelay"]:active{
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V68</h1>
+<h1>🚕 Taxi Planner V69</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -843,38 +843,84 @@ function clearRoutes(){
   if(info)info.textContent='Routes gewist. De chauffeurs blijven zichtbaar.';
 }
 
+function aiTimeDistance(a,b){
+  return Math.abs((a.timeMin||0)-(b.timeMin||0));
+}
+function aiRouteSpread(driver, extraKid){
+  const rides=kids.filter(k=>k.driver===driver && active(k));
+  const times=rides.map(k=>k.timeMin);
+  if(extraKid) times.push(extraKid.timeMin);
+  if(!times.length) return 0;
+  return Math.max(...times)-Math.min(...times);
+}
+function aiSameStreetCount(driver,kid){
+  const street=(kid.address||'').split(/\\s+\\d/)[0].trim().toLowerCase();
+  if(!street) return 0;
+  return kids.filter(k=>k.driver===driver && active(k) &&
+    (k.address||'').toLowerCase().startsWith(street)).length;
+}
+function aiSchoolCount(driver,kid){
+  return kids.filter(k=>k.driver===driver && active(k) && k.school===kid.school).length;
+}
+function aiTimeClash(driver,kid){
+  // Beschouw ritten binnen 20 minuten als gelijktijdige belasting.
+  return kids.filter(k=>k.driver===driver && active(k) &&
+    aiTimeDistance(k,kid)<=20).length;
+}
+function aiScore(driver,kid,loads){
+  const sameSchool=aiSchoolCount(driver,kid);
+  const sameStreet=aiSameStreetCount(driver,kid);
+  const clashes=aiTimeClash(driver,kid);
+  const spread=aiRouteSpread(driver,kid);
+  const currentLoad=loads[driver]||0;
+
+  // Lagere score is beter. Capaciteit en beschikbaarheid worden al vooraf afgedwongen.
+  // Vaste ritten tellen zwaar mee: de AI probeert bestaande vaste combinaties niet te verstoren.
+  return currentLoad*35
+    + clashes*28
+    + spread/8
+    - sameSchool*18
+    - sameStreet*10;
+}
 function runAI(){
   previousPlan=kids.map(k=>({id:k.id,driver:k.driver}));
 
-  // AI-planning rules:
-  // 1. Fixed chauffeur-child relationships stay fixed.
-  // 2. Rides already underway or completed stay untouched.
-  // 3. Waiting non-fixed rides are reassigned.
-  // 4. Maximum 8 active children per bus.
-  // 5. Prefer the driver with the lowest load and, secondarily, matching school.
-  const candidates=kids.filter(k=>k.status==='waiting' && !k.fixed);
+  const candidates=kids
+    .filter(k=>k.status==='waiting' && !k.fixed)
+    .sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
 
   if(!candidates.length){
-    alert('AI-planning: er zijn geen vrije wachtende ritten om opnieuw te verdelen.');
+    alert('🤖 AI-planning: er zijn geen vrije wachtende ritten om opnieuw te verdelen.');
     return;
   }
 
   const loads={};
   driverNames.forEach(d=>loads[d]=load(d));
 
-  // Remove waiting non-fixed rides from their current planning load first.
-  candidates.forEach(k=>{ if(loads[k.driver]>0) loads[k.driver]--; });
+  // Haal de te herplannen wachtende ritten eerst uit hun oude bezetting.
+  candidates.forEach(k=>{
+    if(typeof loads[k.driver]==='number' && loads[k.driver]>0) loads[k.driver]--;
+  });
 
-  candidates.sort((a,b)=>a.timeMin-b.timeMin);
+  const unplanned=[];
 
   candidates.forEach(k=>{
-    const choices=driverNames.filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d)&&loads[d]<MAX);
-    if(!choices.length)return;
+    const choices=driverNames.filter(d=>
+      !isDriverUnavailable(d) &&
+      !isBusUnavailable(d) &&
+      loads[d]<MAX
+    );
+
+    if(!choices.length){
+      unplanned.push(k);
+      return;
+    }
 
     choices.sort((a,b)=>{
-      const schoolA=kids.filter(x=>x.driver===a && x.school===k.school && active(x)).length;
-      const schoolB=kids.filter(x=>x.driver===b && x.school===k.school && active(x)).length;
-      return (loads[a]-loads[b])*100 - (schoolA-schoolB)*10;
+      const scoreA=aiScore(a,k,loads);
+      const scoreB=aiScore(b,k,loads);
+      if(scoreA!==scoreB) return scoreA-scoreB;
+      return a.localeCompare(b);
     });
 
     const chosen=choices[0];
@@ -882,12 +928,30 @@ function runAI(){
     loads[chosen]++;
   });
 
-  const changed=candidates.filter(k=>{
+  const changes=candidates.filter(k=>{
     const old=previousPlan.find(p=>p.id===k.id);
     return old && old.driver!==k.driver;
   }).length;
 
-  alert('🤖 AI-planning klaar!\\n\\n'+changed+' ritten opnieuw verdeeld.\\nVaste chauffeur-kindrelaties zijn behouden.\\nMaximaal '+MAX+' kinderen per bus.\\n\\nDe planner kan de verdeling nu handmatig aanpassen.');
+  const distribution=driverNames
+    .map(d=>({d,count:kids.filter(k=>k.driver===d && active(k)).length}))
+    .filter(x=>x.count>0)
+    .sort((a,b)=>b.count-a.count);
+
+  const overloaded=distribution.filter(x=>x.count>MAX);
+  let message='🤖 AI-planning klaar!\\n\\n';
+  message+=changes+' ritten opnieuw verdeeld.\\n';
+  message+='De AI heeft nu rekening gehouden met:\\n';
+  message+='• vaste chauffeur-kindrelaties\\n';
+  message+='• beschikbaarheid chauffeur en bus\\n';
+  message+='• maximale bezetting van 8 kinderen\\n';
+  message+='• ophaaltijden en tijdsdruk\\n';
+  message+='• schoolcombinaties\\n';
+  message+='• ritten in dezelfde straat\\n';
+  message+='• spreiding van de routebelasting\\n';
+  if(unplanned.length) message+='\\n⚠️ '+unplanned.length+' rit(ten) konden niet worden geplaatst wegens capaciteit/beschikbaarheid.';
+  if(overloaded.length) message+='\\n⚠️ Controle: er is nog een chauffeur boven de maximale bezetting.';
+  alert(message);
   renderAll();
 }
 function resetDemo(){if(confirm('Demo terugzetten?')){driverUnavailable={};busIssues={};replacementAssignments={};replacementSeq=1;seed();renderAll()}}
