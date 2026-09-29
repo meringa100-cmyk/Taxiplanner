@@ -525,10 +525,8 @@ function renderPlanning(){
   const txt=(k.name+' '+k.school+' '+k.driver+' '+k.address).toLowerCase();
   return (!q||txt.includes(q))&&(f==='all'||k.status===f);
  }).sort((a,b)=>a.timeMin-b.timeMin);
- document.getElementById('planning').innerHTML=`<p class="muted">${arr.length} ritten</p><table>
- <tr><th>Tijd</th><th>Kind</th><th>Adres</th><th>School</th><th>Chauffeur</th><th>Status</th><th>AI</th></tr>
- ${arr.map(k=>`<tr><td>${k.time}</td><td><button onclick="openChild('${k.id}')">${k.name}</button></td><td>${k.address}</td><td>${k.school}</td><td>${k.driver}</td><td><span class="badge">${statusText(k.status)}</span>${k.delay?` <span class="badge">⏱️ +${k.delay} min</span>`:''}</td><td><button onclick="showReason('${k.id}')">Waarom?</button></td></tr>`).join('')}
- </table>`;
+ document.getElementById('planning').innerHTML='<p class="muted">'+arr.length+' ritten • tik op een kind om de extra informatie uit te klappen</p>'+
+   arr.map(k=>childCardHtml(k)).join('') || '<p>Geen ritten.</p>';
 }
 
 function renderDriver(){
