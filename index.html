@@ -329,6 +329,34 @@ function toggleDriverAvailability(d){
 
 
 
+const STORAGE_KEY='taxiPlannerStateV716';
+
+function saveState(){
+ try{
+  localStorage.setItem(STORAGE_KEY,JSON.stringify({
+   kids,driverUnavailable,busIssues,replacementAssignments,replacementSeq,demoCounter
+  }));
+ }catch(e){}
+}
+
+function loadState(){
+ try{
+  const raw=localStorage.getItem(STORAGE_KEY);
+  if(!raw)return false;
+  const state=JSON.parse(raw);
+  if(!state || !Array.isArray(state.kids) || !state.kids.length)return false;
+  kids=state.kids;
+  driverUnavailable=state.driverUnavailable||{};
+  busIssues=state.busIssues||{};
+  replacementAssignments=state.replacementAssignments||{};
+  replacementSeq=Number(state.replacementSeq)||1;
+  demoCounter=Number(state.demoCounter)||101;
+  return true;
+ }catch(e){
+  return false;
+ }
+}
+
 function seed(){
  kids=[];
  for(let i=0;i<100;i++){
@@ -396,7 +424,7 @@ function delayForKid(k){
   return Number(k && k.delay) > 0 ? Number(k.delay) : 0;
 }
 
-function renderAll(){renderDashboard();renderPlanning();renderDriver();renderParent();renderLive();renderDelayAlerts();updateParentDelayNotice();renderAttention();renderFleet();if(realMap)renderRealMapMarkers();}
+function renderAll(){saveState();renderDashboard();renderPlanning();renderDriver();renderParent();renderLive();renderDelayAlerts();updateParentDelayNotice();renderAttention();renderFleet();if(realMap)renderRealMapMarkers();}
 
 
 function renderFleet(){
@@ -977,7 +1005,7 @@ function runAI(){
   alert(message);
   renderAll();
 }
-function resetDemo(){if(confirm('Demo terugzetten?')){driverUnavailable={};busIssues={};replacementAssignments={};replacementSeq=1;seed();renderAll()}}
+function resetDemo(){if(confirm('Demo terugzetten?')){localStorage.removeItem(STORAGE_KEY);driverUnavailable={};busIssues={};replacementAssignments={};replacementSeq=1;demoCounter=101;seed();renderAll()}}
 function pickup(id){const k=find(id);if(k){k.status='picked';renderAll()}}
 
 function absent(id){const k=find(id);if(k){k.status='absent';autoReplan();renderAll()}}
@@ -1342,7 +1370,7 @@ function addRide(){
 function find(id){return kids.find(k=>k.id===id)}
 function closeModal(){document.getElementById('modal').classList.add('hidden')}
 document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
-seed();renderAll();
+if(!loadState())seed();renderAll();
 </script>
 
 
