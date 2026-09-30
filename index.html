@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V71.1</title>
+<title>Taxi Planner V71.2</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -184,10 +184,18 @@ button[onclick^="chauffeurDelay"]:active{
 .driver-nav-v711{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
 .driver-nav-v711 button{padding:13px;font-size:15px}
 .driver-current-v711{margin-top:8px;text-align:center;font-size:12px;opacity:.7}
+</style><style id="v712-attention-dashboard">
+.attention-dashboard-v712{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0}
+.attention-stat-v712{padding:12px;border-radius:12px;border:1px solid #d9dee7;background:#f7f9fb;text-align:center}
+.attention-stat-v712 b{display:block;font-size:24px}.attention-stat-v712 small{display:block;margin-top:3px}
+.attention-stat-v712.red{background:#fff0f0;border-color:#efb4b4}.attention-stat-v712.orange{background:#fff7df;border-color:#e6c96a}.attention-stat-v712.blue{background:#eef6ff;border-color:#b9d6f3}.attention-stat-v712.green{background:#eef8ef;border-color:#b8d8bc}
+.attention-action-v712{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 12px;border:1px solid #ddd;border-radius:10px;margin:7px 0;background:#fff}
+.attention-action-v712 .meta{font-size:13px;opacity:.75;margin-top:3px}
+@media(max-width:700px){.attention-dashboard-v712{grid-template-columns:1fr 1fr}.attention-action-v712{align-items:flex-start;flex-direction:column}}
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V71.1</h1>
+<h1>🚕 Taxi Planner V71.2</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -225,7 +233,12 @@ button[onclick^="chauffeurDelay"]:active{
 </div>
 </div>
 <div class="card"><h3>👨‍✈️ Chauffeurs</h3><input id="driverSearch" placeholder="Zoek chauffeur..." oninput="renderDashboard()"><div id="collapsibleDrivers" class="collapsible-section"><button type="button" class="collapsible-header" onclick="toggleCollapsible('collapsibleDrivers')"><span>🚕 Chauffeurs</span><span class="collapsible-arrow">▼</span></button><div class="collapsible-content"><div id="driverList"></div></div></div></div>
-<div class="card"><h3>⚠️ Aandacht</h3><div id="alerts"></div></div>
+<div class="card">
+<h3 style="margin-bottom:4px">⚠️ Meldingen & Acties</h3>
+<p class="muted" style="margin-top:0">Centraal overzicht voor de planner. Nieuwe meldingen verschijnen hier automatisch.</p>
+<div id="attentionDashboardV712"></div>
+<div id="alerts"></div>
+</div>
 <div id="collapsibleRittenVandaag" class="collapsible-section open"><button type="button" class="collapsible-header" onclick="toggleCollapsible('collapsibleRittenVandaag')"><span>📋 Ritten vandaag</span><span class="collapsible-arrow">▼</span></button><div class="collapsible-content"><div class="card">
 <h3>🗺️ Ritten vandaag</h3>
 <div class="actions">
@@ -429,91 +442,37 @@ function renderFleet(){
 }
 
 function renderAttention(){
-  const box=document.getElementById('alerts');
-  if(!box) return;
+ const box=document.getElementById('alerts');
+ const dash=document.getElementById('attentionDashboardV712');
+ if(!box)return;
 
-  const items=[];
+ const delays=kids.filter(k=>Number(k.delay)>0&&active(k));
+ const absentKids=kids.filter(k=>k.status==='absent');
+ const looseKids=kids.filter(k=>k.status==='loose');
+ const brokenDrivers=driverNames.filter(d=>isBusUnavailable(d));
+ const unavailableDrivers=driverNames.filter(d=>isDriverUnavailable(d));
+ const replacements=Object.values(replacementAssignments||{}).filter(t=>t.status!=='assigned');
+ const total=delays.length+absentKids.length+looseKids.length+brokenDrivers.length+unavailableDrivers.length+replacements.length;
 
-  // Active delays
-  kids.filter(k=>Number(k.delay)>0 && active(k)).forEach(k=>{
-    items.push({
-      type:'warn',
-      key:'delay-'+k.id,
-      html:'⏱️ <b>Vertraging — '+k.name+'</b><small>'+Number(k.delay)+' minuten • Chauffeur: '+(k.driver||'Niet toegewezen')+' • klik voor rit</small>',
-      click:"openChild('"+k.id+"')"
-    });
-  });
+ if(dash){
+  dash.innerHTML=`<div class="attention-dashboard-v712">
+   <div class="attention-stat-v712 ${brokenDrivers.length?'red':'green'}"><b>${brokenDrivers.length}</b><small>🚌 Busstoring</small></div>
+   <div class="attention-stat-v712 ${unavailableDrivers.length?'red':'green'}"><b>${unavailableDrivers.length}</b><small>👨‍✈️ Niet beschikbaar</small></div>
+   <div class="attention-stat-v712 ${delays.length?'orange':'green'}"><b>${delays.length}</b><small>⏱️ Vertraging</small></div>
+   <div class="attention-stat-v712 ${(looseKids.length+absentKids.length+replacements.length)?'blue':'green'}"><b>${looseKids.length+absentKids.length+replacements.length}</b><small>📋 Overige acties</small></div>
+  </div>`;
+ }
 
-  // Absence / loose reports
-  kids.filter(k=>k.status==='absent').forEach(k=>{
-    items.push({
-      type:'danger',
-      key:'absent-'+k.id,
-      html:'🚫 <b>Afgemeld — '+k.name+'</b><small>Rit is uit de actieve planning • klik voor rit</small>',
-      click:"openChild('"+k.id+"')"
-    });
-  });
+ const items=[];
+ brokenDrivers.forEach(d=>items.push(`<div class="attention-action-v712"><div><b>🚌 Busstoring — ${busForDriver(d)}</b><div class="meta">${d} • ${busIssues[d]?.reason||'Storing'} • ${affectedChildren(d).length} actieve kinderen</div></div><button onclick="openDriverDetails('${d}')">Behandel</button></div>`));
+ unavailableDrivers.forEach(d=>items.push(`<div class="attention-action-v712"><div><b>👨‍✈️ Chauffeur niet beschikbaar — ${d}</b><div class="meta">Controleer bezetting en plan indien nodig opnieuw.</div></div><button onclick="openDriverDetails('${d}')">Behandel</button></div>`));
+ delays.forEach(k=>items.push(`<div class="attention-action-v712"><div><b>⏱️ Vertraging — ${k.name}</b><div class="meta">${k.delay} minuten • ${k.driver} • ${k.address}</div></div><button onclick="openChild('${k.id}')">Bekijk</button></div>`));
+ looseKids.forEach(k=>items.push(`<div class="attention-action-v712"><div><b>📋 Loosmelding — ${k.name}</b><div class="meta">${k.looseReason||'Melding'} • ${k.driver}</div></div><button onclick="openChild('${k.id}')">Behandel</button></div>`));
+ absentKids.forEach(k=>items.push(`<div class="attention-action-v712"><div><b>🚫 Afgemeld — ${k.name}</b><div class="meta">${k.time} • ${k.school} • rit uit actieve planning</div></div><button onclick="openChild('${k.id}')">Bekijk</button></div>`));
+ replacements.forEach(t=>items.push(`<div class="attention-action-v712"><div><b>🔄 Vervangingsrit — ${t.id}</b><div class="meta">${t.brokenBus} • ${t.children?.length||0} kinderen • ${t.replacementDriver||'nog niet toegewezen'}</div></div><button onclick="showBusReplacement('${t.brokenDriver}',0)">Behandel</button></div>`));
 
-  kids.filter(k=>k.status==='loose').forEach(k=>{
-    items.push({
-      type:'danger',
-      key:'loose-'+k.id,
-      html:'📋 <b>Loosmelding — '+k.name+'</b><small>'+(k.looseReason||'Reden niet opgegeven')+' • klik voor rit</small>',
-      click:"openChild('"+k.id+"')"
-    });
-  });
-
-  // Unavailable drivers
-  driverNames.filter(d=>isDriverUnavailable(d)).forEach(d=>{
-    items.push({
-      type:'danger',
-      key:'driver-'+d,
-      html:'🚕 <b>Chauffeur niet beschikbaar — '+d+'</b><small>Controleer de toegewezen ritten en plan zo nodig opnieuw</small>',
-      click:"openDriverDetails('"+d+"')"
-    });
-  });
-
-
-  // Busstoringen door chauffeurs gemeld
-  driverNames.filter(d=>isBusUnavailable(d)).forEach(d=>{
-    const issue=busIssues[d];
-    items.push({
-      type:'danger',
-      key:'bus-'+d,
-      html:'🚌 <b>Busstoring — '+busForDriver(d)+' / '+d+'</b><small>'+
-        (issue?.reason||'Storing gemeld')+' • wachtende ritten zijn gecontroleerd • klik voor details</small>',
-      click:"openDriverDetails('"+d+"')"
-    });
-  });
-
-  // Full buses
-  driverNames.filter(d=>!isDriverUnavailable(d) && load(d)>=MAX).forEach(d=>{
-    items.push({
-      type:'info',
-      key:'full-'+d,
-      html:'🚌 <b>Bus vol — '+d+'</b><small>'+load(d)+' / '+MAX+' actieve kinderen • klik voor chauffeurdetails</small>',
-      click:"openDriverDetails('"+d+"')"
-    });
-  });
-
-  // Rides without a driver
-  kids.filter(k=>!k.driver && active(k)).forEach(k=>{
-    items.push({
-      type:'danger',
-      key:'unassigned-'+k.id,
-      html:'🔴 <b>Geen chauffeur toegewezen — '+k.name+'</b><small>'+k.time+' • '+k.school+' • klik voor rit</small>',
-      click:"openChild('"+k.id+"')"
-    });
-  });
-
-  box.innerHTML =
-    '<div class="attention-head"><b>'+items.length+' aandachtspunt'+(items.length===1?'':'en')+'</b>'+
-    '<span class="attention-count">'+items.length+' open</span></div>'+
-    (items.length
-      ? items.map(i=>'<div class="attention-item attention-'+i.type+'" onclick="'+i.click+'">'+i.html+'</div>').join('')
-      : '<p class="muted">✅ Geen open aandachtspunten.</p>');
+ box.innerHTML=items.length?items.join(''):'<div class="attention-action-v712"><div><b>✅ Geen openstaande meldingen</b><div class="meta">Alle ritten, chauffeurs en bussen staan momenteel zonder actieve actie.</div></div></div>';
 }
-
 function renderDashboard(){
  const activeDrivers=driverNames.filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d)&&load(d)>0).length;
  const waiting=kids.filter(k=>k.status==='waiting').length;
