@@ -322,32 +322,7 @@ function toggleDriverAvailability(d){
 }
 
 
-function setDelay(id, minutes){
- const k=find(String(id));
- if(!k){ alert('Deze rit kon niet worden gevonden.'); return; }
 
- let m=Number(minutes);
- if(!Number.isFinite(m) || m<=0){
-   const input=prompt('Hoeveel minuten vertraging?', String(k.delay || 10));
-   if(input===null) return;
-   m=Number(input);
- }
- if(!Number.isFinite(m) || m<=0){
-   alert('Vul een geldig aantal minuten in.');
-   return;
- }
-
- k.delay=Math.round(m);
- k.delayAt=Date.now();
- k.status='picked';
-
- // Eén centrale ritbron: alle schermen lezen daarna dezelfde k.
- renderAll();
-
- if(typeof renderRealMapMarkers==='function' && typeof realMap!=='undefined' && realMap){
-   try{ renderRealMapMarkers(); }catch(e){}
- }
-}
 function seed(){
  kids=[];
  for(let i=0;i<100;i++){
@@ -379,10 +354,7 @@ function showPage(id,btn){
 }
 
 
-function parentDelayBadge(k){
-  const d=delayForKid(k);
-  return d ? '<div class="delay-parent-badge">⏱️ '+d+' minuten vertraging</div>' : '';
-}
+
 
 
 function updateParentDelayNotice(){
@@ -634,40 +606,7 @@ const mapRoads=[
   ['v',84,'Zonnewijzerlaan']
 ];
 
-function renderLiveMap(){
-  const box=document.getElementById('liveMap');
-  if(!box)return;
 
-  let s='';
-  mapRoads.forEach(r=>{
-    if(r[0]==='h'){
-      s+=`<div class="mapRoad h" style="top:${r[1]}%"></div>
-          <div class="roadLabel" style="top:calc(${r[1]}% - 18px);left:8px">${r[2]}</div>`;
-    }else{
-      s+=`<div class="mapRoad v" style="left:${r[1]}%;"></div>
-          <div class="roadLabel" style="top:8px;left:calc(${r[1]}% - 28px);writing-mode:vertical-rl">${r[2]}</div>`;
-    }
-  });
-
-  // 50 chauffeur positions are distributed over the fictitious road network.
-  driverNames.forEach((d,i)=>{
-    const k=kids.find(x=>x.driver===d && (x.status==='picked'||x.status==='waiting'));
-    if(!k)return;
-    const x=[18,40,63,84][i%4] + ((i%3)-1)*1.5;
-    const y=[12,34,58,80,94][Math.floor(i/4)%5];
-    const cls=k.status==='picked'?'busy':'';
-    s+=`<div class="mapMarker ${cls}" style="left:${x}%;top:${y}%"
-      title="${d} • ${k.name}" onclick="openDriverDetails('${d}')">🚕<span>${d}</span></div>`;
-  });
-
-  // A few school/home points make the schematic map easier to read.
-  [[23,18],[48,44],[72,70],[90,90]].forEach(p=>{
-    s+=`<div class="mapHome" style="left:${p[0]}%;top:${p[1]}%"></div>`;
-  });
-
-  box.innerHTML=s;
-  document.getElementById('mapLegend').textContent='🔵 Beschikbaar/wachtend  🟠 Onderweg  • Klik op een taxi voor chauffeurdetails';
-}
 
 
 let realMap=null;
@@ -1018,7 +957,7 @@ function runAI(){
 }
 function resetDemo(){if(confirm('Demo terugzetten?')){driverUnavailable={};busIssues={};replacementAssignments={};replacementSeq=1;seed();renderAll()}}
 function pickup(id){const k=find(id);if(k){k.status='picked';renderAll()}}
-function arrive(id){const k=find(id);if(k){k.status='school';renderAll()}}
+
 function absent(id){const k=find(id);if(k){k.status='absent';autoReplan();renderAll()}}
 function parentAbsent(id){absent(id)}
 let pendingDelayId=null;
@@ -1166,23 +1105,7 @@ function showBusReplacement(d,movedCount){
   document.getElementById('modal').classList.remove('hidden');
 }
 
-function assignBrokenBusToDriver(brokenDriver,replacementDriver){
-  const candidates=kids.filter(k=>
-    k.driver===brokenDriver &&
-    k.status!=='school' && k.status!=='absent' && k.status!=='loose' &&
-    !k.fixed
-  ).sort((a,b)=>a.timeMin-b.timeMin);
 
-  let moved=0;
-  for(const k of candidates){
-    if(load(replacementDriver)>=MAX) break;
-    k.driver=replacementDriver;
-    moved++;
-  }
-
-  renderAll();
-  showBusReplacement(brokenDriver,moved);
-}
 
 function redistributeBrokenBus(brokenDriver){
   const candidates=kids.filter(k=>
@@ -1204,7 +1127,7 @@ function redistributeBrokenBus(brokenDriver){
   showBusReplacement(brokenDriver,moved);
 }
 
-function replacementForDriver(d){ return replacementAssignments[d] || null; }
+
 
 function createReplacementTrip(brokenDriver){
   const affected=affectedChildren(brokenDriver).filter(k=>!k.fixed);
@@ -1238,19 +1161,7 @@ function assignReplacementTrip(brokenDriver,replacementDriver){
   showBusReplacement(brokenDriver, moving.length);
 }
 
-function replacementTripHtml(d){
-  const trip=replacementAssignments[d];
-  if(!trip)return '';
-  const children=(trip.children||[]).map(id=>find(id)).filter(Boolean);
-  const status=trip.status==='assigned'?'Vervangingsrit toegewezen':trip.status==='partial'?'Gedeeltelijk toegewezen':'Wacht op vervangende chauffeur';
-  return `<div class="replacement-trip ${trip.status==='assigned'?'done':''}">
-    <h4>🔄 Vervangingsrit ${trip.id}</h4>
-    <div class="trip-meta"><span class="replacement-chip">${status}</span><span class="replacement-chip">🚌 ${trip.brokenBus}</span>${trip.replacementDriver?`<span class="replacement-chip">🚕 ${trip.replacementDriver} • ${busForDriver(trip.replacementDriver)}</span>`:''}</div>
-    <div class="small">Oorspronkelijke chauffeur: <b>${d}</b></div>
-    <div style="margin-top:7px"><b>Kinderen in vervangingsrit (${children.length})</b></div>
-    ${children.length?children.map(k=>`<div class="trip-child">👦 <b>${k.name}</b> • ${k.time} • ${k.address} • ${k.school}</div>`).join(''):'<div class="muted small">Nog geen kinderen toegewezen.</div>'}
-  </div>`;
-}
+
 
 function clearBusIssue(d){
   if(!busIssues[d]) return;
@@ -1286,7 +1197,7 @@ function autoReplan(){
  });
  return moved;
 }
-function showReason(id){const k=find(id);if(k)alert('AI reden voor '+k.name+': vaste relatie='+ (k.fixed?'ja':'nee') +', school='+k.school+', tijd='+k.time+', bezetting chauffeur='+load(k.driver)+'/8.')}
+
 function openDriverDetails(d){
  const list=kids.filter(k=>k.driver===d).sort((a,b)=>a.timeMin-b.timeMin);
  document.getElementById('modalBox').innerHTML=`<h2>🚕 ${d}</h2><p>Status chauffeur: <b>${isDriverUnavailable(d)?'Niet beschikbaar':'Beschikbaar'}</b></p><p>🚌 Bus: <b>${busForDriver(d)}</b> — <b>${isBusUnavailable(d)?'⚠️ Storing':'✅ Beschikbaar'}</b></p><p>Actieve bezetting: <b>${load(d)}/8</b></p>`+
@@ -1431,26 +1342,7 @@ function toggleCollapsible(id){
   el.classList.toggle('open');
 }
 
-function makeCollapsible(id,title,subtitle){
-  const el=document.getElementById(id);
-  if(!el || el.dataset.collapsibleReady==='1') return;
-  el.dataset.collapsibleReady='1';
 
-  const children=[...el.childNodes];
-  const header=document.createElement('button');
-  header.type='button';
-  header.className='collapsible-header';
-  header.innerHTML='<span>'+title+(subtitle?' <small style="font-weight:400;opacity:.7">'+subtitle+'</small>':'')+'</span><span class="collapsible-arrow">▼</span>';
-
-  const content=document.createElement('div');
-  content.className='collapsible-content';
-  children.forEach(n=>content.appendChild(n));
-
-  el.classList.add('collapsible-section');
-  el.appendChild(header);
-  el.appendChild(content);
-  header.addEventListener('click',()=>el.classList.toggle('open'));
-}
 </script>
 <script>
 if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));}
