@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V71.4</title>
+<title>Taxi Planner V71.5</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -180,7 +180,7 @@ button[onclick^="chauffeurDelay"]:active{
 .driver-queue-item-v71{padding:10px;border-bottom:1px solid #ffffff20;cursor:pointer}
 .driver-queue-item-v71:last-child{border-bottom:0}
 @media(max-width:600px){.driver-buttons-v71{grid-template-columns:1fr}.driver-buttons-v71 .wide{grid-column:auto}}
-</style><style id="v711-driver-navigation">
+</style><style id="v715-driver-issue">.driver-issue-banner-v715{width:100%;margin:12px 0 4px;padding:16px;border:2px solid #d33;border-radius:14px;background:#fff0f0;color:#9b111e;font-size:18px;font-weight:800;box-sizing:border-box}.driver-issue-banner-v715:active{transform:scale(.98)}</style><style id="v711-driver-navigation">
 .driver-nav-v711{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
 .driver-nav-v711 button{padding:13px;font-size:15px}
 .driver-current-v711{margin-top:8px;text-align:center;font-size:12px;opacity:.7}
@@ -200,7 +200,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V71.4</h1>
+<h1>🚕 Taxi Planner V71.5</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -574,10 +574,10 @@ function renderDriver(){
      <div class="info-line">🛡️ ${selected.safety}</div>
      <div class="info-line">ℹ️ ${selected.important}</div>
      ${delay?'<div class="delay-live-alert">⏱️ '+delay+' minuten vertraging</div>':''}
+     <button class="driver-issue-banner-v715" onclick="reportCurrentDriverBus()">🚨 BUSSTORING MELDEN — DIRECT ACTIE</button>
      <div class="driver-buttons-v71">
        ${selected.status==='waiting'?'<button class="primary" onclick="pickup(\''+selected.id+'\')">🚗 Kind opgehaald</button>':''}
        ${selected.status==='picked'?'<button class="primary" onclick="driverArriveNext(\''+selected.id+'\')">🏫 Op school</button>':''}
-       <button class="driver-issue-v714" onclick="reportCurrentDriverBus()">🚨 Storing melden</button>
        <button onclick="chauffeurDelay('${selected.id}')">⏱️ Vertraging</button>
        <button onclick="openLoose('${selected.id}')">📋 Loosmelding</button>
        <button onclick="absent('${selected.id}')">🚫 Afmelden</button>
