@@ -439,23 +439,34 @@ function renderAttention(){
  const looseKids=kids.filter(k=>k.status==='loose');
  const brokenDrivers=driverNames.filter(d=>isBusUnavailable(d));
  const unavailableDrivers=driverNames.filter(d=>isDriverUnavailable(d));
+ const fullDrivers=driverNames.filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d)&&load(d)>=MAX);
+ const unassignedKids=kids.filter(k=>!k.driver&&active(k));
  const replacements=Object.values(replacementAssignments||{}).filter(t=>t.status!=='assigned');
 
  const items=[];
  brokenDrivers.forEach(d=>items.push(`<div class="attention-action-v712 attention-detail-item"><div><b>🚌 Busstoring — ${busForDriver(d)}</b><div class="meta">${d} • ${busIssues[d]?.reason||'Storing'} • ${affectedChildren(d).length} actieve kinderen</div></div><button onclick="openDriverDetails('${d}')">Details</button></div>`));
  unavailableDrivers.forEach(d=>items.push(`<div class="attention-action-v712 attention-detail-item"><div><b>👨‍✈️ Chauffeur niet beschikbaar — ${d}</b><div class="meta">Controleer bezetting en plan indien nodig opnieuw.</div></div><button onclick="openDriverDetails('${d}')">Details</button></div>`));
- delays.forEach(k=>items.push(`<div class="attention-action-v712 attention-detail-item"><div><b>⏱️ Vertraging — ${k.name}</b><div class="meta">${k.delay} minuten • ${k.driver} • ${k.address}</div></div><button onclick="openChild('${k.id}')">Details</button></div>`));
- looseKids.forEach(k=>items.push(`<div class="attention-action-v712 attention-detail-item"><div><b>📋 Loosmelding — ${k.name}</b><div class="meta">${k.looseReason||'Melding'} • ${k.driver}</div></div><button onclick="openChild('${k.id}')">Details</button></div>`));
+ fullDrivers.forEach(d=>items.push(`<div class="attention-action-v712 attention-detail-item"><div><b>🚌 Bus vol — ${busForDriver(d)}</b><div class="meta">${d} • ${load(d)}/${MAX} kinderen • geen vrije plaatsen</div></div><button onclick="openDriverDetails('${d}')">Details</button></div>`));
+ delays.forEach(k=>items.push(`<div class="attention-action-v712 attention-detail-item"><div><b>⏱️ Vertraging — ${k.name}</b><div class="meta">${k.delay} minuten • ${k.driver||'Geen chauffeur'} • ${k.address}</div></div><button onclick="openChild('${k.id}')">Details</button></div>`));
+ looseKids.forEach(k=>items.push(`<div class="attention-action-v712 attention-detail-item"><div><b>📋 Loosmelding — ${k.name}</b><div class="meta">${k.looseReason||'Melding'} • ${k.driver||'Geen chauffeur'}</div></div><button onclick="openChild('${k.id}')">Details</button></div>`));
  absentKids.forEach(k=>items.push(`<div class="attention-action-v712 attention-detail-item"><div><b>🚫 Afgemeld — ${k.name}</b><div class="meta">${k.time} • ${k.school} • rit uit actieve planning</div></div><button onclick="openChild('${k.id}')">Details</button></div>`));
+ unassignedKids.forEach(k=>items.push(`<div class="attention-action-v712 attention-detail-item"><div><b>⚠️ Geen chauffeur — ${k.name}</b><div class="meta">${k.time} • ${k.address} • ${k.school}</div></div><button onclick="openChild('${k.id}')">Details</button></div>`));
  replacements.forEach(t=>items.push(`<div class="attention-action-v712 attention-detail-item"><div><b>🔄 Vervangingsrit — ${t.id}</b><div class="meta">${t.brokenBus} • ${t.children?.length||0} kinderen • ${t.replacementDriver||'nog niet toegewezen'}</div></div><button onclick="showBusReplacement('${t.brokenDriver}',0)">Details</button></div>`));
 
+ const counts={
+  broken:brokenDrivers.length,
+  unavailable:unavailableDrivers.length,
+  delays:delays.length,
+  other:looseKids.length+absentKids.length+replacements.length+fullDrivers.length+unassignedKids.length
+ };
  const total=items.length;
+
  if(dash){
   dash.innerHTML=`<div class="attention-dashboard-v712">
-   <div class="attention-stat-v712 ${brokenDrivers.length?'red':'green'}"><b>${brokenDrivers.length}</b><small>🚌 Busstoring</small></div>
-   <div class="attention-stat-v712 ${unavailableDrivers.length?'red':'green'}"><b>${unavailableDrivers.length}</b><small>👨‍✈️ Niet beschikbaar</small></div>
-   <div class="attention-stat-v712 ${delays.length?'orange':'green'}"><b>${delays.length}</b><small>⏱️ Vertraging</small></div>
-   <div class="attention-stat-v712 ${(looseKids.length+absentKids.length+replacements.length)?'blue':'green'}"><b>${looseKids.length+absentKids.length+replacements.length}</b><small>📋 Overige acties</small></div>
+   <div class="attention-stat-v712 ${counts.broken?'red':'green'}"><b>${counts.broken}</b><small>🚌 Busstoring</small></div>
+   <div class="attention-stat-v712 ${counts.unavailable?'red':'green'}"><b>${counts.unavailable}</b><small>👨‍✈️ Niet beschikbaar</small></div>
+   <div class="attention-stat-v712 ${counts.delays?'orange':'green'}"><b>${counts.delays}</b><small>⏱️ Vertraging</small></div>
+   <div class="attention-stat-v712 ${counts.other?'blue':'green'}"><b>${counts.other}</b><small>📋 Overige acties</small></div>
   </div>
   <div class="attention-open-title"><b>🔎 Open meldingen — ${total}</b><span>Klik op Details voor de volledige melding</span></div>
   <div class="attention-open-list">${items.length?items.join(''):'<div class="attention-action-v712"><div><b>✅ Geen openstaande meldingen</b><div class="meta">Alle ritten, chauffeurs en bussen staan momenteel zonder actieve actie.</div></div></div>'}</div>`;
