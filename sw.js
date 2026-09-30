@@ -1,4 +1,4 @@
-const CACHE="taxi-planner-v713-pwa-1";
+const CACHE="taxi-planner-v714-pwa-1";
 const SHELL=["./","./index.html","./manifest.webmanifest","./icon.svg"];
 
 self.addEventListener("install",event=>{
@@ -23,7 +23,6 @@ self.addEventListener("activate",event=>{
 
 self.addEventListener("fetch",event=>{
   if(event.request.method!=="GET") return;
-
   event.respondWith(
     fetch(event.request)
       .then(response=>{
