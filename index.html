@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V70</title>
+<title>Taxi Planner V71</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -165,10 +165,25 @@ button[onclick^="chauffeurDelay"]:active{
 .child-meta-v70 span{padding:4px 7px;border-radius:8px;background:#eef2f6;font-size:12px}
 .child-info-v70{margin:6px 0;color:#45515d;font-size:13px}
 </style>
-</head>
+<style id="v71-driver-mode-css">
+.driver-mode-v71{background:#102a43;color:#fff;border-radius:16px;padding:16px;margin-top:12px}
+.driver-next-v71{background:#fff;color:#18222d;border-radius:14px;padding:16px;margin:12px 0}
+.driver-next-v71 .big-time{font-size:38px;font-weight:800;line-height:1}
+.driver-next-v71 .kid-name{font-size:23px;font-weight:800;margin-top:8px}
+.driver-next-v71 .info-line{margin:7px 0;font-size:15px}
+.driver-status-v71{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.driver-status-v71 span{background:#ffffff22;padding:7px 10px;border-radius:999px}
+.driver-buttons-v71{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.driver-buttons-v71 button{padding:14px 8px;font-size:15px}
+.driver-buttons-v71 .wide{grid-column:1/-1}
+.driver-queue-v71{background:#ffffff12;border-radius:12px;padding:10px;margin-top:12px}
+.driver-queue-item-v71{padding:10px;border-bottom:1px solid #ffffff20;cursor:pointer}
+.driver-queue-item-v71:last-child{border-bottom:0}
+@media(max-width:600px){.driver-buttons-v71{grid-template-columns:1fr}.driver-buttons-v71 .wide{grid-column:auto}}
+</style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V70</h1>
+<h1>🚕 Taxi Planner V71</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -536,22 +551,49 @@ function renderDriver(){
  if(driverNames.includes(current))s.value=current;
  const d=s.value;
  const list=kids.filter(k=>k.driver===d).sort((a,b)=>a.timeMin-b.timeMin);
- document.getElementById('driverRides').innerHTML=`<h3>${d} — ${busForDriver(d)} — ${load(d)}/8 actieve kinderen</h3>`+
- `<p>${isBusUnavailable(d)?'<span class="badge">⚠️ BUS IN STORING</span>':'<span class="badge">✅ Bus beschikbaar</span>'}
- <button onclick="reportBusIssue('${d}')">🚌 Storing melden</button> ${isBusUnavailable(d)?`<span class="badge">👦 ${affectedChildren(d).length} kinderen op deze bus</span>`:''}
- ${isBusUnavailable(d)?`<button onclick="clearBusIssue('${d}')">✅ Bus weer beschikbaar</button>`:''}</p>`+
- list.map(k=>`<div class="row"><b>${k.time} — ${k.name}</b><br>${k.address} • ${k.school}<br>
- <span class="badge">${statusText(k.status)}</span>${k.delay?` <span class="badge">⏱️ +${k.delay} min</span>`:''}
- <div class="actions">
- <button onclick="pickup('${k.id}')">🚗 Kind opgehaald</button>
- <button onclick="arrive('${k.id}')">🏫 Op school</button>
- <button type="button" class="driver-delay-btn" onclick="event.preventDefault();event.stopPropagation();chauffeurDelay('${k.id}');return false;">⏱️ Vertraging</button>
- <button onclick="openLoose('${k.id}')">📋 Loosmelding</button>
- <button onclick="absent('${k.id}')">🚫 Kind afmelden</button>
- <button onclick="openChild('${k.id}')">👦 Profiel</button>
- </div></div>`).join('')||'<p>Geen ritten.</p>';
-}
+ const next=list.find(k=>k.status==='waiting'||k.status==='picked');
+ const upcoming=list.filter(k=>k!==next && (k.status==='waiting'||k.status==='picked')).slice(0,5);
+ const box=document.getElementById('driverRides');
 
+ if(!next){
+   box.innerHTML=`<div class="driver-mode-v71">
+     <h3 style="margin-top:0">🚕 ${d}</h3>
+     <div class="driver-status-v71"><span>🚌 ${busForDriver(d)}</span><span>👦 ${load(d)}/8 actief</span></div>
+     <div class="driver-next-v71"><div class="kid-name">Geen volgende rit</div><p class="muted">Er staan momenteel geen wachtende of onderweg zijnde kinderen.</p></div>
+     <button onclick="reportBusIssue('${d}')">🚌 Storing melden</button>
+   </div>`;
+   return;
+ }
+
+ const delay=delayForKid(next);
+ box.innerHTML=`<div class="driver-mode-v71">
+   <h3 style="margin:0">🚕 Chauffeurmodus</h3>
+   <div class="driver-status-v71"><span>👨‍✈️ ${d}</span><span>🚌 ${busForDriver(d)}</span><span>👦 ${load(d)}/8</span></div>
+   <div class="driver-next-v71">
+     <div class="big-time">${next.time}</div>
+     <div class="kid-name">${next.name}</div>
+     <div class="info-line">📍 <b>${next.address}</b></div>
+     <div class="info-line">🏫 ${next.school}</div>
+     <div class="info-line">🧒 ${next.approach}</div>
+     <div class="info-line">🛡️ ${next.safety}</div>
+     ${next.important?'<div class="info-line">ℹ️ '+next.important+'</div>':''}
+     ${delay?'<div class="delay-live-alert">⏱️ '+delay+' minuten vertraging</div>':''}
+     <div class="driver-buttons-v71">
+       ${next.status==='waiting'?'<button class="primary" onclick="pickup(\''+next.id+'\')">🚗 Kind opgehaald</button>':''}
+       ${next.status==='picked'?'<button class="primary" onclick="arrive(\''+next.id+'\')">🏫 Op school</button>':''}
+       <button onclick="chauffeurDelay('${next.id}')">⏱️ Vertraging</button>
+       <button onclick="openLoose('${next.id}')">📋 Loosmelding</button>
+       <button onclick="absent('${next.id}')">🚫 Afmelden</button>
+       <button onclick="openChild('${next.id}')">📋 Profiel</button>
+     </div>
+   </div>
+   <div class="driver-queue-v71">
+     <b>Volgende ritten</b>
+     ${upcoming.length?upcoming.map(k=>`<div class="driver-queue-item-v71" onclick="openChild('${k.id}')"><b>${k.time}</b> — ${k.name} · ${k.address}</div>`).join(''):'<div class="small" style="margin-top:7px">Geen volgende ritten.</div>'}
+   </div>
+   ${isBusUnavailable(d)?'<div class="delay-live-alert">⚠️ BUS IN STORING</div>':''}
+ </div>`;
+}
 function renderParent(){
  const s=document.getElementById('parentSelect');
  const cur=s.value;
