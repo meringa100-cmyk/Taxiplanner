@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V71</title>
+<title>Taxi Planner V71.1</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -180,10 +180,14 @@ button[onclick^="chauffeurDelay"]:active{
 .driver-queue-item-v71{padding:10px;border-bottom:1px solid #ffffff20;cursor:pointer}
 .driver-queue-item-v71:last-child{border-bottom:0}
 @media(max-width:600px){.driver-buttons-v71{grid-template-columns:1fr}.driver-buttons-v71 .wide{grid-column:auto}}
+</style><style id="v711-driver-navigation">
+.driver-nav-v711{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.driver-nav-v711 button{padding:13px;font-size:15px}
+.driver-current-v711{margin-top:8px;text-align:center;font-size:12px;opacity:.7}
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V71</h1>
+<h1>🚕 Taxi Planner V71.1</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -544,6 +548,26 @@ function renderPlanning(){
    arr.map(k=>childCardHtml(k)).join('') || '<p>Geen ritten.</p>';
 }
 
+let driverSelectedKid={};
+function getDriverQueue(d){
+ return kids.filter(k=>k.driver===d && (k.status==='waiting'||k.status==='picked'))
+   .sort((a,b)=>a.timeMin-b.timeMin);
+}
+function setDriverKid(id){
+ const k=find(id);
+ if(k && k.driver===document.getElementById('driverSelect').value) driverSelectedKid[k.driver]=id;
+ renderDriver();
+}
+function moveDriverSelection(step){
+ const d=document.getElementById('driverSelect').value;
+ const q=getDriverQueue(d);
+ if(!q.length)return;
+ let idx=q.findIndex(k=>k.id===driverSelectedKid[d]);
+ if(idx<0)idx=0;
+ idx=Math.max(0,Math.min(q.length-1,idx+step));
+ driverSelectedKid[d]=q[idx].id;
+ renderDriver();
+}
 function renderDriver(){
  const s=document.getElementById('driverSelect');
  const current=s.value;
@@ -551,48 +575,64 @@ function renderDriver(){
  if(driverNames.includes(current))s.value=current;
  const d=s.value;
  const list=kids.filter(k=>k.driver===d).sort((a,b)=>a.timeMin-b.timeMin);
- const next=list.find(k=>k.status==='waiting'||k.status==='picked');
- const upcoming=list.filter(k=>k!==next && (k.status==='waiting'||k.status==='picked')).slice(0,5);
- const box=document.getElementById('driverRides');
-
- if(!next){
-   box.innerHTML=`<div class="driver-mode-v71">
-     <h3 style="margin-top:0">🚕 ${d}</h3>
-     <div class="driver-status-v71"><span>🚌 ${busForDriver(d)}</span><span>👦 ${load(d)}/8 actief</span></div>
-     <div class="driver-next-v71"><div class="kid-name">Geen volgende rit</div><p class="muted">Er staan momenteel geen wachtende of onderweg zijnde kinderen.</p></div>
-     <button onclick="reportBusIssue('${d}')">🚌 Storing melden</button>
+ const q=getDriverQueue(d);
+ if(!q.length){
+   delete driverSelectedKid[d];
+   document.getElementById('driverRides').innerHTML=`<div class="driver-mode-v71">
+    <h3 style="margin:0">🚕 Chauffeurmodus</h3>
+    <div class="driver-status-v71"><span>👨‍✈️ ${d}</span><span>🚌 ${busForDriver(d)}</span><span>👦 ${load(d)}/8</span></div>
+    <div class="driver-next-v71"><div class="kid-name">Geen volgende rit</div><p class="muted">Alle ritten zijn afgehandeld.</p></div>
    </div>`;
    return;
  }
+ let selected= q.find(k=>k.id===driverSelectedKid[d]);
+ if(!selected){selected=q[0];driverSelectedKid[d]=selected.id;}
+ const idx=q.findIndex(k=>k.id===selected.id);
+ const delay=delayForKid(selected);
+ const previous=idx>0?q[idx-1]:null;
+ const next=idx<q.length-1?q[idx+1]:null;
+ const upcoming=q.filter(k=>k.id!==selected.id).slice(idx+1,idx+4);
 
- const delay=delayForKid(next);
- box.innerHTML=`<div class="driver-mode-v71">
+ document.getElementById('driverRides').innerHTML=`<div class="driver-mode-v71">
    <h3 style="margin:0">🚕 Chauffeurmodus</h3>
    <div class="driver-status-v71"><span>👨‍✈️ ${d}</span><span>🚌 ${busForDriver(d)}</span><span>👦 ${load(d)}/8</span></div>
    <div class="driver-next-v71">
-     <div class="big-time">${next.time}</div>
-     <div class="kid-name">${next.name}</div>
-     <div class="info-line">📍 <b>${next.address}</b></div>
-     <div class="info-line">🏫 ${next.school}</div>
-     <div class="info-line">🧒 ${next.approach}</div>
-     <div class="info-line">🛡️ ${next.safety}</div>
-     ${next.important?'<div class="info-line">ℹ️ '+next.important+'</div>':''}
+     <div class="big-time">${selected.time}</div>
+     <div class="kid-name">${selected.name}</div>
+     <div class="info-line">📍 <b>${selected.address}</b></div>
+     <div class="info-line">🏫 ${selected.school}</div>
+     <div class="info-line">🧒 ${selected.approach}</div>
+     <div class="info-line">🛡️ ${selected.safety}</div>
+     <div class="info-line">ℹ️ ${selected.important}</div>
      ${delay?'<div class="delay-live-alert">⏱️ '+delay+' minuten vertraging</div>':''}
      <div class="driver-buttons-v71">
-       ${next.status==='waiting'?'<button class="primary" onclick="pickup(\''+next.id+'\')">🚗 Kind opgehaald</button>':''}
-       ${next.status==='picked'?'<button class="primary" onclick="arrive(\''+next.id+'\')">🏫 Op school</button>':''}
-       <button onclick="chauffeurDelay('${next.id}')">⏱️ Vertraging</button>
-       <button onclick="openLoose('${next.id}')">📋 Loosmelding</button>
-       <button onclick="absent('${next.id}')">🚫 Afmelden</button>
-       <button onclick="openChild('${next.id}')">📋 Profiel</button>
+       ${selected.status==='waiting'?'<button class="primary" onclick="pickup(\''+selected.id+'\')">🚗 Kind opgehaald</button>':''}
+       ${selected.status==='picked'?'<button class="primary" onclick="driverArriveNext(\''+selected.id+'\')">🏫 Op school</button>':''}
+       <button onclick="chauffeurDelay('${selected.id}')">⏱️ Vertraging</button>
+       <button onclick="openLoose('${selected.id}')">📋 Loosmelding</button>
+       <button onclick="absent('${selected.id}')">🚫 Afmelden</button>
+       <button onclick="openChild('${selected.id}')">📋 Profiel</button>
      </div>
+     <div class="driver-nav-v711">
+       <button onclick="moveDriverSelection(-1)" ${idx===0?'disabled':''}>← Vorige</button>
+       <button class="primary" onclick="moveDriverSelection(1)" ${idx===q.length-1?'disabled':''}>Volgende →</button>
+     </div>
+     <div class="driver-current-v711">Rit ${idx+1} van ${q.length} • tik ook op een rit hieronder</div>
    </div>
    <div class="driver-queue-v71">
-     <b>Volgende ritten</b>
-     ${upcoming.length?upcoming.map(k=>`<div class="driver-queue-item-v71" onclick="openChild('${k.id}')"><b>${k.time}</b> — ${k.name} · ${k.address}</div>`).join(''):'<div class="small" style="margin-top:7px">Geen volgende ritten.</div>'}
+     <b>Volgende kinderen</b>
+     ${upcoming.length?upcoming.map(k=>`<div class="driver-queue-item-v71" onclick="setDriverKid('${k.id}')"><b>${k.time}</b> — ${k.name} · ${k.address}</div>`).join(''):'<div class="small" style="margin-top:7px">Dit is de laatste open rit.</div>'}
    </div>
-   ${isBusUnavailable(d)?'<div class="delay-live-alert">⚠️ BUS IN STORING</div>':''}
  </div>`;
+}
+function driverArriveNext(id){
+ const k=find(id); if(!k)return;
+ k.status='school';
+ const d=k.driver;
+ const q=getDriverQueue(d);
+ if(q.length) driverSelectedKid[d]=q[0].id;
+ else delete driverSelectedKid[d];
+ renderAll();
 }
 function renderParent(){
  const s=document.getElementById('parentSelect');
