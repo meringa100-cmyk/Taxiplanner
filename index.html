@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V71.2</title>
+<title>Taxi Planner V71.3</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -192,10 +192,15 @@ button[onclick^="chauffeurDelay"]:active{
 .attention-action-v712{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 12px;border:1px solid #ddd;border-radius:10px;margin:7px 0;background:#fff}
 .attention-action-v712 .meta{font-size:13px;opacity:.75;margin-top:3px}
 @media(max-width:700px){.attention-dashboard-v712{grid-template-columns:1fr 1fr}.attention-action-v712{align-items:flex-start;flex-direction:column}}
+</style><style id="v713-report-actions">
+.report-panel-v713{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}
+.report-panel-v713 button{padding:13px;font-size:14px}
+.report-note-v713{padding:10px 12px;border-radius:10px;background:#eef6ff;border:1px solid #b9d6f3;margin:8px 0;font-size:13px}
+@media(max-width:600px){.report-panel-v713{grid-template-columns:1fr}}
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V71.2</h1>
+<h1>🚕 Taxi Planner V71.3</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -237,6 +242,11 @@ button[onclick^="chauffeurDelay"]:active{
 <h3 style="margin-bottom:4px">⚠️ Meldingen & Acties</h3>
 <p class="muted" style="margin-top:0">Centraal overzicht voor de planner. Nieuwe meldingen verschijnen hier automatisch.</p>
 <div id="attentionDashboardV712"></div>
+<div class="report-note-v713">🛠️ <b>Melding direct registreren:</b> gebruik deze knoppen. De melding verschijnt daarna automatisch in het planner-overzicht.</div>
+<div class="report-panel-v713">
+ <button onclick="openReportDriverPicker()">🚌 Busstoring melden</button>
+ <button onclick="openDriverUnavailablePicker()">👨‍✈️ Chauffeur niet beschikbaar</button>
+</div>
 <div id="alerts"></div>
 </div>
 <div id="collapsibleRittenVandaag" class="collapsible-section open"><button type="button" class="collapsible-header" onclick="toggleCollapsible('collapsibleRittenVandaag')"><span>📋 Ritten vandaag</span><span class="collapsible-arrow">▼</span></button><div class="collapsible-content"><div class="card">
@@ -1059,6 +1069,16 @@ function confirmDelay(){
 
 function delay(id){const k=find(id);if(!k)return;const m=prompt('Hoeveel minuten vertraging?', '10');if(m!==null){k.delay=parseInt(m)||0;renderAll()}}
 
+function openReportDriverPicker(){
+ const options=driverNames.map(d=>`<button onclick="reportBusIssue('${d}')">🚌 ${d} — ${busForDriver(d)}</button>`).join('');
+ document.getElementById('modalBox').innerHTML='<h2>🚌 Busstoring melden</h2><p>Kies de chauffeur/bus:</p><div class="actions">'+options+'</div><p><button onclick="closeModal()">Annuleren</button></p>';
+ document.getElementById('modal').classList.remove('hidden');
+}
+function openDriverUnavailablePicker(){
+ const options=driverNames.map(d=>`<button onclick="toggleDriverAvailability('${d}');closeModal()">👨‍✈️ ${d}</button>`).join('');
+ document.getElementById('modalBox').innerHTML='<h2>👨‍✈️ Chauffeur niet beschikbaar</h2><p>Kies de chauffeur. Nogmaals indrukken maakt hem weer beschikbaar.</p><div class="actions">'+options+'</div><p><button onclick="closeModal()">Sluiten</button></p>';
+ document.getElementById('modal').classList.remove('hidden');
+}
 function reportBusIssue(d){
   const bus=busForDriver(d);
   document.getElementById('modalBox').innerHTML=
