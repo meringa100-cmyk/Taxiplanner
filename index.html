@@ -1273,12 +1273,50 @@ function editChild(id){
 }
 function saveChild(id){const k=find(id);if(k){k.approach=document.getElementById('e1').value;k.safety=document.getElementById('e2').value;k.important=document.getElementById('e3').value;closeModal();renderAll()}}
 function openAdd(){
- document.getElementById('modalBox').innerHTML=`<h2>➕ Rit toevoegen</h2><p>Naam kind</p><input id="newName" style="width:100%" value="Nieuw kind"><p>Tijd</p><input id="newTime" style="width:100%" value="08:30"><p><button class="primary" onclick="addRide()">Toevoegen</button> <button onclick="closeModal()">Annuleren</button></p>`;
+ const destinationOptions=schools.map(s=>`<option value="${s}">${s}</option>`).join('')+`<option value="Anders">Anders / eigen bestemming</option>`;
+ document.getElementById('modalBox').innerHTML=`
+ <h2>➕ Rit toevoegen</h2>
+ <p>Naam kind</p>
+ <input id="newName" style="width:100%" value="Nieuw kind">
+ <p>Tijd</p>
+ <input id="newTime" type="time" style="width:100%" value="08:30">
+ <p>📍 Waarheen?</p>
+ <select id="newDestination" style="width:100%" onchange="toggleNewDestination()">
+   ${destinationOptions}
+ </select>
+ <p>Bestemmingsadres</p>
+ <input id="newAddress" style="width:100%" value="" placeholder="Bijv. school of huisadres">
+ <p class="muted small">De gekozen bestemming wordt onderdeel van de nieuwe rit.</p>
+ <p><button class="primary" onclick="addRide()">Toevoegen</button> <button onclick="closeModal()">Annuleren</button></p>`;
  document.getElementById('modal').classList.remove('hidden');
+ toggleNewDestination();
+}
+function toggleNewDestination(){
+ const select=document.getElementById('newDestination');
+ const address=document.getElementById('newAddress');
+ if(!select||!address)return;
+ const isSchool=schools.includes(select.value);
+ if(isSchool && !address.value) address.value=select.value;
+ if(!isSchool && address.value===schools.find(s=>address.value===s)) address.value='';
+ address.placeholder=isSchool?'Bestemmingsadres (optioneel)':'Vul de bestemming / het adres in';
 }
 function addRide(){
- const t=document.getElementById('newTime').value||'08:30';const [h,m]=t.split(':').map(Number);
- kids.push({id:'k'+demoCounter++,name:document.getElementById('newName').value||'Nieuw kind',time:t,timeMin:h*60+m,address:'Nieuw adres',school:'Nieuwe school',driver:driverNames[0],fixed:false,status:'waiting',approach:'Rustig en duidelijk aanspreken.',safety:'Veilig instappen en gordel.',important:'Nieuw profiel.'});
+ const t=document.getElementById('newTime').value||'08:30';
+ const parts=t.split(':').map(Number);
+ const h=Number.isFinite(parts[0])?parts[0]:8;
+ const m=Number.isFinite(parts[1])?parts[1]:30;
+ const destination=document.getElementById('newDestination')?.value||'Nieuwe bestemming';
+ const address=document.getElementById('newAddress')?.value.trim()||destination;
+ const school=schools.includes(destination)?destination:'Nieuwe bestemming';
+ kids.push({
+   id:'k'+demoCounter++,
+   name:document.getElementById('newName').value||'Nieuw kind',
+   time:t,timeMin:h*60+m,address,school,destination,
+   driver:driverNames[0],fixed:false,status:'waiting',
+   approach:'Rustig en duidelijk aanspreken.',
+   safety:'Veilig instappen en gordel.',
+   important:'Nieuw profiel.'
+ });
  closeModal();renderAll();
 }
 function find(id){return kids.find(k=>k.id===id)}
