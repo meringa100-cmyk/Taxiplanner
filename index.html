@@ -500,13 +500,17 @@ function renderPlanning(){
  const q=(document.getElementById('rideSearch')?.value||'').toLowerCase();
  const f=document.getElementById('rideFilter')?.value||'all';
  const arr=kids.filter(k=>{
-  const txt=(k.name+' '+k.school+' '+k.driver+' '+k.address).toLowerCase();
+  const txt=(k.name+' '+(k.school||'')+' '+(k.destination||'')+' '+(k.driver||'')+' '+(k.address||'')).toLowerCase();
   return (!q||txt.includes(q))&&(f==='all'||k.status===f);
  }).sort((a,b)=>a.timeMin-b.timeMin);
- document.getElementById('planning').innerHTML='<p class="muted">'+arr.length+' ritten • tik op een kind om de extra informatie uit te klappen</p>'+
-   arr.map(k=>childCardHtml(k)).join('') || '<p>Geen ritten.</p>';
-}
 
+ const planning=document.getElementById('planning');
+ if(!planning)return;
+
+ const header='<p class="muted">'+arr.length+' ritten • tik op een kind om de extra informatie uit te klappen</p>';
+ const cards=arr.map(k=>childCardHtml(k)).join('');
+ planning.innerHTML=header+(cards||'<p>Geen ritten.</p>');
+}
 let driverSelectedKid={};
 function getDriverQueue(d){
  return kids.filter(k=>k.driver===d && (k.status==='waiting'||k.status==='picked'))
@@ -1308,16 +1312,32 @@ function addRide(){
  const destination=document.getElementById('newDestination')?.value||'Nieuwe bestemming';
  const address=document.getElementById('newAddress')?.value.trim()||destination;
  const school=schools.includes(destination)?destination:'Nieuwe bestemming';
- kids.push({
-   id:'k'+demoCounter++,
+ const newId='k'+demoCounter++;
+ const newKid={
+   id:newId,
    name:document.getElementById('newName').value||'Nieuw kind',
    time:t,timeMin:h*60+m,address,school,destination,
    driver:driverNames[0],fixed:false,status:'waiting',
    approach:'Rustig en duidelijk aanspreken.',
    safety:'Veilig instappen en gordel.',
-   important:'Nieuw profiel.'
- });
- closeModal();renderAll();
+   important:'Nieuw profiel.',
+   newlyAdded:true
+ };
+ kids.push(newKid);
+ closeModal();
+ renderAll();
+
+ setTimeout(()=>{
+   const card=document.getElementById('childcard-'+newId);
+   const rides=document.getElementById('collapsibleRittenVandaag');
+   if(rides && !rides.classList.contains('open')) rides.classList.add('open');
+   if(card){
+     card.classList.add('open');
+     card.scrollIntoView({behavior:'smooth',block:'center'});
+   }
+ },100);
+
+ alert('✅ Rit toegevoegd: '+newKid.name+' → '+(newKid.destination||newKid.address)+' om '+newKid.time+'.');
 }
 function find(id){return kids.find(k=>k.id===id)}
 function closeModal(){document.getElementById('modal').classList.add('hidden')}
