@@ -1456,17 +1456,5 @@ function makeCollapsible(id,title,subtitle){
 if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));}
 </script>
 
-<script id="v70-force-update">
-(function(){
- const V='taxi-planner-v70-force-1';
- async function update(){
-  try{
-   if('caches' in window){const ks=await caches.keys();await Promise.all(ks.filter(k=>k.indexOf('taxi-planner-')===0&&k!==V).map(k=>caches.delete(k)));}
-   if('serviceWorker' in navigator){const regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.map(r=>r.update()));}
-  }catch(e){console.log('V70 update',e);}
- }
- if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',update,{once:true});else update();
-})();
-</script>
 </body>
 </html>
