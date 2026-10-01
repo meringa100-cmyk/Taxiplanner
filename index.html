@@ -691,7 +691,7 @@ function renderAttention(){
  box.innerHTML='';
 }
 function renderDashboard(){
- const activeDrivers=driverNames.filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d)&&load(d)>0).length;
+ const activeDrivers=driverNames.filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d)).length;
  const waiting=kids.filter(k=>k.status==='waiting').length;
  const underway=kids.filter(k=>k.status==='picked').length;
  const school=kids.filter(k=>k.status==='school').length;
