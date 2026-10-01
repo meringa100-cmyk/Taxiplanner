@@ -367,7 +367,9 @@ async function toggleDriverAvailability(d){
 }
 
 function activeUnassignedForDriver(d){
-  return kids.filter(k=>k.driver===d && active(k) && !k.fixed);
+  // Alle actieve kinderen gaan mee bij ziekte/niet-beschikbaarheid,
+  // ook kinderen met een vaste chauffeurrelatie.
+  return kids.filter(k=>k.driver===d && active(k));
 }
 
 function geoDistanceKm(a,b){
