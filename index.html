@@ -475,7 +475,7 @@ async function redistributeUnavailableDriver(brokenDriver){
       const minutes=await validateRouteMinutes(d,group);
       if(minutes<=60)continue;
 
-      const movable=group.filter(k=>k.driver===d && !k.fixed)
+      const movable=group.filter(k=>k.driver===d)
         .sort((a,b)=>geoDistanceKm(a,{lat:52.7858,lon:6.8976})-geoDistanceKm(b,{lat:52.7858,lon:6.8976}))
         .pop();
       if(!movable)continue;
