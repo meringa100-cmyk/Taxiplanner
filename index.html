@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V71.6</title>
+<title>Taxi Planner V71.7</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -346,15 +346,157 @@ function repairPlannerAssignments(){
  return changed;
 }
 
-function toggleDriverAvailability(d){
+async function toggleDriverAvailability(d){
   driverUnavailable[d]=!driverUnavailable[d];
+
   if(driverUnavailable[d]){
-    const moved=repairPlannerAssignments();
     renderAll();
-    if(moved) logPlannerAutomation('🔄 '+moved+' wachtende rit'+(moved===1?'':'ten')+' automatisch opnieuw verdeeld.');
+    logPlannerAutomation('⏳ Automatische routeherverdeling gestart voor '+d+'…');
+    const result=await redistributeUnavailableDriver(d);
+    renderAll();
+    if(result.moved){
+      logPlannerAutomation('✅ '+result.moved+' kinderen automatisch verdeeld over '+result.drivers+' beschikbare chauffeurs. Maximaal 60 min route gecontroleerd.');
+    }else{
+      logPlannerAutomation('⚠️ Niet alle kinderen konden automatisch binnen de voorwaarden worden geplaatst.');
+    }
   }else{
     renderAll();
+    logPlannerAutomation('✅ '+d+' is weer beschikbaar.');
   }
+}
+
+function activeUnassignedForDriver(d){
+  return kids.filter(k=>k.driver===d && active(k) && !k.fixed);
+}
+
+function geoDistanceKm(a,b){
+  if(!a||!b||![a.lat,a.lon,b.lat,b.lon].every(Number.isFinite))return Infinity;
+  const R=6371, p=Math.PI/180;
+  const dLat=(b.lat-a.lat)*p, dLon=(b.lon-a.lon)*p;
+  const x=Math.sin(dLat/2)**2+Math.cos(a.lat*p)*Math.cos(b.lat*p)*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.sqrt(x));
+}
+
+function estimateRouteMinutes(stops){
+  if(!stops.length)return 0;
+  let km=0;
+  for(let i=1;i<stops.length;i++){
+    const a=stops[i-1],b=stops[i];
+    const d=geoDistanceKm(a,b);
+    if(!Number.isFinite(d))return Infinity;
+    km+=d;
+  }
+  // Conservative urban estimate; OSRM validates the final groups when coordinates exist.
+  return Math.round((km/35)*60);
+}
+
+async function validateRouteMinutes(driver, rides){
+  if(!rides.length)return 0;
+  const coords=rides.map(k=>[k.lon,k.lat]).filter(p=>Number.isFinite(p[0])&&Number.isFinite(p[1]));
+  if(coords.length<2)return estimateRouteMinutes(rides);
+  try{
+    const route=await osrmRoute(coords);
+    return Math.round(route.duration/60);
+  }catch(e){
+    return estimateRouteMinutes(rides);
+  }
+}
+
+async function redistributeUnavailableDriver(brokenDriver){
+  const affected=activeUnassignedForDriver(brokenDriver).sort((a,b)=>a.timeMin-b.timeMin);
+  if(!affected.length)return {moved:0,drivers:0};
+
+  // Make sure affected children have usable coordinates when the map/geocoder is available.
+  try{
+    if(typeof geocodeEmmenAddresses==='function' && !addressesReady) await geocodeEmmenAddresses();
+  }catch(e){}
+
+  const candidates=driverNames.filter(d=>
+    d!==brokenDriver &&
+    !isDriverUnavailable(d) &&
+    !isBusUnavailable(d)
+  );
+
+  // Start with current active routes. Existing routes stay intact; only the affected
+  // children are inserted where they add the least geographical detour.
+  const groups=new Map();
+  candidates.forEach(d=>{
+    groups.set(d,kids.filter(k=>k.driver===d && active(k)).sort((a,b)=>a.timeMin-b.timeMin).slice());
+  });
+
+  let moved=0;
+  for(const child of affected){
+    const options=[];
+    for(const d of candidates){
+      const group=groups.get(d)||[];
+      if(group.length>=MAX)continue;
+
+      // Prefer a nearby route and keep the pickup-time window coherent.
+      const timed=group.filter(k=>Math.abs((k.timeMin||0)-(child.timeMin||0))<=60);
+      const base=timed.length?timed:group;
+      const nearest=base.length
+        ? Math.min(...base.map(k=>geoDistanceKm(child,k)))
+        : 0;
+      const before=estimateRouteMinutes(group);
+      const trial=[...group,child].sort((a,b)=>a.timeMin-b.timeMin);
+      const estimated=estimateRouteMinutes(trial);
+
+      // A group without coordinates gets a neutral score instead of being rejected.
+      const geoScore=Number.isFinite(nearest)?nearest*3:100;
+      const routeScore=Number.isFinite(estimated)?estimated:9999;
+      const overloadPenalty=group.length*1.5;
+      options.push({d,group,trial,routeScore,geoScore,overloadPenalty,before});
+    }
+
+    options.sort((a,b)=>
+      (a.geoScore+a.routeScore+a.overloadPenalty)-
+      (b.geoScore+b.routeScore+b.overloadPenalty)
+    );
+
+    const chosen=options.find(o=>o.routeScore<=60) || options[0];
+    if(!chosen)continue;
+
+    chosen.group.push(child);
+    chosen.group.sort((a,b)=>a.timeMin-b.timeMin);
+    groups.set(chosen.d,chosen.group);
+    child.driver=chosen.d;
+    moved++;
+  }
+
+  // Final hard check: any route over 60 minutes is split automatically onto
+  // another available bus with capacity, preferring the nearest alternative.
+  let changed=true;
+  let guard=0;
+  while(changed && guard++<20){
+    changed=false;
+    for(const d of candidates){
+      const group=groups.get(d)||[];
+      if(!group.length)continue;
+      const minutes=await validateRouteMinutes(d,group);
+      if(minutes<=60)continue;
+
+      const movable=group.filter(k=>k.driver===d && !k.fixed)
+        .sort((a,b)=>geoDistanceKm(a,{lat:52.7858,lon:6.8976})-geoDistanceKm(b,{lat:52.7858,lon:6.8976}))
+        .pop();
+      if(!movable)continue;
+
+      const alternatives=candidates.filter(x=>x!==d && (groups.get(x)||[]).length<MAX);
+      let target=null;
+      for(const x of alternatives){
+        const trial=[...(groups.get(x)||[]),movable].sort((a,b)=>a.timeMin-b.timeMin);
+        if(await validateRouteMinutes(x,trial)<=60){target=x;break;}
+      }
+      if(target){
+        groups.set(d,group.filter(k=>k.id!==movable.id));
+        groups.get(target).push(movable);
+        groups.get(target).sort((a,b)=>a.timeMin-b.timeMin);
+        movable.driver=target;
+        changed=true;
+      }
+    }
+  }
+
+  return {moved,drivers:[...groups.values()].filter(g=>g.some(k=>affected.some(a=>a.id===k.id))).length};
 }
 
 let plannerAutomationTimer=null;
@@ -368,7 +510,7 @@ function startPlannerAutomation(){
 
 
 
-const STORAGE_KEY='taxiPlannerStateV716';
+const STORAGE_KEY='taxiPlannerStateV717';
 
 function saveState(){
  try{
