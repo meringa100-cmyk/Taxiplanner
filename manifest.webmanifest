@@ -1,13 +1,11 @@
 {
-  "name":"Taxi Planner V71.6",
+  "name":"Taxi Planner V71.7",
   "short_name":"Taxi Planner",
   "start_url":"./",
   "scope":"./",
   "display":"standalone",
   "background_color":"#f3f5f7",
   "theme_color":"#17324d",
-  "description":"Taxi Planner V71.6 met planner, chauffeur, ouderportaal en Live Centrum.",
-  "icons":[
-    {"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
-  ]
+  "description":"Taxi Planner V71.7 met automatische routeherverdeling, planner, chauffeur, ouderportaal en Live Centrum.",
+  "icons":[{"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
 }
