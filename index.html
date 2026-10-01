@@ -361,8 +361,25 @@ async function toggleDriverAvailability(d){
       logPlannerAutomation('⚠️ Niet alle kinderen konden automatisch binnen de voorwaarden worden geplaatst.');
     }
   }else{
+    // Chauffeur is beter gemeld. Zet alleen ritten terug die nog niet zijn begonnen.
+    // Rittten met status "picked" blijven bij de vervangende chauffeur.
+    let restored=0;
+    Object.keys(parentDriverChanges||{}).forEach(id=>{
+      const change=parentDriverChanges[id];
+      const k=find(id);
+      if(change && change.from===d && k && k.status==='waiting' && k.driver===change.to){
+        k.driver=d;
+        delete parentDriverChanges[id];
+        restored++;
+      }
+    });
+
     renderAll();
-    logPlannerAutomation('✅ '+d+' is weer beschikbaar.');
+    if(restored){
+      logPlannerAutomation('↩️ '+restored+' nog niet gestarte ritten zijn teruggezet naar '+d+'. Ouderportaal en planning zijn bijgewerkt.');
+    }else{
+      logPlannerAutomation('✅ '+d+' is weer beschikbaar.');
+    }
   }
 }
 
