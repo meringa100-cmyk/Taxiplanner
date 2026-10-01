@@ -322,6 +322,13 @@ function isBusUnavailable(d){return !!busIssues[d];}
 
 let driverUnavailable={};
 function isDriverUnavailable(d){return !!driverUnavailable[d];}
+function logPlannerAutomation(message){
+ const box=document.getElementById('plannerDelayAlerts');
+ if(box){
+  box.insertAdjacentHTML('afterbegin','<div class="notice" style="margin-bottom:8px">🤖 '+message+'</div>');
+  setTimeout(()=>{const n=box.querySelector('.notice');if(n)n.remove()},6000);
+ }
+}
 function repairPlannerAssignments(){
  let changed=0;
  kids.filter(k=>k.status==='waiting'&&!k.fixed).forEach(k=>{
@@ -344,7 +351,7 @@ function toggleDriverAvailability(d){
   if(driverUnavailable[d]){
     const moved=repairPlannerAssignments();
     renderAll();
-    if(moved) showToast('🔄 '+moved+' wachtende rit'+(moved===1?'':'ten')+' automatisch opnieuw verdeeld.');
+    if(moved) logPlannerAutomation('🔄 '+moved+' wachtende rit'+(moved===1?'':'ten')+' automatisch opnieuw verdeeld.');
   }else{
     renderAll();
   }
