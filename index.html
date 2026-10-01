@@ -322,9 +322,41 @@ function isBusUnavailable(d){return !!busIssues[d];}
 
 let driverUnavailable={};
 function isDriverUnavailable(d){return !!driverUnavailable[d];}
+function repairPlannerAssignments(){
+ let changed=0;
+ kids.filter(k=>k.status==='waiting'&&!k.fixed).forEach(k=>{
+   const current=k.driver;
+   const invalid=!current||isDriverUnavailable(current)||isBusUnavailable(current);
+   if(!invalid)return;
+   const choices=driverNames
+     .filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d)&&load(d)<MAX)
+     .sort((a,b)=>load(a)-load(b));
+   if(choices.length){
+     k.driver=choices[0];
+     changed++;
+   }
+ });
+ return changed;
+}
+
 function toggleDriverAvailability(d){
   driverUnavailable[d]=!driverUnavailable[d];
-  renderAll();
+  if(driverUnavailable[d]){
+    const moved=repairPlannerAssignments();
+    renderAll();
+    if(moved) showToast('🔄 '+moved+' wachtende rit'+(moved===1?'':'ten')+' automatisch opnieuw verdeeld.');
+  }else{
+    renderAll();
+  }
+}
+
+let plannerAutomationTimer=null;
+function startPlannerAutomation(){
+ if(plannerAutomationTimer)clearInterval(plannerAutomationTimer);
+ plannerAutomationTimer=setInterval(()=>{
+   const changed=repairPlannerAssignments();
+   if(changed)renderAll();
+ },15000);
 }
 
 
@@ -1370,7 +1402,7 @@ function addRide(){
 function find(id){return kids.find(k=>k.id===id)}
 function closeModal(){document.getElementById('modal').classList.add('hidden')}
 document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
-if(!loadState())seed();renderAll();
+if(!loadState())seed();renderAll();startPlannerAutomation();
 </script>
 
 
