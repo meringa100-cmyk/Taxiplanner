@@ -406,11 +406,8 @@ async function redistributeUnavailableDriver(brokenDriver){
   const affected=activeUnassignedForDriver(brokenDriver).sort((a,b)=>a.timeMin-b.timeMin);
   if(!affected.length)return {moved:0,drivers:0};
 
-  // Make sure affected children have usable coordinates when the map/geocoder is available.
-  try{
-    if(typeof geocodeEmmenAddresses==='function' && !addressesReady) await geocodeEmmenAddresses();
-  }catch(e){}
-
+  // Eerst direct herverdelen. Nooit wachten op geocoding voordat kinderen
+  // van een niet-beschikbare chauffeur worden afgehaald.
   const candidates=driverNames.filter(d=>
     d!==brokenDriver &&
     !isDriverUnavailable(d) &&
