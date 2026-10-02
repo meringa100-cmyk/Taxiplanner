@@ -954,12 +954,14 @@ let routeLines=[];
 
 
 async function geocodeEmmenAddresses(){
-  if(addressesReady)return;
+  const missing=kids.filter(k=>!Number.isFinite(k.lat)||!Number.isFinite(k.lon));
+  if(addressesReady && missing.length===0)return;
   const info=document.getElementById('routeInfo');
   if(info)info.textContent='📍 Echte Emmen-adressen worden opgezocht…';
   let done=0;
   for(let i=0;i<kids.length;i++){
     const k=kids[i];
+    if(Number.isFinite(k.lat)&&Number.isFinite(k.lon))continue;
     const street=emmenStreets[i%emmenStreets.length];
     const number=2 + ((i*2)%98);
     const query=encodeURIComponent(`${street} ${number}, Emmen`);
@@ -978,8 +980,9 @@ async function geocodeEmmenAddresses(){
     }catch(e){}
     if(i%10===9 && info)info.textContent=`📍 Adressen opgezocht: ${i+1}/100`;
   }
-  addressesReady=true;
-  if(info)info.textContent=`✅ ${done} van 100 kinderen gekoppeld aan actuele BAG-adresdata van PDOK.`;
+  const located=kids.filter(k=>Number.isFinite(k.lat)&&Number.isFinite(k.lon)).length;
+  addressesReady=located>0;
+  if(info)info.textContent=`📍 ${located} van ${kids.length} kinderen gekoppeld aan actuele BAG-adresdata van PDOK.`;
   renderRealMapMarkers();
 }
 function initRealMap(){
