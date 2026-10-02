@@ -197,6 +197,16 @@ button[onclick^="chauffeurDelay"]:active{
 .report-panel-v713 button{padding:13px;font-size:14px}
 .report-note-v713{padding:10px 12px;border-radius:10px;background:#eef6ff;border:1px solid #b9d6f3;margin:8px 0;font-size:13px}
 @media(max-width:600px){.report-panel-v713{grid-template-columns:1fr}}
+</style><style id="daystart-check-css">
+.daystart-result{margin-top:12px;padding:14px;border-radius:12px;border:1px solid #d9dee7;background:#f7f9fb}
+.daystart-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0}
+.daystart-stat{padding:10px;border-radius:10px;background:#fff;border:1px solid #d9dee7;text-align:center}
+.daystart-stat b{display:block;font-size:22px}
+.daystart-ok{background:#eef8ef;border-color:#b8d8bc}
+.daystart-warn{background:#fff7df;border-color:#e6c96a}
+.daystart-danger{background:#fff0f0;border-color:#efb4b4}
+.daystart-item{padding:9px 10px;margin:6px 0;border-radius:9px;background:#fff;border:1px solid #ddd}
+@media(max-width:600px){.daystart-summary{grid-template-columns:1fr}}
 </style><style id="v716-attention-details">
 .attention-open-title{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:12px 0 8px;padding:10px 12px;background:#f7f9fb;border:1px solid #d9dee7;border-radius:10px}
 .attention-open-title span{font-size:12px;opacity:.7}
@@ -219,7 +229,7 @@ button[onclick^="chauffeurDelay"]:active{
 
 <main>
 <section id="planner" class="page active"><div id="plannerDelayAlerts"></div>
-<div class="card"><h2>Planner Dashboard</h2><div id="dashboard" class="grid"></div></div>
+<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Planner Dashboard</h2><button class="primary" onclick="runDayStartCheck()">🔎 Dagstartcontrole</button></div><div id="dashboard" class="grid" style="margin-top:12px"></div><div id="dayStartCheck"></div></div>
 
 <div class="card">
   <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
@@ -706,6 +716,41 @@ function renderAttention(){
   <div class="attention-open-list">${items.length?items.join(''):'<div class="attention-action-v712"><div><b>✅ Geen openstaande meldingen</b><div class="meta">Alle ritten, chauffeurs en bussen staan momenteel zonder actieve actie.</div></div></div>'}</div>`;
  }
  box.innerHTML='';
+}
+function runDayStartCheck(){
+  const unavailable=driverNames.filter(d=>isDriverUnavailable(d));
+  const broken=driverNames.filter(d=>isBusUnavailable(d));
+  const unassigned=kids.filter(k=>active(k)&&!k.driver);
+  const overloaded=driverNames.filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d)&&load(d)>MAX);
+  const collisions=[];
+  driverNames.forEach(d=>{
+    const q=kids.filter(k=>k.driver===d&&active(k)).sort((a,b)=>a.timeMin-b.timeMin);
+    for(let i=1;i<q.length;i++){
+      if(q[i].timeMin===q[i-1].timeMin){
+        collisions.push(d+' heeft meerdere ritten om '+q[i].time);
+      }
+    }
+  });
+  const issues=[];
+  unavailable.forEach(d=>issues.push('👨‍✈️ '+d+' is niet beschikbaar.'));
+  broken.forEach(d=>issues.push('🚌 '+busForDriver(d)+' heeft een storing ('+d+').'));
+  unassigned.forEach(k=>issues.push('⚠️ '+k.name+' heeft geen chauffeur.'));
+  overloaded.forEach(d=>issues.push('🔴 '+d+' heeft '+load(d)+' kinderen; maximum is '+MAX+'.'));
+  collisions.forEach(x=>issues.push('⏰ '+x+'.'));
+
+  const box=document.getElementById('dayStartCheck');
+  if(!box)return;
+  const status=issues.length?'daystart-warn':'daystart-ok';
+  box.innerHTML='<div class="daystart-result '+status+'">'+
+    '<h3 style="margin:0">🔎 Dagstartcontrole — '+(issues.length?'Aandacht nodig':'Alles ziet er goed uit')+'</h3>'+
+    '<div class="daystart-summary">'+
+      '<div class="daystart-stat '+(unavailable.length?'daystart-danger':'')+'"><b>'+unavailable.length+'</b><small>Niet beschikbaar</small></div>'+
+      '<div class="daystart-stat '+(broken.length?'daystart-danger':'')+'"><b>'+broken.length+'</b><small>Busstoringen</small></div>'+
+      '<div class="daystart-stat '+(unassigned.length?'daystart-danger':'')+'"><b>'+unassigned.length+'</b><small>Zonder chauffeur</small></div>'+
+    '</div>'+
+    (issues.length?'<div>'+issues.map(x=>'<div class="daystart-item">'+x+'</div>').join('')+'</div>':'<div class="daystart-item">✅ Chauffeurs, bussen en actieve ritten hebben op deze controle geen directe conflicten.</div>')+
+    '<p class="small muted" style="margin-bottom:0">Controleert beschikbaarheid, busstoringen, bezetting en dubbele tijdstippen. Routeafstanden worden later apart gecontroleerd.</p>'+
+  '</div>';
 }
 function renderDashboard(){
  const activeDrivers=driverNames.filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d)).length;
