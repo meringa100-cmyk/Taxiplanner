@@ -736,7 +736,7 @@ async function runDayStartCheck(){
     try{ await geocodeEmmenAddresses(); }catch(e){}
   }
 
-  driverNames.forEach(d=>{
+  driverNames.forEach((d,driverIndex)=>{
     const q=kids.filter(k=>k.driver===d&&active(k)).sort((a,b)=>a.timeMin-b.timeMin);
     for(let i=1;i<q.length;i++){
       if(q[i].timeMin===q[i-1].timeMin){
@@ -744,7 +744,15 @@ async function runDayStartCheck(){
       }
 
       const gap=(q[i].timeMin||0)-(q[i-1].timeMin||0);
-      const distance=geoDistanceKm(q[i-1],q[i]);
+      let distance=geoDistanceKm(q[i-1],q[i]);
+      // Als BAG-geocoding niet beschikbaar is, gebruik dezelfde vaste
+      // demo-coördinaten als de kaart. Zo blijft de dagstartcontrole ook
+      // in de lokale demo bruikbaar.
+      if(!Number.isFinite(distance)){
+        const a=coordForKid(q[i-1],driverIndex,i-1);
+        const b=coordForKid(q[i],driverIndex,i);
+        distance=geoDistanceKm({lat:a[1],lon:a[0]},{lat:b[1],lon:b[0]});
+      }
       if(Number.isFinite(distance)){
         const travel=Math.ceil((distance/35)*60);
         if(travel>gap && gap>=0){
@@ -754,7 +762,12 @@ async function runDayStartCheck(){
     }
 
     if(q.length>1){
-      const estimated=estimateRouteMinutes(q);
+      let estimated=estimateRouteMinutes(q);
+      if(!Number.isFinite(estimated)){
+        const coords=q.map((k,i)=>coordForKid(k,driverIndex,i));
+        const demoStops=coords.map(p=>({lat:p[1],lon:p[0]}));
+        estimated=estimateRouteMinutes(demoStops);
+      }
       if(Number.isFinite(estimated) && estimated>60){
         longRoutes.push(d+' heeft een geschatte route van '+estimated+' minuten ('+q.length+' kinderen).');
       }
@@ -771,6 +784,7 @@ async function runDayStartCheck(){
   longRoutes.forEach(x=>issues.push('🔴 Route te lang: '+x));
 
   const routeChecked=kids.some(k=>Number.isFinite(k.lat)&&Number.isFinite(k.lon));
+  const routeUsingDemo=kids.some(k=>!Number.isFinite(k.lat)||!Number.isFinite(k.lon));
   const status=issues.length?'daystart-warn':'daystart-ok';
 
   box.innerHTML='<div class="daystart-result '+status+'">'+
@@ -783,8 +797,11 @@ async function runDayStartCheck(){
     '</div>'+
     (issues.length?'<div>'+issues.map(x=>'<div class="daystart-item">'+x+'</div>').join('')+'</div>':'<div class="daystart-item">✅ Chauffeurs, bussen, bezetting en route/tijdstippen hebben op deze controle geen directe conflicten.</div>')+
     '<p class="small muted" style="margin-bottom:0">'+
-      (routeChecked?'🛣️ Afstanden zijn meegenomen op basis van de gekoppelde adressen.':'ℹ️ Routeafstanden konden nog niet worden gecontroleerd.')+
-      ' Reistijd is een verkeersinschatting; de echte wegroute kan afwijken.</p>'+
+      (routeChecked
+        ? '🛣️ Afstanden zijn meegenomen op basis van gekoppelde adrescoördinaten.'
+        : '🗺️ Routecontrole gebruikt de vaste demo-coördinaten van de kaart.')
+      + (routeUsingDemo && routeChecked ? ' Waar nog geen adrescoördinaat beschikbaar is, wordt een demo-coördinaat gebruikt.' : '')
+      + ' Reistijd is een verkeersinschatting; de echte wegroute kan afwijken.</p>'+
   '</div>';
 }
 
