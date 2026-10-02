@@ -24,7 +24,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:9px;border-bottom:1px so
 .row{border:1px solid #e1e6ea;border-radius:9px;padding:11px;margin:7px 0}
 .actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 input,select{padding:9px;border:1px solid #cbd3da;border-radius:8px}
-.modal{position:fixed;inset:0;background:#0008;display:flex;align-items:center;justify-content:center;padding:20px;z-index:10}
+.modal{position:fixed;inset:0;background:#0008;display:flex;align-items:center;justify-content:center;padding:20px;z-index:100000 !important}
 .modalBox{background:#fff;border-radius:14px;padding:20px;max-width:650px;width:100%;max-height:85vh;overflow:auto}
 .hidden{display:none}.success{color:#087443}.error{color:#b42318}
 .small{font-size:13px}
@@ -45,7 +45,7 @@ input,select{padding:9px;border:1px solid #cbd3da;border-radius:8px}
 .driver-delay-btn,
 button[onclick^="chauffeurDelay"]{
   position:relative !important;
-  z-index:50 !important;
+  z-index:auto !important;
   pointer-events:auto !important;
   cursor:pointer !important;
   touch-action:manipulation !important;
