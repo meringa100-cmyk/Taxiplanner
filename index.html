@@ -938,7 +938,7 @@ function renderParent(){
  const k=kids.find(x=>x.id===s.value)||kids[0];
  document.getElementById('parentView').innerHTML=`<div class="card"><h3>${k.name}</h3>
  <p>Ophaaltijd: <b>${k.time}</b></p>
- ${parentDriverChanges[k.id] && parentDriverChanges[k.id].to===k.driver ? '<div class="notice" style="margin:12px 0;border-left:5px solid #d97706;background:#fff7ed"><b>🔔 Belangrijk voor vandaag</b><br>Uw vaste chauffeur <b>'+parentDriverChanges[k.id].from+'</b> is vandaag '+(parentDriverChanges[k.id].reason==='busstoring'?'niet beschikbaar door een busstoring.':'ziek/niet beschikbaar.')<br>Uw kind wordt daarom opgehaald door <b>'+k.driver+'</b>.<br><span class="small">Zo kunt u uw kind hierop voorbereiden.</span></div>' : ''}
+ ${parentDriverChanges[k.id] && parentDriverChanges[k.id].to===k.driver ? '<div class="notice" style="margin:12px 0;border-left:5px solid #d97706;background:#fff7ed"><b>🔔 Belangrijk voor vandaag</b><br>Uw vaste chauffeur <b>'+parentDriverChanges[k.id].from+'</b> is vandaag '+(parentDriverChanges[k.id].reason==='busstoring'?'niet beschikbaar door een busstoring.':'ziek/niet beschikbaar.')+'<br>Uw kind wordt daarom opgehaald door <b>'+k.driver+'</b>.<br><span class="small">Zo kunt u uw kind hierop voorbereiden.</span></div>' : ''}
  <p>Chauffeur: <b>${k.driver}</b></p>
  <p>School: <b>${k.school}</b></p><p>Status: <span class="badge">${statusText(k.status)}</span>${k.delay?` <b>⏱️ Vertraging: +${k.delay} min</b>`:''}</p>
  ${active(k)?`<button onclick="parentAbsent('${k.id}')">🚫 Kind afmelden</button>`:''}</div>`;
