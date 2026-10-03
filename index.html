@@ -320,10 +320,10 @@ const schools=['Terra College','De Atlas','Praktijkschool','Speciale school'];
 // Harde schooldeadline: ieder kind moet uiterlijk om 08:30 op school kunnen zijn.
 const SCHOOL_DEADLINE_MIN=8*60+30;
 const schoolLocations={
-  'Terra College':{lat:52.772208,lon:6.887196},
-  'De Atlas':{lat:52.7758,lon:6.9450},
-  'Praktijkschool':{lat:52.77696,lon:6.94502},
-  'Speciale school':{lat:52.7758,lon:6.9450}
+  'Terra College':{lat:52.77593,lon:6.87886},
+  'De Atlas':{lat:52.77890,lon:6.95670},
+  'Praktijkschool':{lat:52.78620,lon:6.88980},
+  'Speciale school':{lat:52.77890,lon:6.95670}
 };
 function schoolPoint(k){
   return schoolLocations[k?.school] || schoolLocations[k?.destination] || null;
@@ -586,7 +586,7 @@ function startPlannerAutomation(){
 
 
 
-const STORAGE_KEY='taxiPlannerStateV718';
+const STORAGE_KEY='taxiPlannerStateV729';
 
 function saveState(){
  try{
@@ -617,20 +617,27 @@ function loadState(){
 
 function seed(){
  kids=[];
+ const demoTimes=Array.from({length:100},(_,i)=>420+((i%8)*10));
  for(let i=0;i<100;i++){
+  const school=schools[i%schools.length];
   kids.push({
-   id:'k'+(i+1),name:names[i%names.length]+' '+(i+1),
-   timeMin:420+(i%12)*10,time:fmtTime(420+(i%12)*10),
+   id:'k'+(i+1),
+   name:names[i%names.length]+' '+(i+1),
+   timeMin:demoTimes[i],
+   time:fmtTime(demoTimes[i]),
    address:streets[i%streets.length]+' '+(10+i),
-   school:schools[i%schools.length],
+   school,
+   destination:school,
    driver:driverNames[Math.floor(i/8)],
-   fixed:i<35,status:'waiting',
+   fixed:i<35,
+   status:'waiting',
    approach:'Rustig en duidelijk aanspreken.',
    safety:'Let op veilig instappen en gordel.',
    important:'Geen bijzonderheden voor deze demo.'
   });
  }
 }
+
 function fmtTime(m){return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0')}
 function statusText(s){return ({waiting:'Wachtend',picked:'Onderweg',school:'Op school',absent:'🚫 Afgemeld',loose:'📋 Loosmelding'})[s]||s}
 function active(k){return k.status==='waiting'||k.status==='picked'}
@@ -2093,7 +2100,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=728").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=729").catch(()=>{}));}
 </script>
 
 </body>
