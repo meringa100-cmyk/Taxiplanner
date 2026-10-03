@@ -460,6 +460,18 @@ async function validateRouteMinutes(driver, rides){
   }
 }
 
+// Harde maximale routelengte per chauffeur.
+const MAX_ROUTE_MINUTES=90;
+function routeDurationEstimate(rides,driverIndex){
+  if(!rides || rides.length<2)return 0;
+  const ordered=[...rides].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+  let total=0;
+  for(let i=1;i<ordered.length;i++){
+    total+=routeMinutesBetween(ordered[i-1],ordered[i],driverIndex);
+  }
+  return total;
+}
+
 async function redistributeUnavailableDriver(brokenDriver,changeReason='ziek/niet beschikbaar'){
   const affected=activeUnassignedForDriver(brokenDriver).sort((a,b)=>a.timeMin-b.timeMin);
   const originalDrivers=new Map(affected.map(k=>[k.id,brokenDriver]));
@@ -496,6 +508,8 @@ async function redistributeUnavailableDriver(brokenDriver,changeReason='ziek/nie
       const before=estimateRouteMinutes(group);
       const trial=[...group,child].sort((a,b)=>a.timeMin-b.timeMin);
       const estimated=estimateRouteMinutes(trial);
+      const routeMinutes=routeDurationEstimate(trial,driverNames.indexOf(d));
+      if(routeMinutes>MAX_ROUTE_MINUTES)continue;
 
       // A group without coordinates gets a neutral score instead of being rejected.
       const geoScore=Number.isFinite(nearest)?nearest*3:100;
@@ -811,7 +825,7 @@ async function runDayStartCheck(){
         const demoStops=coords.map(p=>({lat:p[1],lon:p[0]}));
         estimated=estimateRouteMinutes(demoStops);
       }
-      if(Number.isFinite(estimated) && estimated>60){
+      if(Number.isFinite(estimated) && estimated>90){
         longRoutes.push(d+' heeft een geschatte route van '+estimated+' minuten ('+q.length+' kinderen).');
       }
     }
@@ -1251,7 +1265,7 @@ async function optimizeAllRoutes(){
       total+=result.count;
       conflicts+=result.conflicts;
       drivers++;
-      if(result.minutes>60)longRoutes++;
+      if(result.minutes>90)longRoutes++;
     }
   }
 
@@ -1458,11 +1472,13 @@ function runAI(){
   driverNames.forEach(d=>loads[d]=planned[d].length);
 
   function timeFeasible(k,d){
-    // Hard rule: this child must be able to reach school by 08:30.
+    // Harde regels: school uiterlijk 08:30 én route maximaal 90 minuten.
     if(!schoolDeadlineOk(k)) return false;
 
     const list=planned[d];
     const all=[...list,k].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+
+    if(routeDurationEstimate(all,driverNames.indexOf(d))>MAX_ROUTE_MINUTES) return false;
 
     for(let i=1;i<all.length;i++){
       const prev=all[i-1], next=all[i];
@@ -1557,6 +1573,7 @@ function runAI(){
   message+='• schooldeadline: uiterlijk 08:30\\n';
   message+='• maximaal 8 kinderen per bus\\n';
   message+='• geen dubbele ophaaltijden per chauffeur\\n';
+  message+='• maximale route per chauffeur: 90 minuten\\n';
   message+='• voldoende reistijd tussen opeenvolgende stops\\n';
   message+='• ±15 minuten aankomsttolerantie\\n';
   message+='• vaste chauffeur-kindrelaties eerst behouden\\n';
@@ -2030,7 +2047,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=721").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=722").catch(()=>{}));}
 </script>
 
 </body>
