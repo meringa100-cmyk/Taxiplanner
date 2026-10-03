@@ -1465,7 +1465,7 @@ function runAI(){
     const all=[...list,k].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
 
     for(let i=1;i<all.length;i++){
-      const prev=all[i], next=all[i];
+      const prev=all[i-1], next=all[i];
       const gap=(next.timeMin||0)-(prev.timeMin||0);
       if(gap<0)return false;
 
