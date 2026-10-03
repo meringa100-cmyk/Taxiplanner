@@ -586,7 +586,7 @@ function startPlannerAutomation(){
 
 
 
-const STORAGE_KEY='taxiPlannerStateV741';
+const STORAGE_KEY='taxiPlannerStateV742';
 
 function saveState(){
  try{
@@ -1562,49 +1562,41 @@ function runAI(silent=false){
       q.forEach((k,i)=>k.routeOrder=i+1);
     });
 
-    // V741: pas nu de ophaaltijden aan, nadat de demo-groepen aan hun
-    // chauffeurs zijn gekoppeld. Zo werkt de tijdsaanpassing ook echt op de
-    // route die de planner zojuist heeft gebouwd.
+    // V742: volledige ±15 min speelruimte voor route-optimalisatie.
     let demoAdjusted=0;
     groups.forEach((q,d)=>{
       const di=driverNames.indexOf(d);
       q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
       const original=new Map(q.map(k=>[k.id,Number(k.timeMin)||0]));
 
-      // Eerst voldoende ruimte tussen opeenvolgende stops.
-      for(let i=1;i<q.length;i++){
-        const prev=q[i-1], cur=q[i];
-        const travel=routeMinutesBetween(prev,cur,di);
-        const requiredGap=Math.max(1,travel-15);
-        const gap=(cur.timeMin||0)-(prev.timeMin||0);
-        if(gap<requiredGap && cur.status==='waiting'){
-          const target=Math.min(
-            original.get(cur.id)+15,
-            (prev.timeMin||0)+requiredGap
-          );
-          if(target>cur.timeMin){
-            cur.timeMin=target;
-            cur.time=fmtTime(target);
-            demoAdjusted++;
+      for(let pass=0;pass<16;pass++){
+        let changed=false;
+        q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+        for(let i=1;i<q.length;i++){
+          const prev=q[i-1],cur=q[i];
+          const required=Math.max(1,routeMinutesBetween(prev,cur,di)-15);
+          if((cur.timeMin||0)-(prev.timeMin||0)>=required)continue;
+          if(cur.status==='waiting'){
+            const target=Math.min(original.get(cur.id)+15,(prev.timeMin||0)+required);
+            if(target>cur.timeMin){cur.timeMin=target;cur.time=fmtTime(target);demoAdjusted++;changed=true;continue;}
+          }
+          if(prev.status==='waiting'){
+            const target=Math.max(original.get(prev.id)-15,(cur.timeMin||0)-required);
+            if(target<prev.timeMin&&target>=0){prev.timeMin=target;prev.time=fmtTime(target);demoAdjusted++;changed=true;}
           }
         }
+        if(!changed)break;
       }
 
-      // Daarna schooldeadline controleren. Als de laatste stop te laat zou
-      // komen, schuiven we wachtende stops maximaal 15 minuten naar voren.
       q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
       const last=q[q.length-1];
       const late=Math.max(0,schoolArrivalMinutes(last)-SCHOOL_DEADLINE_MIN);
       if(late>0){
+        const shift=Math.min(15,late);
         q.forEach(k=>{
           if(k.status!=='waiting')return;
-          const base=original.get(k.id);
-          const target=Math.max(base-15, (k.timeMin||0)-late);
-          if(target<k.timeMin){
-            k.timeMin=target;
-            k.time=fmtTime(target);
-            demoAdjusted++;
-          }
+          const target=Math.max(original.get(k.id)-15,(k.timeMin||0)-shift);
+          if(target<k.timeMin){k.timeMin=target;k.time=fmtTime(target);demoAdjusted++;}
         });
       }
 
@@ -2379,7 +2371,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=741").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=742").catch(()=>{}));}
 </script>
 
 </body>
