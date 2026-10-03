@@ -229,7 +229,7 @@ button[onclick^="chauffeurDelay"]:active{
 
 <main>
 <section id="planner" class="page active"><div id="plannerDelayAlerts"></div>
-<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Planner Dashboard</h2><button class="primary" onclick="runDayStartCheck()">🔎 Dagstartcontrole</button></div><div id="dashboard" class="grid" style="margin-top:12px"></div><div id="dayStartCheck"></div></div>
+<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Planner Dashboard</h2><button class="primary" onclick="runAIAndCheck()">🤖 AI plannen & controleren</button></div><div id="dashboard" class="grid" style="margin-top:12px"></div><div id="dayStartCheck"></div></div>
 
 <div class="card">
   <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
@@ -1441,7 +1441,7 @@ function aiScore(driver,kid,loads){
     - sameSchool*18
     - sameStreet*10;
 }
-function runAI(){
+function runAI(silent=false){
   previousPlan=kids.map(k=>({id:k.id,driver:k.driver,fixed:k.fixed}));
 
   // Bouw de dagplanning opnieuw op. Ook vaste relaties worden gecontroleerd:
@@ -1598,7 +1598,21 @@ function runAI(){
   }
 
   renderAll();
-  alert(message);
+  if(!silent) alert(message);
+  return {changes,unplanned:unplanned.length,conflicts:conflicts.length};
+}
+
+function runAIAndCheck(){
+  // Dagstart gebruikt voortaan dezelfde harde regels als de planner:
+  // eerst veilig herverdelen, daarna pas de controle tonen.
+  const result=runAI(true);
+  setTimeout(()=>runDayStartCheck(),100);
+  if(result && result.unplanned){
+    const box=document.getElementById('dayStartCheck');
+    if(box){
+      box.innerHTML='<div class="daystart-result daystart-warn"><b>🤖 AI-planning uitgevoerd</b><div class="small muted">'+result.unplanned+' rit(ten) konden niet veilig binnen de regels worden geplaatst. De dagstartcontrole wordt nu bijgewerkt…</div></div>';
+    }
+  }
 }
 function resetDemo(){if(confirm('Demo terugzetten?')){localStorage.removeItem(STORAGE_KEY);driverUnavailable={};busIssues={};replacementAssignments={};replacementSeq=1;demoCounter=101;seed();renderAll()}}
 function pickup(id){const k=find(id);if(k){k.status='picked';renderAll()}}
@@ -2054,7 +2068,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=723").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=724").catch(()=>{}));}
 </script>
 
 </body>
