@@ -1646,6 +1646,50 @@ function runAI(silent=false){
       q.forEach((k,i)=>k.routeOrder=i+1);
     });
 
+    // V748: harde gerichte conflictreparatie nadat de demo-groepen definitief
+    // aan chauffeurs zijn gekoppeld. Alleen de latere/eerdere wachtende rit
+    // wordt maximaal 15 minuten verschoven; andere routes blijven ongemoeid.
+    let conflictRepairs=0;
+    groups.forEach((q,d)=>{
+      const di=driverNames.indexOf(d);
+      const original=new Map(q.map(k=>[k.id,Number(k.timeMin)||0]));
+      for(let pass=0;pass<q.length*3;pass++){
+        q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+        let changed=false;
+        for(let i=1;i<q.length;i++){
+          const prev=q[i-1],cur=q[i];
+          const gap=(cur.timeMin||0)-(prev.timeMin||0);
+          const travel=routeMinutesBetween(prev,cur,di);
+          const required=Math.max(1,travel-15);
+          if(gap>=required)continue;
+
+          if(cur.status==='waiting'){
+            const target=Math.min(original.get(cur.id)+15,(prev.timeMin||0)+required);
+            if(target>cur.timeMin && target<=original.get(cur.id)+15){
+              cur.timeMin=target;
+              cur.time=fmtTime(target);
+              conflictRepairs++;
+              changed=true;
+              continue;
+            }
+          }
+
+          if(prev.status==='waiting'){
+            const target=Math.max(original.get(prev.id)-15,(cur.timeMin||0)-required);
+            if(target<prev.timeMin && target>=original.get(prev.id)-15){
+              prev.timeMin=target;
+              prev.time=fmtTime(target);
+              conflictRepairs++;
+              changed=true;
+            }
+          }
+        }
+        if(!changed)break;
+      }
+      q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+      q.forEach((k,i)=>k.routeOrder=i+1);
+    });
+
     const fullBuses=[...groups.values()].filter(q=>q.length===MAX).length;
     const partialBuses=[...groups.values()].filter(q=>q.length<MAX).length;
 
@@ -1656,6 +1700,7 @@ function runAI(silent=false){
       '• vaste demo-groepen behouden\\n'+
       '• geen ritten onnodig zonder chauffeur\\n'+
       '• normale route-, reistijd- en schoolcontrole blijft actief\\n'+
+      '• '+conflictRepairs+' routeconflict'+(conflictRepairs===1?'':'en')+' gericht hersteld\\n'+
       '\\n🚌 '+fullBuses+' volledig gevulde bus(sen), '+partialBuses+' gedeeltelijk gevulde bus(sen).\\n'+
       '✅ Alle 100 demo-ritten hebben een chauffeur.';
     if(!silent)alert(message);
