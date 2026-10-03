@@ -1419,6 +1419,10 @@ function runAI(){
     }
 
     choices.sort((a,b)=>{
+      // Vul eerst de bussen die al bezet zijn, zodat een bus zo veel mogelijk
+      // richting 8 kinderen gaat voordat een nieuwe bus wordt gebruikt.
+      const loadDiff=loads[b]-loads[a];
+      if(loadDiff!==0) return loadDiff;
       const scoreA=aiScore(a,k,loads);
       const scoreB=aiScore(b,k,loads);
       if(scoreA!==scoreB) return scoreA-scoreB;
@@ -1446,7 +1450,8 @@ function runAI(){
   message+='De AI heeft nu rekening gehouden met:\\n';
   message+='• vaste chauffeur-kindrelaties\\n';
   message+='• beschikbaarheid chauffeur en bus\\n';
-  message+='• maximale bezetting van 8 kinderen\\n';
+  message+='• maximale bezetting van 8 kinderen per bus\\n';
+  message+='• eerst bestaande bussen zo veel mogelijk vullen tot 8, voordat een nieuwe bus wordt gebruikt\\n';
   message+='• ophaaltijden en tijdsdruk\\n';
   message+='• schoolcombinaties\\n';
   message+='• ritten in dezelfde straat\\n';
