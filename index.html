@@ -586,7 +586,7 @@ function startPlannerAutomation(){
 
 
 
-const STORAGE_KEY='taxiPlannerStateV739';
+const STORAGE_KEY='taxiPlannerStateV740';
 
 function saveState(){
  try{
@@ -1484,6 +1484,66 @@ function runAI(silent=false){
     kids.length===100 &&
     demoKids.every(k=>k.status==='waiting' && Number.isFinite(Number(k.timeMin)));
 
+  // V739: als een route qua ophaaltijden nét niet haalbaar is, mag de AI
+  // de ophaaltijd van wachtende kinderen maximaal 15 minuten verschuiven.
+  // Eerst proberen we de latere rit iets later te zetten; als dat door 08:30
+  // niet kan, proberen we de eerdere rit iets eerder te zetten.
+  let adjustedPickupTimes=0;
+  const adjustPickupTimes=(d)=>{
+    const di=driverNames.indexOf(d);
+    const q=kids.filter(k=>k.driver===d&&active(k))
+      .sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+    if(q.length<2)return;
+
+    const original=new Map(q.map(k=>[k.id,Number(k.timeMin)||0]));
+    for(let pass=0;pass<q.length*2;pass++){
+      let changed=false;
+      q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+
+      for(let i=1;i<q.length;i++){
+        const prev=q[i-1], cur=q[i];
+        const gap=(cur.timeMin||0)-(prev.timeMin||0);
+        const travel=routeMinutesBetween(prev,cur,di);
+        const required=Math.max(1,travel-15);
+
+        if(gap>=required)continue;
+
+        // Later kind maximaal 15 minuten later zetten.
+        if(cur.status==='waiting'){
+          const base=original.get(cur.id);
+          const maxTime=base+15;
+          const target=Math.max(cur.timeMin||0,(prev.timeMin||0)+required);
+          if(target<=maxTime){
+            const old=cur.timeMin;
+            cur.timeMin=target;
+            cur.time=fmtTime(target);
+            if(old!==target)adjustedPickupTimes++;
+            changed=true;
+            continue;
+          }
+        }
+
+        // Als later zetten niet kan, probeer het eerdere wachtende kind
+        // maximaal 15 minuten naar voren te halen.
+        if(prev.status==='waiting'){
+          const base=original.get(prev.id);
+          const minTime=Math.max(0,base-15);
+          const target=Math.min(prev.timeMin||0,(cur.timeMin||0)-required);
+          if(target>=minTime && target>=0){
+            const old=prev.timeMin;
+            prev.timeMin=target;
+            prev.time=fmtTime(target);
+            if(old!==target)adjustedPickupTimes++;
+            changed=true;
+          }
+        }
+      }
+
+      if(!changed)break;
+    }
+  };
+
+  driverNames.forEach(d=>adjustPickupTimes(d));
   if(isBuiltInDemo){
     const groups=new Map();
     demoKids.forEach(k=>{
@@ -1733,66 +1793,7 @@ function runAI(silent=false){
     planned[d]=q.slice(0,MAX);
   });
 
-  // V739: als een route qua ophaaltijden nét niet haalbaar is, mag de AI
-  // de ophaaltijd van wachtende kinderen maximaal 15 minuten verschuiven.
-  // Eerst proberen we de latere rit iets later te zetten; als dat door 08:30
-  // niet kan, proberen we de eerdere rit iets eerder te zetten.
-  let adjustedPickupTimes=0;
-  const adjustPickupTimes=(d)=>{
-    const di=driverNames.indexOf(d);
-    const q=kids.filter(k=>k.driver===d&&active(k))
-      .sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
-    if(q.length<2)return;
 
-    const original=new Map(q.map(k=>[k.id,Number(k.timeMin)||0]));
-    for(let pass=0;pass<q.length*2;pass++){
-      let changed=false;
-      q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
-
-      for(let i=1;i<q.length;i++){
-        const prev=q[i-1], cur=q[i];
-        const gap=(cur.timeMin||0)-(prev.timeMin||0);
-        const travel=routeMinutesBetween(prev,cur,di);
-        const required=Math.max(1,travel-15);
-
-        if(gap>=required)continue;
-
-        // Later kind maximaal 15 minuten later zetten.
-        if(cur.status==='waiting'){
-          const base=original.get(cur.id);
-          const maxTime=base+15;
-          const target=Math.max(cur.timeMin||0,(prev.timeMin||0)+required);
-          if(target<=maxTime){
-            const old=cur.timeMin;
-            cur.timeMin=target;
-            cur.time=fmtTime(target);
-            if(old!==target)adjustedPickupTimes++;
-            changed=true;
-            continue;
-          }
-        }
-
-        // Als later zetten niet kan, probeer het eerdere wachtende kind
-        // maximaal 15 minuten naar voren te halen.
-        if(prev.status==='waiting'){
-          const base=original.get(prev.id);
-          const minTime=Math.max(0,base-15);
-          const target=Math.min(prev.timeMin||0,(cur.timeMin||0)-required);
-          if(target>=minTime && target>=0){
-            const old=prev.timeMin;
-            prev.timeMin=target;
-            prev.time=fmtTime(target);
-            if(old!==target)adjustedPickupTimes++;
-            changed=true;
-          }
-        }
-      }
-
-      if(!changed)break;
-    }
-  };
-
-  driverNames.forEach(d=>adjustPickupTimes(d));
 
   // Laatste controle op actieve routes.
   const conflicts=[];
@@ -2329,7 +2330,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=739").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=740").catch(()=>{}));}
 </script>
 
 </body>
