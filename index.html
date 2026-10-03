@@ -771,8 +771,8 @@ async function runDayStartCheck(){
       }
       if(Number.isFinite(distance)){
         const travel=Math.ceil((distance/35)*60);
-        if(travel>gap && gap>=0){
-          routeConflicts.push(d+' heeft '+q[i-1].name+' → '+q[i].name+': circa '+travel+' min reistijd, maar slechts '+gap+' min tussen de ritten.');
+        if(travel>gap+15 && gap>=0){
+          routeConflicts.push(d+' heeft '+q[i-1].name+' → '+q[i].name+': circa '+travel+' min reistijd, maar slechts '+gap+' min tussen de ritten (±15 min tolerantie meegerekend).');
         }
       }
     }
@@ -1174,12 +1174,11 @@ async function optimizeDriverRoute(d){
       const travelMin=travel(current,k);
       // Chauffeur mag maximaal 15 min te vroeg of te laat aankomen.
       // De uiterste toegestane aankomst is dus 15 min na de geplande tijd.
-      const earliestAllowed=(k.timeMin||0)-15;
       const latestAllowed=(k.timeMin||0)+15;
       const arrival=(current.timeMin||0)+travelMin;
-      // Te vroeg aankomen is toegestaan: chauffeur kan wachten.
-      // Meer dan 15 min te laat is niet toegestaan.
-      return arrival<=latestAllowed && arrival>=earliestAllowed;
+      // Te vroeg aankomen is toegestaan: chauffeur wacht op locatie.
+      // Alleen meer dan 15 minuten te laat is niet toegestaan.
+      return arrival<=latestAllowed;
     });
 
     const pool=feasible.length?feasible:remaining;
@@ -1517,9 +1516,6 @@ function runAI(){
 
   renderAll();
   alert(message);
-
-  // Alleen optimaliseren nadat de nieuwe chauffeurverdeling vaststaat.
-  optimizeAllRoutes();
 }
 function resetDemo(){if(confirm('Demo terugzetten?')){localStorage.removeItem(STORAGE_KEY);driverUnavailable={};busIssues={};replacementAssignments={};replacementSeq=1;demoCounter=101;seed();renderAll()}}
 function pickup(id){const k=find(id);if(k){k.status='picked';renderAll()}}
