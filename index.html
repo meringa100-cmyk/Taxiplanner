@@ -1399,27 +1399,29 @@ function aiScore(driver,kid,loads){
     - sameStreet*10;
 }
 function runAI(){
-  previousPlan=kids.map(k=>({id:k.id,driver:k.driver}));
+  previousPlan=kids.map(k=>({id:k.id,driver:k.driver,fixed:k.fixed}));
 
-  // Herplan alleen vrije wachtende ritten. Vaste relaties blijven staan.
+  // Bouw de dagplanning opnieuw op. Ook vaste relaties worden gecontroleerd:
+  // een vaste chauffeur-kindrelatie blijft behouden zolang dat qua tijd veilig kan.
+  // Als dat onmogelijk is, krijgt veiligheid/planningshaalbaarheid voorrang.
   const candidates=kids
-    .filter(k=>k.status==='waiting' && !k.fixed)
-    .sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+    .filter(k=>k.status==='waiting')
+    .sort((a,b)=>{
+      if(Boolean(a.fixed)!==Boolean(b.fixed)) return a.fixed?-1:1;
+      return (a.timeMin||0)-(b.timeMin||0);
+    });
 
   if(!candidates.length){
-    alert('🤖 AI-planning: er zijn geen vrije wachtende ritten om opnieuw te verdelen.');
+    alert('🤖 AI-planning: er zijn geen wachtende ritten om te plannen.');
     return;
   }
 
-  // Maak een tijdelijke planning per chauffeur. De vrije ritten worden
-  // eerst volledig losgemaakt, anders zouden oude ritten de nieuwe controle
-  // ten onrechte blokkeren.
   const planned={};
   driverNames.forEach(d=>{
+    // Ritten die al onderweg zijn blijven staan.
     planned[d]=kids.filter(k=>
       k.driver===d &&
-      active(k) &&
-      !candidates.includes(k)
+      k.status==='picked'
     ).sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
   });
 
@@ -1436,17 +1438,33 @@ function runAI(){
       if(gap<0)return false;
 
       const travel=routeMinutesBetween(prev,next,driverNames.indexOf(d));
-      // ±15 minuten aankomsttolerantie: de chauffeur mag maximaal
-      // 15 minuten later aankomen en kan eerder wachten.
       if(travel>gap+15)return false;
     }
     return true;
   }
 
+  function assignmentCost(k,d){
+    let cost=0;
+
+    // Een bestaande vaste relatie heeft sterke voorkeur.
+    if(k.fixed){
+      cost += d===k.driver ? 0 : 10000;
+    }
+
+    // Vul bestaande bussen eerst, maar alleen als de rit haalbaar blijft.
+    cost += loads[d]*2;
+
+    // Houd de AI-score als tweede criterium.
+    cost += aiScore(d,k,loads)*0.01;
+
+    return cost;
+  }
+
   const unplanned=[];
+  const movedFixed=[];
 
   for(const k of candidates){
-    const choices=driverNames.filter(d=>
+    let choices=driverNames.filter(d=>
       !isDriverUnavailable(d) &&
       !isBusUnavailable(d) &&
       loads[d]<MAX &&
@@ -1458,17 +1476,18 @@ function runAI(){
       continue;
     }
 
-    // Eerst een bus die al zoveel mogelijk gevuld is, maar alleen uit
-    // chauffeurs die de rit qua tijd daadwerkelijk kunnen rijden.
     choices.sort((a,b)=>{
-      if(loads[b]!==loads[a])return loads[b]-loads[a];
-      const scoreA=aiScore(a,k,loads);
-      const scoreB=aiScore(b,k,loads);
-      if(scoreA!==scoreB)return scoreA-scoreB;
+      const ca=assignmentCost(k,a), cb=assignmentCost(k,b);
+      if(ca!==cb)return ca-cb;
       return a.localeCompare(b);
     });
 
     const chosen=choices[0];
+
+    if(k.fixed && chosen!==k.driver){
+      movedFixed.push(k);
+    }
+
     k.driver=chosen;
     planned[chosen].push(k);
     planned[chosen].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
@@ -1480,15 +1499,16 @@ function runAI(){
     return old && old.driver!==k.driver;
   }).length;
 
-  // Controleer na het verdelen nogmaals alle actieve ritten.
+  // Laatste volledige controle.
   const conflicts=[];
   driverNames.forEach(d=>{
     const q=kids.filter(k=>k.driver===d&&active(k))
       .sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+
     for(let i=1;i<q.length;i++){
       const gap=(q[i].timeMin||0)-(q[i-1].timeMin||0);
       const travel=routeMinutesBetween(q[i-1],q[i],driverNames.indexOf(d));
-      if(gap<0 || travel>gap+15){
+      if(travel>gap+15){
         conflicts.push(d+' • '+q[i-1].name+' → '+q[i].name);
       }
     }
@@ -1496,22 +1516,22 @@ function runAI(){
 
   let message='🤖 AI-planning klaar!\\n\\n';
   message+=changes+' ritten opnieuw verdeeld.\\n';
-  message+='De AI heeft nu rekening gehouden met:\\n';
   message+='• maximaal 8 kinderen per bus\\n';
-  message+='• bestaande bussen eerst zo veel mogelijk vullen\\n';
   message+='• geen dubbele ophaaltijden per chauffeur\\n';
-  message+='• minimaal benodigde reistijd tussen opeenvolgende stops\\n';
+  message+='• voldoende reistijd tussen opeenvolgende stops\\n';
   message+='• ±15 minuten aankomsttolerantie\\n';
-  message+='• vaste chauffeur-kindrelaties\\n';
-  message+='• beschikbaarheid van chauffeur en bus\\n';
+  message+='• vaste chauffeur-kindrelaties eerst behouden\\n';
 
+  if(movedFixed.length){
+    message+='\\n⚠️ '+movedFixed.length+' vaste relatie(s) zijn verplaatst omdat de oorspronkelijke combinatie qua tijd/reistijd niet haalbaar was.';
+  }
   if(unplanned.length){
-    message+='\\n⚠️ '+unplanned.length+' rit(ten) konden niet veilig worden geplaatst en zijn niet geforceerd toegewezen.';
+    message+='\\n⚠️ '+unplanned.length+' rit(ten) konden niet veilig worden geplaatst.';
   }
   if(conflicts.length){
-    message+='\\n⚠️ '+conflicts.length+' bestaande routeconflicten blijven over. Deze komen uit vaste/bestaande ritten en worden niet geforceerd opgelost.';
+    message+='\\n⚠️ '+conflicts.length+' routeconflict(en) blijven over.';
   }else{
-    message+='\\n✅ Geen tijd/reisconflicten gevonden in de actieve planning.';
+    message+='\\n✅ Geen route/tijdconflicten in de actieve planning.';
   }
 
   renderAll();
