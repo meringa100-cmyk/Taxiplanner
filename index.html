@@ -586,7 +586,7 @@ function startPlannerAutomation(){
 
 
 
-const STORAGE_KEY='taxiPlannerStateV731';
+const STORAGE_KEY='taxiPlannerStateV732';
 
 function saveState(){
  try{
@@ -617,24 +617,27 @@ function loadState(){
 
 function seed(){
  kids=[];
- const demoTimes=Array.from({length:100},(_,i)=>420+(Math.floor(i/4)%8)*10);
  for(let i=0;i<100;i++){
-  const school=schools[i%schools.length];
-  const n=i+1;
-  // Compact demo coordinates around Emmen: deliberately close enough to test
-  // full 8-child buses without artificial Drenthe-wide travel times.
-  const lat=52.772 + ((n*7)%29)*0.0010;
-  const lon=6.862 + ((n*11)%55)*0.0010;
+  const group=Math.floor(i/8);
+  const pos=i%8;
+  const school=schools[group%schools.length];
+  const timeMin=420+(pos*10);
+  // Elke demo-bus krijgt een compacte groep in Emmen met 8 verschillende
+  // ophaaltijden. Daardoor is de testplanning bewust haalbaar.
+  const baseLat=52.772+(group%13)*0.0012;
+  const baseLon=6.862+(group%13)*0.0014;
+  const lat=baseLat+(pos%4)*0.00035;
+  const lon=baseLon+Math.floor(pos/4)*0.00045;
   kids.push({
-   id:'k'+n,
-   name:names[i%names.length]+' '+n,
-   timeMin:demoTimes[i],
-   time:fmtTime(demoTimes[i]),
+   id:'k'+(i+1),
+   name:names[i%names.length]+' '+(i+1),
+   timeMin,
+   time:fmtTime(timeMin),
    address:streets[i%streets.length]+' '+(10+i),
    school,
    destination:school,
    lat,lon,
-   driver:driverNames[Math.floor(i/8)],
+   driver:driverNames[group],
    fixed:i<35,
    status:'waiting',
    approach:'Rustig en duidelijk aanspreken.',
@@ -2112,7 +2115,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=731").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=732").catch(()=>{}));}
 </script>
 
 </body>
