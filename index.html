@@ -1009,7 +1009,8 @@ async function geocodeEmmenAddresses(){
 
   // Alleen opnieuw ophalen wanneer de huidige demo-adressen nog niet uit
   // de Drenthe/BAG-bron komen. Zo blijven handmatig gewijzigde adressen intact.
-  const needsRefresh=kids.some(k=>k.addressSource!=='PDOK-Drenthe-BAG');
+  const ADDRESS_GEO_VERSION='drenthe-v2';
+  const needsRefresh=kids.some(k=>k.addressGeoVersion!==ADDRESS_GEO_VERSION);
   if(!needsRefresh && kids.every(k=>Number.isFinite(k.lat)&&Number.isFinite(k.lon))){
     addressesReady=true;
     if(info)info.textContent='📍 Alle kinderen hebben actuele BAG-adresdata uit Drenthe.';
@@ -1034,6 +1035,7 @@ async function geocodeEmmenAddresses(){
       const data=await res.json();
       const docs=data?.response?.docs||[];
 
+      let addedForPlace=0;
       for(const doc of docs){
         const label=String(doc.weergavenaam||'').trim();
         const m=String(doc.centroide_ll||'').match(/POINT\\s*\\(([-0-9.]+)\\s+([-0-9.]+)\\)/i);
@@ -1044,7 +1046,8 @@ async function geocodeEmmenAddresses(){
         if(!Number.isFinite(lon)||!Number.isFinite(lat))continue;
         found.push({address:label,lon,lat});
         seen.add(key);
-        if(found.length>=kids.length)break;
+        addedForPlace++;
+        if(addedForPlace>=4 || found.length>=kids.length)break;
       }
     }catch(e){}
     if(info)info.textContent='📍 Drenthe: '+Math.min(found.length,kids.length)+' van '+kids.length+' adressen gevonden…';
@@ -1088,6 +1091,7 @@ async function geocodeEmmenAddresses(){
     k.lon=a.lon;
     k.lat=a.lat;
     k.addressSource='PDOK-Drenthe-BAG';
+    k.addressGeoVersion=ADDRESS_GEO_VERSION;
     assigned++;
   });
 
