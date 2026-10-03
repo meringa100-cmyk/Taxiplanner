@@ -1041,7 +1041,12 @@ async function geocodeEmmenAddresses(){
   try{renderRealMapMarkers();}catch(e){}
   if(realMap){
     const pts=kids.filter(k=>Number.isFinite(k.lat)&&Number.isFinite(k.lon)).map(k=>[k.lat,k.lon]);
-    if(pts.length)realMap.fitBounds(pts,{padding:[25,25],maxZoom:11});
+    const chosen=document.getElementById('mapDriver')?.value||'ALL';
+    const selectedPts=(chosen==='ALL'?kids.filter(k=>active(k)):getDriverQueue(chosen))
+      .filter(k=>Number.isFinite(k.lat)&&Number.isFinite(k.lon))
+      .map(k=>[k.lat,k.lon]);
+    const boundsPts=selectedPts.length?selectedPts:pts;
+    if(boundsPts.length)realMap.fitBounds(boundsPts,{padding:[45,45],maxZoom:chosen==='ALL'?11:15});
   }
 }
 function initRealMap(){
@@ -1294,6 +1299,18 @@ function renderRealMapMarkers(){
   const chosen=select?.value||'ALL';
   const visibleDrivers=chosen==='ALL'?driverNames:[chosen];
 
+  // Bij één chauffeur zoomen we automatisch op precies diens actieve stops.
+  // Daardoor zijn overlappende markers niet meer optisch één stop.
+  const selectedKids=chosen==='ALL'
+    ? kids.filter(active)
+    : getDriverQueue(chosen);
+  const selectedPoints=selectedKids
+    .filter(k=>Number.isFinite(k.lat)&&Number.isFinite(k.lon))
+    .map(k=>[k.lat,k.lon]);
+  if(realMap && selectedPoints.length){
+    realMap.fitBounds(selectedPoints,{padding:[45,45],maxZoom:chosen==='ALL'?11:15});
+  }
+
   visibleDrivers.forEach((d)=>{
     // Gebruik exact dezelfde rittenlijst als het chauffeurscherm.
     // Zo kan de kaart nooit minder actieve kinderen tonen dan de chauffeur.
@@ -1309,7 +1326,7 @@ function renderRealMapMarkers(){
       const color=assigned.status==='picked'?'#d97706':'#1769aa';
       const icon=L.divIcon({
         className:'',
-        html:'<div style="width:36px;height:36px;border-radius:50%;background:'+color+';color:#fff;border:3px solid #fff;box-shadow:0 2px 7px #0006;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:bold">'+(i+1)+'</div>',
+        html:'<div title="'+assigned.name+' • '+assigned.time+'" style="width:36px;height:36px;border-radius:50%;background:'+color+';color:#fff;border:3px solid #fff;box-shadow:0 2px 7px #0006;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:bold">'+(i+1)+'</div>',
         iconSize:[36,36],iconAnchor:[18,18]
       });
       const m=L.marker(latlon,{icon}).addTo(realMap);
@@ -1976,7 +1993,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=719").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=720").catch(()=>{}));}
 </script>
 
 </body>
