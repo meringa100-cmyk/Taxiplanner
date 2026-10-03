@@ -1437,7 +1437,6 @@ function runAI(silent=false){
   function routeFeasible(group,k,d){
     if(!k || !d || loads[d]>=MAX)return false;
     if(!schoolDeadlineOk(k))return false;
-    if(!sameSchool(group,k))return false;
 
     const all=[...group,k].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
 
@@ -1473,7 +1472,11 @@ function runAI(silent=false){
       ? Math.min(...group.map(x=>geoDistanceKm(k,x)).filter(Number.isFinite))
       : 0;
 
-    let cost=route*6 + group.length*2 + (Number.isFinite(nearest)?nearest*2:0);
+    // Eerst zoveel mogelijk bussen netjes vullen. Een extra kind op een
+    // al gevulde route krijgt alleen een plek als alle harde regels kloppen.
+    // Daarna beslist afstand/reistijd welke gevulde route het beste past.
+    const fillPenalty=(MAX-(group.length+1))*1000;
+    let cost=fillPenalty + route*2 + (Number.isFinite(nearest)?nearest*2:0);
 
     // Een vaste relatie blijft waar mogelijk bij de oorspronkelijke chauffeur.
     if(k.fixed) cost += d===k.driver ? 0 : 10000;
@@ -1596,7 +1599,7 @@ function runAI(silent=false){
   message+=changes+' ritten opnieuw verdeeld.\\n';
   message+='• volledige ochtendplanning opnieuw opgebouwd\\n';
   message+='• maximaal 8 kinderen per bus\\n';
-  message+='• één school per route\\n';
+  message+='• bussen worden zo vol mogelijk gepland zonder de harde route-/tijdregels te overtreden\\n';
   message+='• geen dubbele ophaaltijden\\n';
   message+='• maximale route: 90 minuten\\n';
   message+='• voldoende reistijd tussen stops met ±15 min tolerantie\\n';
@@ -2090,7 +2093,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=727").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=728").catch(()=>{}));}
 </script>
 
 </body>
