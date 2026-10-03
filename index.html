@@ -2325,10 +2325,17 @@ function autoReplan(){
  return moved;
 }
 
+async function toggleDriverAvailabilityFromDetails(d){
+  await toggleDriverAvailability(d);
+  if(document.getElementById('modal') && !document.getElementById('modal').classList.contains('hidden')){
+    openDriverDetails(d);
+  }
+}
+
 function openDriverDetails(d){
  const list=kids.filter(k=>k.driver===d).sort((a,b)=>a.timeMin-b.timeMin);
  document.getElementById('modalBox').innerHTML=`<h2>🚕 ${d}</h2><p>Status chauffeur: <b>${isDriverUnavailable(d)?'Niet beschikbaar':'Beschikbaar'}</b></p><p>🚌 Bus: <b>${busForDriver(d)}</b> — <b>${isBusUnavailable(d)?'⚠️ Storing':'✅ Beschikbaar'}</b></p><p>Actieve bezetting: <b>${load(d)}/8</b></p>`+
- `<p><button onclick="toggleDriverAvailability('${d}')">${isDriverUnavailable(d)?'✅ Chauffeur beschikbaar maken':'🚫 Chauffeur niet beschikbaar maken'}</button>
+ `<p><button onclick="toggleDriverAvailabilityFromDetails('${d}')">${isDriverUnavailable(d)?'✅ Chauffeur beschikbaar maken':'🚫 Chauffeur niet beschikbaar maken'}</button>
  <button onclick="reportBusIssue('${d}')">🚌 Busstoring melden</button>
  ${isBusUnavailable(d)?`<button onclick="clearBusIssue('${d}')">✅ Bus weer beschikbaar</button>`:''}</p>`+
  list.map(k=>`<div class="row">${k.time} — <b>${k.name}</b> — ${statusText(k.status)}</div>`).join('')+
