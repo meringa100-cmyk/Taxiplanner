@@ -777,104 +777,62 @@ function renderAttention(){
 async function runDayStartCheck(){
   const box=document.getElementById('dayStartCheck');
   if(!box)return;
-  box.innerHTML='<div class="daystart-result daystart-warn"><b>🔎 Dagstartcontrole bezig…</b><div class="small muted">De planning wordt gecontroleerd.</div></div>';
+  box.innerHTML='<div class="daystart-result daystart-warn"><b>🔎 Dagstartcontrole…</b></div>';
 
   const unavailable=driverNames.filter(d=>isDriverUnavailable(d));
   const broken=driverNames.filter(d=>isBusUnavailable(d));
   const unassigned=kids.filter(k=>active(k)&&!k.driver);
   const overloaded=driverNames.filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d)&&load(d)>MAX);
-  const routeConflicts=[];
+  const routeProblems=[];
   const longRoutes=[];
   const deadlineProblems=[];
 
   if(!addressesReady){
-    try{ await geocodeEmmenAddresses(); }catch(e){}
+    try{await geocodeEmmenAddresses();}catch(e){}
   }
 
-  driverNames.forEach((d,driverIndex)=>{
+  driverNames.forEach((d,di)=>{
     const q=kids.filter(k=>k.driver===d&&active(k)).sort((a,b)=>a.timeMin-b.timeMin);
     if(!q.length)return;
 
-    let estimated=routeDurationEstimate(q,driverIndex);
-    if(Number.isFinite(estimated) && estimated>MAX_ROUTE_MINUTES){
-      longRoutes.push({driver:d,minutes:estimated,count:q.length});
-    }
+    const minutes=routeDurationEstimate(q,di);
+    if(Number.isFinite(minutes)&&minutes>MAX_ROUTE_MINUTES)longRoutes.push(d);
 
-    q.forEach(k=>{
-      if(!schoolDeadlineOk(k)) deadlineProblems.push({driver:d,kid:k});
-    });
+    q.forEach(k=>{if(!schoolDeadlineOk(k))deadlineProblems.push(k);});
 
     for(let i=1;i<q.length;i++){
       const gap=(q[i].timeMin||0)-(q[i-1].timeMin||0);
-      const travel=routeMinutesBetween(q[i-1],q[i],driverIndex);
-      if(gap===0 || (gap>=0 && travel>gap+15)){
-        routeConflicts.push({
-          driver:d,
-          text:q[i-1].name+' → '+q[i].name,
-          travel:travel,
-          gap:gap
-        });
-      }
+      const travel=routeMinutesBetween(q[i-1],q[i],di);
+      if(gap===0 || (gap>=0&&travel>gap+15))routeProblems.push(d);
     }
   });
 
-  // Geen eindeloze lijst meer: groepeer alle problemen per chauffeur.
-  const byDriver={};
-  routeConflicts.forEach(x=>{
-    if(!byDriver[x.driver])byDriver[x.driver]=[];
-    byDriver[x.driver].push(x);
-  });
+  const uniqueRouteDrivers=[...new Set(routeProblems)];
+  const uniqueDeadlineDrivers=[...new Set(deadlineProblems.map(k=>k.driver))];
+  const totalRouteIssues=routeProblems.length+longRoutes.length+deadlineProblems.length;
+  const totalIssues=unavailable.length+broken.length+unassigned.length+overloaded.length+totalRouteIssues;
 
-  const problemDrivers=Object.keys(byDriver);
-  const totalRouteProblems=routeConflicts.length+longRoutes.length+deadlineProblems.length;
+  const status=totalIssues?'daystart-warn':'daystart-ok';
 
-  const compact=[];
-  problemDrivers.slice(0,8).forEach(d=>{
-    const items=byDriver[d];
-    compact.push(
-      '<div class="daystart-item">🛣️ <b>'+d+'</b> — '+items.length+
-      ' routeconflict'+(items.length===1?'':'en')+
-      '<div class="small muted">'+
-      items.slice(0,2).map(x=>x.text+' ('+x.travel+' min reistijd / '+x.gap+' min ruimte)').join('<br>')+
-      (items.length>2?'<br>… en '+(items.length-2)+' meer':'')+
-      '</div></div>'
-    );
-  });
-
-  if(problemDrivers.length>8){
-    compact.push('<div class="daystart-item muted">… '+(problemDrivers.length-8)+' andere chauffeurs hebben ook routeconflicten.</div>');
-  }
-
-  longRoutes.slice(0,5).forEach(x=>{
-    compact.push('<div class="daystart-item">🔴 <b>'+x.driver+'</b> — route '+x.minutes+' min ('+x.count+' kinderen)</div>');
-  });
-
-  const deadlineDrivers=[...new Set(deadlineProblems.map(x=>x.driver))];
-  deadlineDrivers.slice(0,5).forEach(d=>{
-    const count=deadlineProblems.filter(x=>x.driver===d).length;
-    compact.push('<div class="daystart-item">⏰ <b>'+d+'</b> — '+count+' rit'+(count===1?'':'ten')+' haalt 08:30 niet.</div>');
-  });
-
-  const issues=unavailable.length+broken.length+unassigned.length+overloaded.length+totalRouteProblems;
-  const status=issues?'daystart-warn':'daystart-ok';
-
-  let details='';
-  unavailable.forEach(d=>details+='<div class="daystart-item">👨‍✈️ '+d+' is niet beschikbaar.</div>');
-  broken.forEach(d=>details+='<div class="daystart-item">🚌 '+busForDriver(d)+' heeft een storing.</div>');
-  unassigned.forEach(k=>details+='<div class="daystart-item">⚠️ '+k.name+' heeft geen chauffeur.</div>');
-  overloaded.forEach(d=>details+='<div class="daystart-item">🔴 '+d+' heeft '+load(d)+' kinderen; maximum is '+MAX+'.</div>');
-  details+=compact.join('');
+  let summary='';
+  if(unavailable.length)summary+='<div class="daystart-item">👨‍✈️ '+unavailable.length+' chauffeur'+(unavailable.length===1?'':'s')+' niet beschikbaar.</div>';
+  if(broken.length)summary+='<div class="daystart-item">🚌 '+broken.length+' bus'+(broken.length===1?'':'sen')+' met storing.</div>';
+  if(unassigned.length)summary+='<div class="daystart-item">⚠️ '+unassigned.length+' rit'+(unassigned.length===1?'':'ten')+' zonder chauffeur.</div>';
+  if(overloaded.length)summary+='<div class="daystart-item">🔴 '+overloaded.length+' chauffeur'+(overloaded.length===1?'':'s')+' boven de capaciteit.</div>';
+  if(uniqueRouteDrivers.length)summary+='<div class="daystart-item">🛣️ '+uniqueRouteDrivers.length+' chauffeur'+(uniqueRouteDrivers.length===1?'':'s')+' met routeconflicten.</div>';
+  if(longRoutes.length)summary+='<div class="daystart-item">⏱️ '+longRoutes.length+' route'+(longRoutes.length===1?'':'s')+' langer dan 90 minuten.</div>';
+  if(uniqueDeadlineDrivers.length)summary+='<div class="daystart-item">🏫 '+uniqueDeadlineDrivers.length+' chauffeur'+(uniqueDeadlineDrivers.length===1?'':'s')+' met een schooldeadline-probleem.</div>';
 
   box.innerHTML='<div class="daystart-result '+status+'">'+
-    '<h3 style="margin:0">🔎 Dagstartcontrole — '+(issues?'Aandacht nodig':'Alles ziet er goed uit')+'</h3>'+
+    '<h3 style="margin:0">🔎 Dagstartcontrole — '+(totalIssues?'Aandacht nodig':'Alles in orde')+'</h3>'+
     '<div class="daystart-summary">'+
       '<div class="daystart-stat '+(unavailable.length?'daystart-danger':'')+'"><b>'+unavailable.length+'</b><small>Niet beschikbaar</small></div>'+
       '<div class="daystart-stat '+(broken.length?'daystart-danger':'')+'"><b>'+broken.length+'</b><small>Busstoringen</small></div>'+
       '<div class="daystart-stat '+(unassigned.length?'daystart-danger':'')+'"><b>'+unassigned.length+'</b><small>Zonder chauffeur</small></div>'+
-      '<div class="daystart-stat '+(totalRouteProblems?'daystart-danger':'')+'"><b>'+totalRouteProblems+'</b><small>Routeproblemen</small></div>'+
+      '<div class="daystart-stat '+(totalRouteIssues?'daystart-danger':'')+'"><b>'+totalRouteIssues+'</b><small>Routeproblemen</small></div>'+
     '</div>'+
-    (details||'<div class="daystart-item">✅ Geen directe problemen gevonden.</div>')+
-    '<p class="small muted" style="margin-bottom:0">De meldingen zijn bewust samengevat per chauffeur zodat de dagstart compact blijft.</p>'+
+    (summary||'<div class="daystart-item">✅ Geen problemen gevonden.</div>')+
+    '<p class="small muted" style="margin-bottom:0">Details blijven beschikbaar in de planning per chauffeur.</p>'+
   '</div>';
 }
 
@@ -2132,7 +2090,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=726").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=727").catch(()=>{}));}
 </script>
 
 </body>
