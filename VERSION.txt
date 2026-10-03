@@ -1,2 +1,3 @@
-Taxi Planner V71.7
-Deployment refresh: 2026-10-01
+Taxi Planner V71.8
+Deployment refresh: 2026-10-03
+Geografische route-optimalisatie per chauffeur toegevoegd.
