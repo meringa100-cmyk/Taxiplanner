@@ -586,7 +586,7 @@ function startPlannerAutomation(){
 
 
 
-const STORAGE_KEY='taxiPlannerStateV736';
+const STORAGE_KEY='taxiPlannerStateV737';
 
 function saveState(){
  try{
@@ -601,7 +601,7 @@ function normalizeBuiltInDemo(){
   // planner/cache kinderen zonder chauffeur zijn blijven staan.
   const demoKids=kids.filter(k=>String(k.id).startsWith('k') && /^[0-9]+$/.test(String(k.id).slice(1)));
   const isDemo=kids.length===100 && demoKids.length===100 &&
-    demoKids.every(k=>k.status==='waiting');
+    demoKids.every(k=>k.status==='waiting'||k.status==='picked'||k.status==='school');
   if(!isDemo)return false;
 
   let changed=false;
@@ -1456,7 +1456,7 @@ function runAI(silent=false){
   // (12x8 + 1x4). Gebruik daarvoor een deterministische plaatsing.
   // Zo kan een bestaande/kapotte opgeslagen demo-planning de AI niet meer
   // onnodig leegtrekken voordat de echte routecontrole begint.
-  const demoKids=kids.filter(k=>/^k\\d+$/.test(String(k.id)));
+  const demoKids=kids.filter(k=>String(k.id).startsWith('k') && /^[0-9]+$/.test(String(k.id).slice(1)));
   const isBuiltInDemo=demoKids.length===100 &&
     kids.length===100 &&
     demoKids.every(k=>k.status==='waiting' && Number.isFinite(Number(k.timeMin)));
@@ -2245,7 +2245,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=736").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=737").catch(()=>{}));}
 </script>
 
 </body>
