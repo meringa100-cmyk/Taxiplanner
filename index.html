@@ -1442,74 +1442,80 @@ function aiScore(driver,kid,loads){
     - sameStreet*10;
 }
 function runAI(silent=false){
-  previousPlan=kids.map(k=>({id:k.id,driver:k.driver,fixed:k.fixed}));
+  previousPlan=kids.map(k=>({id:k.id,driver:k.driver,fixed:k.fixed,status:k.status}));
 
-  // Bouw de dagplanning opnieuw op. Ook vaste relaties worden gecontroleerd:
-  // een vaste chauffeur-kindrelatie blijft behouden zolang dat qua tijd veilig kan.
-  // Als dat onmogelijk is, krijgt veiligheid/planningshaalbaarheid voorrang.
+  // De planner bouwt de ochtendplanning volledig opnieuw op.
+  // "waiting" = vrij planbaar; "picked" blijft bij de chauffeur omdat die rit al onderweg is.
+  const planned={};
+  driverNames.forEach(d=>{
+    planned[d]=kids.filter(k=>k.driver===d && k.status==='picked')
+      .sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+  });
+
+  const loads={};
+  driverNames.forEach(d=>loads[d]=planned[d].length);
+
+  function sameSchool(group,k){
+    if(!group.length)return true;
+    return group.every(x=>(x.school||x.destination||'')===(k.school||k.destination||''));
+  }
+
+  function routeFeasible(group,k,d){
+    if(!k || !d || loads[d]>=MAX)return false;
+    if(!schoolDeadlineOk(k))return false;
+    if(!sameSchool(group,k))return false;
+
+    const all=[...group,k].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+
+    // Geen twee kinderen op hetzelfde moment.
+    for(let i=1;i<all.length;i++){
+      if((all[i].timeMin||0)===(all[i-1].timeMin||0))return false;
+    }
+
+    // Maximaal 90 minuten rijtijd tussen de opeenvolgende stops.
+    if(routeDurationEstimate(all,driverNames.indexOf(d))>MAX_ROUTE_MINUTES)return false;
+
+    // Voldoende tijd tussen opeenvolgende adressen, met maximaal 15 min tolerantie.
+    for(let i=1;i<all.length;i++){
+      const gap=(all[i].timeMin||0)-(all[i-1].timeMin||0);
+      const travel=routeMinutesBetween(all[i-1],all[i],driverNames.indexOf(d));
+      if(gap<0 || travel>gap+15)return false;
+    }
+
+    // Iedereen op dezelfde school: ook de laatste ophaalrit moet vóór 08:30
+    // voldoende tijd overlaten om naar school te rijden.
+    if(all.length){
+      const last=all[all.length-1];
+      if(schoolArrivalMinutes(last)>SCHOOL_DEADLINE_MIN)return false;
+    }
+
+    return true;
+  }
+
+  function assignmentCost(k,d){
+    const group=planned[d]||[];
+    const route=routeDurationEstimate([...group,k],driverNames.indexOf(d));
+    const nearest=group.length
+      ? Math.min(...group.map(x=>geoDistanceKm(k,x)).filter(Number.isFinite))
+      : 0;
+
+    let cost=route*6 + group.length*2 + (Number.isFinite(nearest)?nearest*2:0);
+
+    // Een vaste relatie blijft waar mogelijk bij de oorspronkelijke chauffeur.
+    if(k.fixed) cost += d===k.driver ? 0 : 10000;
+
+    return cost;
+  }
+
+  // Eerst vaste relaties, daarna vrij planbare ritten. Daardoor blijft zoveel
+  // mogelijk van de bestaande chauffeur-kindcombinaties intact, maar alleen
+  // als de volledige route veilig uitvoerbaar blijft.
   const candidates=kids
     .filter(k=>k.status==='waiting')
     .sort((a,b)=>{
       if(Boolean(a.fixed)!==Boolean(b.fixed)) return a.fixed?-1:1;
       return (a.timeMin||0)-(b.timeMin||0);
     });
-
-  if(!candidates.length){
-    alert('🤖 AI-planning: er zijn geen wachtende ritten om te plannen.');
-    return;
-  }
-
-  const planned={};
-  driverNames.forEach(d=>{
-    // Ritten die al onderweg zijn blijven staan.
-    planned[d]=kids.filter(k=>
-      k.driver===d &&
-      k.status==='picked'
-    ).sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
-  });
-
-  const loads={};
-  driverNames.forEach(d=>loads[d]=planned[d].length);
-
-  function timeFeasible(k,d){
-    // Harde regels: school uiterlijk 08:30 én route maximaal 90 minuten.
-    if(!schoolDeadlineOk(k)) return false;
-
-    const list=planned[d];
-    const all=[...list,k].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
-
-    if(routeDurationEstimate(all,driverNames.indexOf(d))>MAX_ROUTE_MINUTES) return false;
-
-    for(let i=1;i<all.length;i++){
-      const prev=all[i-1], next=all[i];
-      const gap=(next.timeMin||0)-(prev.timeMin||0);
-      if(gap<0)return false;
-
-      const travel=routeMinutesBetween(prev,next,driverNames.indexOf(d));
-      if(travel>gap+15)return false;
-    }
-    return true;
-  }
-
-  function assignmentCost(k,d){
-    let cost=0;
-
-    // Een bestaande vaste relatie heeft sterke voorkeur, maar nooit ten koste
-    // van een harde veiligheids-/routevoorwaarde.
-    if(k.fixed){
-      cost += d===k.driver ? 0 : 10000;
-    }
-
-    const trial=[...planned[d],k].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
-    const routeMin=routeDurationEstimate(trial,driverNames.indexOf(d));
-
-    // Kies bij gelijke haalbaarheid de chauffeur met de kortste totale route.
-    cost += routeMin*5;
-    cost += loads[d]*2;
-    cost += aiScore(d,k,loads)*0.01;
-
-    return cost;
-  }
 
   const unplanned=[];
   const movedFixed=[];
@@ -1518,8 +1524,7 @@ function runAI(silent=false){
     let choices=driverNames.filter(d=>
       !isDriverUnavailable(d) &&
       !isBusUnavailable(d) &&
-      loads[d]<MAX &&
-      timeFeasible(k,d)
+      routeFeasible(planned[d],k,d)
     );
 
     if(!choices.length){
@@ -1534,10 +1539,7 @@ function runAI(silent=false){
     });
 
     const chosen=choices[0];
-
-    if(k.fixed && chosen!==k.driver){
-      movedFixed.push(k);
-    }
+    if(k.fixed && chosen!==k.driver)movedFixed.push(k);
 
     k.driver=chosen;
     planned[chosen].push(k);
@@ -1545,54 +1547,96 @@ function runAI(silent=false){
     loads[chosen]++;
   }
 
-  const changes=candidates.filter(k=>{
-    const old=previousPlan.find(p=>p.id===k.id);
-    return old && old.driver!==k.driver;
-  }).length;
+  // Tweede pas: probeer niet-geplaatste ritten alsnog te plaatsen nadat alle
+  // vaste relaties hun plek hebben gekregen. Hierbij mag een vaste relatie
+  // niet worden verdrongen; alleen vrije ritten worden opnieuw geprobeerd.
+  if(unplanned.length){
+    const retry=unplanned.splice(0,unplanned.length);
+    for(const k of retry){
+      if(k.fixed){unplanned.push(k);continue;}
 
-  // Laatste volledige controle.
+      let choices=driverNames.filter(d=>
+        !isDriverUnavailable(d) &&
+        !isBusUnavailable(d) &&
+        routeFeasible(planned[d],k,d)
+      ).sort((a,b)=>assignmentCost(k,a)-assignmentCost(k,b));
+
+      if(choices.length){
+        const chosen=choices[0];
+        k.driver=chosen;
+        planned[chosen].push(k);
+        planned[chosen].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+        loads[chosen]++;
+      }else{
+        unplanned.push(k);
+      }
+    }
+  }
+
+  // Volledige eindcontrole op precies dezelfde harde regels als de planner.
   const conflicts=[];
   driverNames.forEach(d=>{
     const q=kids.filter(k=>k.driver===d&&active(k))
       .sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
 
+    if(q.length>MAX){
+      conflicts.push(d+' • meer dan '+MAX+' kinderen');
+    }
+
     if(routeDurationEstimate(q,driverNames.indexOf(d))>MAX_ROUTE_MINUTES){
       conflicts.push(d+' • totale route is langer dan '+MAX_ROUTE_MINUTES+' minuten');
     }
 
-    for(const k of q){
-      if(!schoolDeadlineOk(k)){
-        conflicts.push(d+' • '+k.name+' → school deadline 08:30');
+    for(let i=0;i<q.length;i++){
+      if(!schoolDeadlineOk(q[i])){
+        conflicts.push(d+' • '+q[i].name+' kan de schooldeadline van 08:30 niet halen');
       }
-    }
-
-    for(let i=1;i<q.length;i++){
-      const gap=(q[i].timeMin||0)-(q[i-1].timeMin||0);
-      const travel=routeMinutesBetween(q[i-1],q[i],driverNames.indexOf(d));
-      if(travel>gap+15){
-        conflicts.push(d+' • '+q[i-1].name+' → '+q[i].name);
+      if(i>0){
+        const gap=(q[i].timeMin||0)-(q[i-1].timeMin||0);
+        const travel=routeMinutesBetween(q[i-1],q[i],driverNames.indexOf(d));
+        if(gap===0) conflicts.push(d+' • dubbele ophaaltijd '+q[i].time);
+        if(travel>gap+15){
+          conflicts.push(d+' • '+q[i-1].name+' → '+q[i].name+
+            ' ('+travel+' min reistijd bij '+gap+' min tussenruimte)');
+        }
+        if((q[i].school||q[i].destination||'')!==(q[0].school||q[0].destination||'')){
+          conflicts.push(d+' • meerdere scholen in één route');
+        }
       }
     }
   });
 
+  const changes=candidates.filter(k=>{
+    const old=previousPlan.find(p=>p.id===k.id);
+    return old && old.driver!==k.driver;
+  }).length;
+
+  // Routevolgorde meteen opnieuw vastleggen voor de kaart en chauffeursweergave.
+  driverNames.forEach(d=>{
+    const q=kids.filter(k=>k.driver===d&&active(k))
+      .sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+    q.forEach((k,i)=>k.routeOrder=i+1);
+  });
+
   let message='🤖 AI-planning klaar!\\n\\n';
   message+=changes+' ritten opnieuw verdeeld.\\n';
-  message+='• schooldeadline: uiterlijk 08:30\\n';
+  message+='• volledige ochtendplanning opnieuw opgebouwd\\n';
   message+='• maximaal 8 kinderen per bus\\n';
-  message+='• geen dubbele ophaaltijden per chauffeur\\n';
-  message+='• maximale route per chauffeur: 90 minuten\\n';
-  message+='• voldoende reistijd tussen opeenvolgende stops\\n';
-  message+='• ±15 minuten aankomsttolerantie\\n';
-  message+='• vaste chauffeur-kindrelaties eerst behouden, zolang alle harde regels haalbaar blijven\\n';
+  message+='• één school per route\\n';
+  message+='• geen dubbele ophaaltijden\\n';
+  message+='• maximale route: 90 minuten\\n';
+  message+='• voldoende reistijd tussen stops met ±15 min tolerantie\\n';
+  message+='• alle geplande routes moeten vóór 08:30 bij school kunnen zijn\\n';
+  message+='• vaste chauffeur-kindrelaties alleen behouden als de route haalbaar blijft\\n';
 
   if(movedFixed.length){
-    message+='\\n⚠️ '+movedFixed.length+' vaste relatie(s) zijn verplaatst omdat de oorspronkelijke combinatie qua tijd/reistijd niet haalbaar was.';
+    message+='\\n⚠️ '+movedFixed.length+' vaste relatie(s) zijn verplaatst omdat de oorspronkelijke route niet veilig haalbaar was.';
   }
   if(unplanned.length){
     message+='\\n⚠️ '+unplanned.length+' rit(ten) konden niet veilig worden geplaatst.';
   }
   if(conflicts.length){
-    message+='\\n⚠️ '+conflicts.length+' routeconflict(en) blijven over.';
+    message+='\\n⚠️ '+conflicts.length+' controlepunt(en) blijven over.';
   }else{
     message+='\\n✅ Geen route/tijdconflicten in de actieve planning.';
   }
@@ -1603,16 +1647,20 @@ function runAI(silent=false){
 }
 
 function runAIAndCheck(){
-  // Dagstart gebruikt voortaan dezelfde harde regels als de planner:
-  // eerst veilig herverdelen, daarna pas de controle tonen.
-  const result=runAI(true);
-  setTimeout(()=>runDayStartCheck(),100);
-  if(result && result.unplanned){
-    const box=document.getElementById('dayStartCheck');
-    if(box){
-      box.innerHTML='<div class="daystart-result daystart-warn"><b>🤖 AI-planning uitgevoerd</b><div class="small muted">'+result.unplanned+' rit(ten) konden niet veilig binnen de regels worden geplaatst. De dagstartcontrole wordt nu bijgewerkt…</div></div>';
-    }
+  const box=document.getElementById('dayStartCheck');
+  if(box){
+    box.innerHTML='<div class="daystart-result daystart-warn"><b>🤖 AI bouwt de ochtendplanning opnieuw op…</b><div class="small muted">Alle wachtende ritten worden opnieuw verdeeld volgens capaciteit, school, reistijd en de 90-minutenregel.</div></div>';
   }
+
+  const result=runAI(true);
+
+  setTimeout(async()=>{
+    await runDayStartCheck();
+    const b=document.getElementById('dayStartCheck');
+    if(b && result && !result.unplanned && !result.conflicts){
+      b.scrollIntoView({behavior:'smooth',block:'center'});
+    }
+  },120);
 }
 function resetDemo(){if(confirm('Demo terugzetten?')){localStorage.removeItem(STORAGE_KEY);driverUnavailable={};busIssues={};replacementAssignments={};replacementSeq=1;demoCounter=101;seed();renderAll()}}
 function pickup(id){const k=find(id);if(k){k.status='picked';renderAll()}}
@@ -2068,7 +2116,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=724").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=725").catch(()=>{}));}
 </script>
 
 </body>
