@@ -777,88 +777,104 @@ function renderAttention(){
 async function runDayStartCheck(){
   const box=document.getElementById('dayStartCheck');
   if(!box)return;
-  box.innerHTML='<div class="daystart-result daystart-warn"><b>🔎 Dagstartcontrole bezig…</b><div class="small muted">Beschikbaarheid en route/tijdconflicten worden gecontroleerd.</div></div>';
+  box.innerHTML='<div class="daystart-result daystart-warn"><b>🔎 Dagstartcontrole bezig…</b><div class="small muted">De planning wordt gecontroleerd.</div></div>';
 
   const unavailable=driverNames.filter(d=>isDriverUnavailable(d));
   const broken=driverNames.filter(d=>isBusUnavailable(d));
   const unassigned=kids.filter(k=>active(k)&&!k.driver);
   const overloaded=driverNames.filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d)&&load(d)>MAX);
-  const collisions=[];
   const routeConflicts=[];
   const longRoutes=[];
+  const deadlineProblems=[];
 
-  // Gebruik de bestaande BAG-adreskoppeling zodra die nog niet is uitgevoerd.
-  // Daardoor kan de dagstartcontrole ook echte afstanden tussen stops beoordelen.
   if(!addressesReady){
     try{ await geocodeEmmenAddresses(); }catch(e){}
   }
 
   driverNames.forEach((d,driverIndex)=>{
     const q=kids.filter(k=>k.driver===d&&active(k)).sort((a,b)=>a.timeMin-b.timeMin);
-    for(let i=1;i<q.length;i++){
-      if(q[i].timeMin===q[i-1].timeMin){
-        collisions.push(d+' heeft meerdere ritten om '+q[i].time);
-      }
+    if(!q.length)return;
 
-      const gap=(q[i].timeMin||0)-(q[i-1].timeMin||0);
-      let distance=geoDistanceKm(q[i-1],q[i]);
-      // Als BAG-geocoding niet beschikbaar is, gebruik dezelfde vaste
-      // demo-coördinaten als de kaart. Zo blijft de dagstartcontrole ook
-      // in de lokale demo bruikbaar.
-      if(!Number.isFinite(distance)){
-        const a=coordForKid(q[i-1],driverIndex,i-1);
-        const b=coordForKid(q[i],driverIndex,i);
-        distance=geoDistanceKm({lat:a[1],lon:a[0]},{lat:b[1],lon:b[0]});
-      }
-      if(Number.isFinite(distance)){
-        const travel=Math.ceil((distance/35)*60);
-        if(travel>gap+15 && gap>=0){
-          routeConflicts.push(d+' heeft '+q[i-1].name+' → '+q[i].name+': circa '+travel+' min reistijd, maar slechts '+gap+' min tussen de ritten (±15 min tolerantie meegerekend).');
-        }
-      }
+    let estimated=routeDurationEstimate(q,driverIndex);
+    if(Number.isFinite(estimated) && estimated>MAX_ROUTE_MINUTES){
+      longRoutes.push({driver:d,minutes:estimated,count:q.length});
     }
 
-    if(q.length>1){
-      let estimated=estimateRouteMinutes(q);
-      if(!Number.isFinite(estimated)){
-        const coords=q.map((k,i)=>coordForKid(k,driverIndex,i));
-        const demoStops=coords.map(p=>({lat:p[1],lon:p[0]}));
-        estimated=estimateRouteMinutes(demoStops);
-      }
-      if(Number.isFinite(estimated) && estimated>90){
-        longRoutes.push(d+' heeft een geschatte route van '+estimated+' minuten ('+q.length+' kinderen).');
+    q.forEach(k=>{
+      if(!schoolDeadlineOk(k)) deadlineProblems.push({driver:d,kid:k});
+    });
+
+    for(let i=1;i<q.length;i++){
+      const gap=(q[i].timeMin||0)-(q[i-1].timeMin||0);
+      const travel=routeMinutesBetween(q[i-1],q[i],driverIndex);
+      if(gap===0 || (gap>=0 && travel>gap+15)){
+        routeConflicts.push({
+          driver:d,
+          text:q[i-1].name+' → '+q[i].name,
+          travel:travel,
+          gap:gap
+        });
       }
     }
   });
 
-  const issues=[];
-  unavailable.forEach(d=>issues.push('👨‍✈️ '+d+' is niet beschikbaar.'));
-  broken.forEach(d=>issues.push('🚌 '+busForDriver(d)+' heeft een storing ('+d+').'));
-  unassigned.forEach(k=>issues.push('⚠️ '+k.name+' heeft geen chauffeur.'));
-  overloaded.forEach(d=>issues.push('🔴 '+d+' heeft '+load(d)+' kinderen; maximum is '+MAX+'.'));
-  collisions.forEach(x=>issues.push('⏰ '+x+'.'));
-  routeConflicts.forEach(x=>issues.push('🛣️ Routeconflict: '+x));
-  longRoutes.forEach(x=>issues.push('🔴 Route te lang: '+x));
+  // Geen eindeloze lijst meer: groepeer alle problemen per chauffeur.
+  const byDriver={};
+  routeConflicts.forEach(x=>{
+    if(!byDriver[x.driver])byDriver[x.driver]=[];
+    byDriver[x.driver].push(x);
+  });
 
-  const routeChecked=kids.some(k=>Number.isFinite(k.lat)&&Number.isFinite(k.lon));
-  const routeUsingDemo=kids.some(k=>!Number.isFinite(k.lat)||!Number.isFinite(k.lon));
-  const status=issues.length?'daystart-warn':'daystart-ok';
+  const problemDrivers=Object.keys(byDriver);
+  const totalRouteProblems=routeConflicts.length+longRoutes.length+deadlineProblems.length;
+
+  const compact=[];
+  problemDrivers.slice(0,8).forEach(d=>{
+    const items=byDriver[d];
+    compact.push(
+      '<div class="daystart-item">🛣️ <b>'+d+'</b> — '+items.length+
+      ' routeconflict'+(items.length===1?'':'en')+
+      '<div class="small muted">'+
+      items.slice(0,2).map(x=>x.text+' ('+x.travel+' min reistijd / '+x.gap+' min ruimte)').join('<br>')+
+      (items.length>2?'<br>… en '+(items.length-2)+' meer':'')+
+      '</div></div>'
+    );
+  });
+
+  if(problemDrivers.length>8){
+    compact.push('<div class="daystart-item muted">… '+(problemDrivers.length-8)+' andere chauffeurs hebben ook routeconflicten.</div>');
+  }
+
+  longRoutes.slice(0,5).forEach(x=>{
+    compact.push('<div class="daystart-item">🔴 <b>'+x.driver+'</b> — route '+x.minutes+' min ('+x.count+' kinderen)</div>');
+  });
+
+  const deadlineDrivers=[...new Set(deadlineProblems.map(x=>x.driver))];
+  deadlineDrivers.slice(0,5).forEach(d=>{
+    const count=deadlineProblems.filter(x=>x.driver===d).length;
+    compact.push('<div class="daystart-item">⏰ <b>'+d+'</b> — '+count+' rit'+(count===1?'':'ten')+' haalt 08:30 niet.</div>');
+  });
+
+  const issues=unavailable.length+broken.length+unassigned.length+overloaded.length+totalRouteProblems;
+  const status=issues?'daystart-warn':'daystart-ok';
+
+  let details='';
+  unavailable.forEach(d=>details+='<div class="daystart-item">👨‍✈️ '+d+' is niet beschikbaar.</div>');
+  broken.forEach(d=>details+='<div class="daystart-item">🚌 '+busForDriver(d)+' heeft een storing.</div>');
+  unassigned.forEach(k=>details+='<div class="daystart-item">⚠️ '+k.name+' heeft geen chauffeur.</div>');
+  overloaded.forEach(d=>details+='<div class="daystart-item">🔴 '+d+' heeft '+load(d)+' kinderen; maximum is '+MAX+'.</div>');
+  details+=compact.join('');
 
   box.innerHTML='<div class="daystart-result '+status+'">'+
-    '<h3 style="margin:0">🔎 Dagstartcontrole — '+(issues.length?'Aandacht nodig':'Alles ziet er goed uit')+'</h3>'+
+    '<h3 style="margin:0">🔎 Dagstartcontrole — '+(issues?'Aandacht nodig':'Alles ziet er goed uit')+'</h3>'+
     '<div class="daystart-summary">'+
       '<div class="daystart-stat '+(unavailable.length?'daystart-danger':'')+'"><b>'+unavailable.length+'</b><small>Niet beschikbaar</small></div>'+
       '<div class="daystart-stat '+(broken.length?'daystart-danger':'')+'"><b>'+broken.length+'</b><small>Busstoringen</small></div>'+
       '<div class="daystart-stat '+(unassigned.length?'daystart-danger':'')+'"><b>'+unassigned.length+'</b><small>Zonder chauffeur</small></div>'+
-      '<div class="daystart-stat '+((routeConflicts.length||longRoutes.length)?'daystart-danger':'')+'"><b>'+(routeConflicts.length+longRoutes.length)+'</b><small>Routeconflicten</small></div>'+
+      '<div class="daystart-stat '+(totalRouteProblems?'daystart-danger':'')+'"><b>'+totalRouteProblems+'</b><small>Routeproblemen</small></div>'+
     '</div>'+
-    (issues.length?'<div>'+issues.map(x=>'<div class="daystart-item">'+x+'</div>').join('')+'</div>':'<div class="daystart-item">✅ Chauffeurs, bussen, bezetting en route/tijdstippen hebben op deze controle geen directe conflicten.</div>')+
-    '<p class="small muted" style="margin-bottom:0">'+
-      (routeChecked
-        ? '🛣️ Afstanden zijn meegenomen op basis van gekoppelde adrescoördinaten.'
-        : '🗺️ Routecontrole gebruikt de vaste demo-coördinaten van de kaart.')
-      + (routeUsingDemo && routeChecked ? ' Waar nog geen adrescoördinaat beschikbaar is, wordt een demo-coördinaat gebruikt.' : '')
-      + ' Reistijd is een verkeersinschatting; de echte wegroute kan afwijken.</p>'+
+    (details||'<div class="daystart-item">✅ Geen directe problemen gevonden.</div>')+
+    '<p class="small muted" style="margin-bottom:0">De meldingen zijn bewust samengevat per chauffeur zodat de dagstart compact blijft.</p>'+
   '</div>';
 }
 
@@ -2116,7 +2132,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=725").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=726").catch(()=>{}));}
 </script>
 
 </body>
