@@ -976,37 +976,113 @@ let mapMarkers=[];
 let routeLines=[];
 
 
-async function geocodeEmmenAddresses(){
-  const missing=kids.filter(k=>!Number.isFinite(k.lat)||!Number.isFinite(k.lon));
-  if(addressesReady && missing.length===0)return;
+async async function geocodeEmmenAddresses(){
+  // V71.8+: gebruik echte BAG-adressen uit heel Drenthe, niet alleen Emmen.
+  // De kinderen zijn fictieve demo-profielen; de adressen/coordinaten komen
+  // live uit de officiële PDOK Locatieserver/BAG-data.
+  const drenthePlaces=[
+    'Assen','Emmen','Hoogeveen','Meppel','Coevorden','Beilen','Borger','Dwingeloo',
+    'Diever','Eelde','Gieten','Gasselte','Klazienaveen','Nieuw-Amsterdam','Erica',
+    'Schoonebeek','Oosterhesselen','Ruinen','Roden','Peize','Zuidlaren','Vries',
+    'Smilde','Westerbork','Zuidwolde'
+  ];
+
   const info=document.getElementById('routeInfo');
-  if(info)info.textContent='📍 Echte Emmen-adressen worden opgezocht…';
-  let done=0;
-  for(let i=0;i<kids.length;i++){
-    const k=kids[i];
-    if(Number.isFinite(k.lat)&&Number.isFinite(k.lon))continue;
-    const street=emmenStreets[i%emmenStreets.length];
-    const number=2 + ((i*2)%98);
-    const query=encodeURIComponent(`${street} ${number}, Emmen`);
+  if(info)info.textContent='📍 Echte adressen uit heel Drenthe worden opgehaald…';
+
+  // Alleen opnieuw ophalen wanneer de huidige demo-adressen nog niet uit
+  // de Drenthe/BAG-bron komen. Zo blijven handmatig gewijzigde adressen intact.
+  const needsRefresh=kids.some(k=>k.addressSource!=='PDOK-Drenthe-BAG');
+  if(!needsRefresh && kids.every(k=>Number.isFinite(k.lat)&&Number.isFinite(k.lon))){
+    addressesReady=true;
+    if(info)info.textContent='📍 Alle kinderen hebben actuele BAG-adresdata uit Drenthe.';
+    return;
+  }
+
+  const found=[];
+  const seen=new Set();
+
+  // Vier adressen per plaats = 100 kinderen, geografisch verspreid over Drenthe.
+  // Per plaats worden meerdere BAG-resultaten opgehaald zodat niet iedereen
+  // hetzelfde adres krijgt.
+  for(let pi=0;pi<drenthePlaces.length;pi++){
+    const place=drenthePlaces[pi];
     try{
-      const res=await fetch(`https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?q=${query}&rows=1&fq=type:adres&fl=weergavenaam,centroide_ll`);
+      const q=encodeURIComponent(place+', Drenthe');
+      const url='https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?q='+q+
+        '&rows=10&fq=type:adres&fl=weergavenaam,centroide_ll';
+      const res=await fetch(url);
+      if(!res.ok)continue;
       const data=await res.json();
-      const doc=data?.response?.docs?.[0];
-      if(doc?.centroide_ll){
-        const m=doc.centroide_ll.match(/POINT\\s*\\(([-0-9.]+)\\s+([-0-9.]+)\\)/i);
-        if(m){
-          k.lon=parseFloat(m[1]); k.lat=parseFloat(m[2]);
-          k.address=doc.weergavenaam;
-          done++;
-        }
+      const docs=data?.response?.docs||[];
+
+      for(const doc of docs){
+        const label=String(doc.weergavenaam||'').trim();
+        const m=String(doc.centroide_ll||'').match(/POINT\\s*\\(([-0-9.]+)\\s+([-0-9.]+)\\)/i);
+        if(!label||!m)continue;
+        const key=label.toLowerCase();
+        if(seen.has(key))continue;
+        const lon=parseFloat(m[1]),lat=parseFloat(m[2]);
+        if(!Number.isFinite(lon)||!Number.isFinite(lat))continue;
+        found.push({address:label,lon,lat});
+        seen.add(key);
+        if(found.length>=kids.length)break;
       }
     }catch(e){}
-    if(i%10===9 && info)info.textContent=`📍 Adressen opgezocht: ${i+1}/100`;
+    if(info)info.textContent='📍 Drenthe: '+Math.min(found.length,kids.length)+' van '+kids.length+' adressen gevonden…';
+    if(found.length>=kids.length)break;
   }
-  const located=kids.filter(k=>Number.isFinite(k.lat)&&Number.isFinite(k.lon)).length;
-  addressesReady=located>0;
-  if(info)info.textContent=`📍 ${located} van ${kids.length} kinderen gekoppeld aan actuele BAG-adresdata van PDOK.`;
+
+  // Tweede poging voor eventuele gaten: zoek gericht per kindplaats.
+  if(found.length<kids.length){
+    const fallbackPlaces=['Assen','Emmen','Hoogeveen','Meppel','Coevorden','Roden','Beilen','Zuidlaren'];
+    for(const place of fallbackPlaces){
+      if(found.length>=kids.length)break;
+      try{
+        const q=encodeURIComponent('adres '+place+', Drenthe');
+        const url='https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?q='+q+
+          '&rows=50&fq=type:adres&fl=weergavenaam,centroide_ll';
+        const res=await fetch(url);
+        if(!res.ok)continue;
+        const data=await res.json();
+        for(const doc of (data?.response?.docs||[])){
+          const label=String(doc.weergavenaam||'').trim();
+          const m=String(doc.centroide_ll||'').match(/POINT\\s*\\(([-0-9.]+)\\s+([-0-9.]+)\\)/i);
+          const key=label.toLowerCase();
+          if(!label||!m||seen.has(key))continue;
+          const lon=parseFloat(m[1]),lat=parseFloat(m[2]);
+          if(Number.isFinite(lon)&&Number.isFinite(lat)){
+            found.push({address:label,lon,lat});seen.add(key);
+          }
+          if(found.length>=kids.length)break;
+        }
+      }catch(e){}
+    }
+  }
+
+  // Koppel de gevonden echte adressen aan de fictieve demo-kinderen.
+  let assigned=0;
+  kids.forEach((k,i)=>{
+    const a=found[i];
+    if(!a)return;
+    k.address=a.address;
+    k.lon=a.lon;
+    k.lat=a.lat;
+    k.addressSource='PDOK-Drenthe-BAG';
+    assigned++;
+  });
+
+  addressesReady=assigned===kids.length;
+  if(info)info.textContent='📍 '+assigned+' van '+kids.length+' kinderen gekoppeld aan echte BAG-adressen verspreid over Drenthe.';
   renderRealMapMarkers();
+
+  // Laat de kaart na het ophalen meteen heel Drenthe zien.
+  if(realMap && assigned){
+    const pts=kids.filter(k=>Number.isFinite(k.lat)&&Number.isFinite(k.lon)).map(k=>[k.lat,k.lon]);
+    if(pts.length){
+      realMap.fitBounds(pts,{padding:[25,25],maxZoom:11});
+    }
+  }
 }
 function initRealMap(){
   const el=document.getElementById('realMap');
