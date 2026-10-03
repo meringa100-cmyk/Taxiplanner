@@ -1059,14 +1059,13 @@ function coordForDriverStop(driverIndex, stopIndex){
 
 function coordForKid(k, driverIndex, stopIndex){
   if(k && Number.isFinite(k.lon) && Number.isFinite(k.lat)) return [k.lon,k.lat];
-  // Demo-coördinaten zijn stabiel per kind, zodat een route-optimalisatie
-  // niet zelf de ligging van een kind verandert wanneer de volgorde wijzigt.
-  const n=k && k.id ? (parseInt(String(k.id).replace(/\D/g,''),10)||0) : stopIndex;
-  return realRoadPoints[(driverIndex*3+n)%realRoadPoints.length];
-}
-
-async function osrmRoute(coords){
-  const joined=coords.map(p=>p[0]+','+p[1]).join(';');
+  // Demo: ieder kind krijgt binnen zijn chauffeur een vaste kaartpositie.
+  // Daardoor blijven alle kind-markers zichtbaar, ook na route-optimalisatie.
+  const d=driverNames[driverIndex];
+  const baseRides=kids.filter(x=>x.driver===d && active(x)).sort((a,b)=>a.timeMin-b.timeMin);
+  const baseIndex=baseRides.indexOf(k);
+  const pos=baseIndex>=0?baseIndex:stopIndex;
+  return realRoadPoints[(driverIndex+pos)%realRoadPoints.length;');
   const url='https://router.project-osrm.org/route/v1/driving/'+joined+
     '?overview=full&geometries=geojson&steps=true';
   const res=await fetch(url);
