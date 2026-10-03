@@ -994,120 +994,86 @@ let routeLines=[];
 
 
 async function geocodeEmmenAddresses(){
-  // V71.9+: gebruik echte BAG-adressen uit heel Drenthe, niet alleen Emmen.
-  // De kinderen zijn fictieve demo-profielen; de adressen/coordinaten komen
-  // live uit de officiële PDOK Locatieserver/BAG-data.
-  const drenthePlaces=[
-    'Assen','Emmen','Hoogeveen','Meppel','Coevorden','Beilen','Borger','Dwingeloo',
-    'Diever','Eelde','Gieten','Gasselte','Klazienaveen','Nieuw-Amsterdam','Erica',
-    'Schoonebeek','Oosterhesselen','Ruinen','Roden','Peize','Zuidlaren','Vries',
-    'Smilde','Westerbork','Zuidwolde'
+  // V71.9+: vaste demo-adressen verspreid over heel Drenthe.
+  // Geen PDOK-relevantiezoektocht meer: daardoor kan Emmen niet alles opslokken.
+  const drentheDemoPlaces=[
+    ['Assen','Stationsstraat'],['Emmen','Hondsrugweg'],['Hoogeveen','Hoofdstraat'],
+    ['Meppel','Hoofdstraat'],['Coevorden','Friesestraat'],['Beilen','Brinkstraat'],
+    ['Borger','Hoofdstraat'],['Dwingeloo','Brink'],['Diever','Hoofdstraat'],
+    ['Eelde','Hoofdweg'],['Gieten','Stationsstraat'],['Gasselte','Dorpsstraat'],
+    ['Klazienaveen','Langestraat'],['Nieuw-Amsterdam','Vaart NZ'],['Erica','Verlengde Vaart ZZ'],
+    ['Schoonebeek','Europaweg'],['Oosterhesselen','Burgemeester de Kockstraat'],
+    ['Ruinen','Brink'],['Roden','Heerestraat'],['Peize','Hoofdstraat'],
+    ['Zuidlaren','Stationsweg'],['Vries','Dorpsstraat'],['Smilde','Hoofdweg'],
+    ['Westerbork','Hoofdstraat'],['Zuidwolde','Hoofdstraat']
   ];
-
   const info=document.getElementById('routeInfo');
-  if(info)info.textContent='📍 Echte adressen uit heel Drenthe worden opgehaald…';
+  if(info)info.textContent='📍 Adressen uit heel Drenthe worden verdeeld…';
 
-  // Alleen opnieuw ophalen wanneer de huidige demo-adressen nog niet uit
-  // de Drenthe/BAG-bron komen. Zo blijven handmatig gewijzigde adressen intact.
-  const ADDRESS_GEO_VERSION='drenthe-v3';
-  const needsRefresh=kids.some(k=>k.addressGeoVersion!==ADDRESS_GEO_VERSION);
-  if(!needsRefresh && kids.every(k=>Number.isFinite(k.lat)&&Number.isFinite(k.lon))){
-    addressesReady=true;
-    if(info)info.textContent='📍 Alle kinderen hebben actuele BAG-adresdata uit Drenthe.';
+  // We gebruiken per plaats een vast centrumadres als geografisch anker.
+  // Daarna wordt via Nominatim alleen dat concrete adres opgezocht.
+  // Zo zijn de 100 demo-kinderen gegarandeerd over verschillende plaatsen verspreid.
+  const points=[];
+  for(const [place,street] of drentheDemoPlaces){
+    try{
+      const q=encodeURIComponent(street+' '+place+', Drenthe, Nederland');
+      const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q='+q;
+      const res=await fetch(url,{headers:{'Accept-Language':'nl'}});
+      if(!res.ok)continue;
+      const data=await res.json();
+      const p=data&&data[0];
+      if(!p)continue;
+      const lat=parseFloat(p.lat),lon=parseFloat(p.lon);
+      if(!Number.isFinite(lat)||!Number.isFinite(lon))continue;
+      points.push({place,address:street+' '+place,lat,lon});
+      if(info)info.textContent='📍 '+points.length+' van '+drentheDemoPlaces.length+' Drentse plaatsen gevonden…';
+    }catch(e){}
+  }
+
+  // Als een concrete straat niet gevonden wordt, gebruik de plaats zelf als anker.
+  for(const [place] of drentheDemoPlaces){
+    if(points.some(p=>p.place===place))continue;
+    try{
+      const q=encodeURIComponent(place+', Drenthe, Nederland');
+      const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q='+q;
+      const res=await fetch(url,{headers:{'Accept-Language':'nl'}});
+      if(!res.ok)continue;
+      const data=await res.json();
+      const p=data&&data[0];
+      if(!p)continue;
+      const lat=parseFloat(p.lat),lon=parseFloat(p.lon);
+      if(Number.isFinite(lat)&&Number.isFinite(lon))points.push({place,address:place+', Drenthe',lat,lon});
+    }catch(e){}
+  }
+
+  if(!points.length){
+    if(info)info.textContent='⚠️ Geen Drentse locaties gevonden.';
     return;
   }
 
-  const found=[];
-  const seen=new Set();
-
-  // Vier adressen per plaats = 100 kinderen, geografisch verspreid over Drenthe.
-  // Per plaats worden meerdere BAG-resultaten opgehaald zodat niet iedereen
-  // hetzelfde adres krijgt.
-  for(let pi=0;pi<drenthePlaces.length;pi++){
-    const place=drenthePlaces[pi];
-    try{
-      const q=encodeURIComponent(place);
-      const fq=encodeURIComponent('type:adres');
-      const url='https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?q='+q+
-        '&rows=20&fq='+fq+'&fl=weergavenaam,centroide_ll,woonplaatsnaam';
-      const res=await fetch(url);
-      if(!res.ok)continue;
-      const data=await res.json();
-      const docs=data?.response?.docs||[];
-
-      let addedForPlace=0;
-      for(const doc of docs){
-        const label=String(doc.weergavenaam||'').trim();
-        const m=String(doc.centroide_ll||'').match(/POINT\\s*\\(([-0-9.]+)\\s+([-0-9.]+)\\)/i);
-        if(!label||!m)continue;
-        const key=label.toLowerCase();
-        if(seen.has(key))continue;
-        const lon=parseFloat(m[1]),lat=parseFloat(m[2]);
-        if(!Number.isFinite(lon)||!Number.isFinite(lat))continue;
-        found.push({address:label,lon,lat});
-        seen.add(key);
-        addedForPlace++;
-        if(addedForPlace>=4 || found.length>=kids.length)break;
-      }
-    }catch(e){}
-    if(info)info.textContent='📍 Drenthe: '+Math.min(found.length,kids.length)+' van '+kids.length+' adressen gevonden…';
-    if(found.length>=kids.length)break;
-  }
-
-  // Tweede poging voor eventuele gaten: zoek gericht per kindplaats.
-  if(found.length<kids.length){
-    const fallbackPlaces=['Assen','Emmen','Hoogeveen','Meppel','Coevorden','Roden','Beilen','Zuidlaren'];
-    for(const place of fallbackPlaces){
-      if(found.length>=kids.length)break;
-      try{
-        const q=encodeURIComponent(place);
-        const fq=encodeURIComponent('type:adres');
-        const url='https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?q='+q+
-          '&rows=50&fq='+fq+'&fl=weergavenaam,centroide_ll,woonplaatsnaam';
-        const res=await fetch(url);
-        if(!res.ok)continue;
-        const data=await res.json();
-        for(const doc of (data?.response?.docs||[])){
-          const label=String(doc.weergavenaam||'').trim();
-          const m=String(doc.centroide_ll||'').match(/POINT\\s*\\(([-0-9.]+)\\s+([-0-9.]+)\\)/i);
-          const key=label.toLowerCase();
-          if(!label||!m||seen.has(key))continue;
-          const lon=parseFloat(m[1]),lat=parseFloat(m[2]);
-          if(Number.isFinite(lon)&&Number.isFinite(lat)){
-            found.push({address:label,lon,lat});seen.add(key);
-          }
-          if(found.length>=kids.length)break;
-        }
-      }catch(e){}
-    }
-  }
-
-  // Koppel de gevonden echte adressen aan de fictieve demo-kinderen.
-  let assigned=0;
+  const ADDRESS_GEO_VERSION='drenthe-v4';
   kids.forEach((k,i)=>{
-    const a=found[i];
-    if(!a)return;
-    k.address=a.address;
-    k.lon=a.lon;
-    k.lat=a.lat;
-    k.addressSource='PDOK-Drenthe-BAG';
+    const p=points[i%points.length];
+    const nr=10+Math.floor(i/points.length)*10;
+    k.address=p.address+' '+nr;
+    // Kleine spreiding rond het plaatsanker zodat markers niet allemaal op elkaar liggen.
+    const ring=Math.floor(i/points.length);
+    const angle=(i%points.length)*(Math.PI*2/points.length);
+    const radius=0.0015+ring*0.00025;
+    k.lat=p.lat+Math.sin(angle)*radius;
+    k.lon=p.lon+Math.cos(angle)*radius;
+    k.addressSource='OSM-Drenthe-Demo';
     k.addressGeoVersion=ADDRESS_GEO_VERSION;
-    assigned++;
   });
 
-  addressesReady=assigned===kids.length;
-  // Bewaar de echte BAG-adressen en coordinaten ook in de planner-state.
-  // Anders zouden ze na een refresh weer verdwijnen.
-  if(assigned>0) saveState();
-  if(info)info.textContent='📍 '+assigned+' van '+kids.length+' kinderen gekoppeld aan echte BAG-adressen verspreid over Drenthe.';
+  addressesReady=kids.length>0;
+  saveState();
+  if(info)info.textContent='📍 '+kids.length+' kinderen verdeeld over '+points.length+' plaatsen in Drenthe.';
   renderRealMapMarkers();
 
-  // Laat de kaart na het ophalen meteen heel Drenthe zien.
-  if(realMap && assigned){
+  if(realMap){
     const pts=kids.filter(k=>Number.isFinite(k.lat)&&Number.isFinite(k.lon)).map(k=>[k.lat,k.lon]);
-    if(pts.length){
-      realMap.fitBounds(pts,{padding:[25,25],maxZoom:11});
-    }
+    if(pts.length)realMap.fitBounds(pts,{padding:[25,25],maxZoom:11});
   }
 }
 function initRealMap(){
