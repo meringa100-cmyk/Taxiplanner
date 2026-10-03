@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V71.7</title>
+<title>Taxi Planner V71.8</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -249,6 +249,7 @@ button[onclick^="chauffeurDelay"]:active{
 <h3>Wat moet er vandaag gebeuren?</h3>
 <div class="actions">
 <button class="primary" type="button" onclick="runAI()">🤖 AI plannen</button>
+<button type="button" onclick="optimizeAllRoutes()">🧭 Routes optimaal</button>
 <button onclick="openAdd()">➕ Rit toevoegen</button>
 <button onclick="resetDemo()">↩️ Demo resetten</button>
 </div>
@@ -544,7 +545,7 @@ function startPlannerAutomation(){
 
 
 
-const STORAGE_KEY='taxiPlannerStateV717';
+const STORAGE_KEY='taxiPlannerStateV718';
 
 function saveState(){
  try{
@@ -846,7 +847,12 @@ function renderPlanning(){
 let driverSelectedKid={};
 function getDriverQueue(d){
  return kids.filter(k=>k.driver===d && (k.status==='waiting'||k.status==='picked'))
-   .sort((a,b)=>a.timeMin-b.timeMin);
+   .sort((a,b)=>{
+     const ao=Number.isFinite(a.routeOrder)?a.routeOrder:9999;
+     const bo=Number.isFinite(b.routeOrder)?b.routeOrder:9999;
+     if(ao!==bo)return ao-bo;
+     return a.timeMin-b.timeMin;
+   });
 }
 function setDriverKid(id){
  const k=find(id);
@@ -1042,15 +1048,21 @@ const realRoadPoints=[
 
 function coordForDriverStop(driverIndex, stopIndex){
   const d=driverNames[driverIndex];
-  const rides=kids.filter(k=>k.driver===d && active(k)).sort((a,b)=>a.timeMin-b.timeMin);
+  const rides=kids.filter(k=>k.driver===d && active(k)).sort((a,b)=>{
+    const ao=Number.isFinite(a.routeOrder)?a.routeOrder:9999;
+    const bo=Number.isFinite(b.routeOrder)?b.routeOrder:9999;
+    return ao-bo || a.timeMin-b.timeMin;
+  });
   const k=rides[stopIndex];
-  if(k && Number.isFinite(k.lon) && Number.isFinite(k.lat)) return [k.lon,k.lat];
-  return realRoadPoints[(driverIndex+stopIndex)%realRoadPoints.length];
+  return coordForKid(k,driverIndex,stopIndex);
 }
 
 function coordForKid(k, driverIndex, stopIndex){
   if(k && Number.isFinite(k.lon) && Number.isFinite(k.lat)) return [k.lon,k.lat];
-  return realRoadPoints[(driverIndex+stopIndex)%realRoadPoints.length];
+  // Demo-coördinaten zijn stabiel per kind, zodat een route-optimalisatie
+  // niet zelf de ligging van een kind verandert wanneer de volgorde wijzigt.
+  const n=k && k.id ? (parseInt(String(k.id).replace(/\\D/g,''),10)||0) : stopIndex;
+  return realRoadPoints[(driverIndex*3+n)%realRoadPoints.length];
 }
 
 async function osrmRoute(coords){
@@ -1075,6 +1087,111 @@ async function osrmTrip(coords){
   return data;
 }
 
+async function osrmTable(coords){
+  const joined=coords.map(p=>p[0]+','+p[1]).join(';');
+  const url='https://router.project-osrm.org/table/v1/driving/'+joined+
+    '?annotations=duration';
+  const res=await fetch(url);
+  if(!res.ok)throw new Error('Route-afstandsmatrix reageert niet');
+  const data=await res.json();
+  if(data.code!=='Ok' || !Array.isArray(data.durations))throw new Error('Geen reistijdmatrix gevonden');
+  return data.durations;
+}
+
+function routeMinutesBetween(a,b,driverIndex){
+  const pa=coordForKid(a,driverIndex,0);
+  const pb=coordForKid(b,driverIndex,0);
+  const km=geoDistanceKm({lat:pa[1],lon:pa[0]},{lat:pb[1],lon:pb[0]});
+  return Number.isFinite(km)?Math.max(1,Math.ceil(km/35*60)):15;
+}
+
+async function optimizeDriverRoute(d){
+  const driverIndex=driverNames.indexOf(d);
+  const rides=kids.filter(k=>k.driver===d && active(k)).sort((a,b)=>a.timeMin-b.timeMin);
+  if(!rides.length)return {count:0,conflicts:0,minutes:0};
+
+  if(rides.length===1){
+    rides[0].routeOrder=1;
+    return {count:1,conflicts:0,minutes:0};
+  }
+
+  const coords=rides.map(k=>coordForKid(k,driverIndex,0));
+  let matrix=null;
+  try{ matrix=await osrmTable(coords); }catch(e){ matrix=null; }
+
+  const travel=(from,to)=>{
+    const i=rides.indexOf(from), j=rides.indexOf(to);
+    if(matrix && Number.isFinite(matrix[i]?.[j])) return Math.max(1,Math.ceil(matrix[i][j]/60));
+    return routeMinutesBetween(from,to,driverIndex);
+  };
+
+  // De eerste rit blijft de vroegste geplande rit. Als de chauffeur al
+  // onderweg is, blijft de vroegste opgehaalde rit vooraan staan.
+  const picked=rides.filter(k=>k.status==='picked').sort((a,b)=>a.timeMin-b.timeMin);
+  let current=picked[0]||rides[0];
+  const remaining=rides.filter(k=>k!==current);
+  const ordered=[current];
+  let conflicts=0;
+
+  while(remaining.length){
+    const feasible=remaining.filter(k=>{
+      const travelMin=travel(current,k);
+      return (k.timeMin||0)>=(current.timeMin||0)+travelMin;
+    });
+
+    const pool=feasible.length?feasible:remaining;
+    if(!feasible.length)conflicts++;
+
+    pool.sort((a,b)=>{
+      const da=travel(current,a), db=travel(current,b);
+      if(da!==db)return da-db;
+      return (a.timeMin||0)-(b.timeMin||0);
+    });
+
+    const next=pool[0];
+    ordered.push(next);
+    remaining.splice(remaining.indexOf(next),1);
+    current=next;
+  }
+
+  ordered.forEach((k,i)=>k.routeOrder=i+1);
+
+  let total=0;
+  for(let i=1;i<ordered.length;i++) total+=travel(ordered[i-1],ordered[i]);
+
+  return {count:ordered.length,conflicts,minutes:total};
+}
+
+async function optimizeAllRoutes(){
+  const box=document.getElementById('routeInfo');
+  if(box)box.textContent='🧭 Routes worden geografisch geoptimaliseerd…';
+
+  if(!addressesReady){
+    try{await geocodeEmmenAddresses();}catch(e){}
+  }
+
+  let total=0, conflicts=0, drivers=0, longRoutes=0;
+  for(const d of driverNames){
+    const result=await optimizeDriverRoute(d);
+    if(result.count){
+      total+=result.count;
+      conflicts+=result.conflicts;
+      drivers++;
+      if(result.minutes>60)longRoutes++;
+    }
+  }
+
+  renderAll();
+
+  let msg='🧭 Route-optimalisatie klaar!\\n\\n';
+  msg+=total+' actieve ritten zijn per chauffeur opnieuw geordend.\\n';
+  msg+='Na de eerste rit wordt steeds de dichtstbijzijnde haalbare volgende rit gekozen.\\n';
+  msg+='Daarbij wordt eerst de echte weg-reistijd gebruikt als de route-server beschikbaar is; anders wordt de afstand geschat.\\n';
+  if(conflicts)msg+='\\n⚠️ '+conflicts+' keer was de dichtstbijzijnde rit qua tijd niet haalbaar; daar is de eerstvolgende haalbare rit gekozen.';
+  if(longRoutes)msg+='\\n⚠️ '+longRoutes+' route(s) komen na optimalisatie boven 60 minuten uit en blijven zichtbaar voor controle.';
+  alert(msg);
+}
+
 async function calculateRealRoutes(){
   if(!realMap || realRouteLoading)return;
   realRouteLoading=true;
@@ -1093,7 +1210,11 @@ async function calculateRealRoutes(){
   try{
     for(let di=0;di<drivers.length;di++){
       const d=drivers[di];
-      const rides=kids.filter(k=>k.driver===d && active(k)).sort((a,b)=>a.timeMin-b.timeMin);
+      const rides=kids.filter(k=>k.driver===d && active(k)).sort((a,b)=>{
+        const ao=Number.isFinite(a.routeOrder)?a.routeOrder:9999;
+        const bo=Number.isFinite(b.routeOrder)?b.routeOrder:9999;
+        return ao-bo || a.timeMin-b.timeMin;
+      });
       if(rides.length<2)continue;
 
       const coords=rides.map((k,i)=>coordForDriverStop(driverNames.indexOf(d),i));
@@ -1313,6 +1434,8 @@ function runAI(){
   if(overloaded.length) message+='\\n⚠️ Controle: er is nog een chauffeur boven de maximale bezetting.';
   alert(message);
   renderAll();
+  // Na de verdeling ook de rijvolgorde geografisch optimaliseren.
+  optimizeAllRoutes();
 }
 function resetDemo(){if(confirm('Demo terugzetten?')){localStorage.removeItem(STORAGE_KEY);driverUnavailable={};busIssues={};replacementAssignments={};replacementSeq=1;demoCounter=101;seed();renderAll()}}
 function pickup(id){const k=find(id);if(k){k.status='picked';renderAll()}}
@@ -1597,7 +1720,7 @@ function childCardHtml(k){
      <span class="arrow">▼</span>
    </button>
    <div class="child-details-v70">
-     <div class="child-meta-v70"><span>🚕 ${k.driver}</span><span>📍 ${k.address}</span><span>➡️ ${k.destination||k.school||'Bestemming onbekend'}</span><span>${k.fixed?'🔒 Vast':'🔄 Vrij planbaar'}</span></div>
+     <div class="child-meta-v70"><span>🚕 ${k.driver}</span><span>🧭 Route ${Number.isFinite(k.routeOrder)?k.routeOrder:'—'}</span><span>📍 ${k.address}</span><span>➡️ ${k.destination||k.school||'Bestemming onbekend'}</span><span>${k.fixed?'🔒 Vast':'🔄 Vrij planbaar'}</span></div>
      <div class="child-info-v70"><b>Benadering:</b> ${k.approach}</div>
      <div class="child-info-v70"><b>Veiligheid:</b> ${k.safety}</div>
      <div class="child-info-v70"><b>Belangrijk:</b> ${k.important}</div>
@@ -1768,7 +1891,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=717").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=718").catch(()=>{}));}
 </script>
 
 </body>
