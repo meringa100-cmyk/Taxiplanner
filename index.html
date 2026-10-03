@@ -594,6 +594,21 @@ function fmtTime(m){return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m
 function statusText(s){return ({waiting:'Wachtend',picked:'Onderweg',school:'Op school',absent:'🚫 Afgemeld',loose:'📋 Loosmelding'})[s]||s}
 function active(k){return k.status==='waiting'||k.status==='picked'}
 function load(d){return kids.filter(k=>k.driver===d&&active(k)).length}
+
+function driverTimeConflict(k,d){
+  // Een chauffeur kan nooit twee kinderen op hetzelfde ophaalmoment hebben.
+  // Daarnaast houden we rekening met de reistijd tussen opeenvolgende stops.
+  const rides=kids.filter(x=>x.id!==k.id && x.driver===d && active(x));
+  for(const other of rides){
+    const diff=Math.abs((k.timeMin||0)-(other.timeMin||0));
+    if(diff===0)return true;
+    const travel=routeMinutesBetween(other,k,driverNames.indexOf(d));
+    if(diff < Math.max(1,travel-15))return true;
+  }
+  return false;
+}
+
+
 document.addEventListener('DOMContentLoaded', function(){  });
 function showPage(id,btn){
  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
@@ -1410,8 +1425,13 @@ function runAI(){
     const choices=driverNames.filter(d=>
       !isDriverUnavailable(d) &&
       !isBusUnavailable(d) &&
-      loads[d]<MAX
+      loads[d]<MAX &&
+      !driverTimeConflict(k,d)
     );
+
+    // Als alle chauffeurs bezet zijn op dit tijdstip, plan deze rit niet
+    // dubbel in: laat hem openstaan voor een volgende planningsronde.
+    // Zo ontstaan geen twee kinderen op exact hetzelfde moment bij één chauffeur.
 
     if(!choices.length){
       unplanned.push(k);
@@ -1419,8 +1439,8 @@ function runAI(){
     }
 
     choices.sort((a,b)=>{
-      // Vul eerst de bussen die al bezet zijn, zodat een bus zo veel mogelijk
-      // richting 8 kinderen gaat voordat een nieuwe bus wordt gebruikt.
+      // Eerst tijdtechnisch haalbaar, daarna pas de bezetting.
+      // Zo krijgt een chauffeur nooit twee kinderen tegelijk.
       const loadDiff=loads[b]-loads[a];
       if(loadDiff!==0) return loadDiff;
       const scoreA=aiScore(a,k,loads);
@@ -1452,6 +1472,8 @@ function runAI(){
   message+='• beschikbaarheid chauffeur en bus\\n';
   message+='• maximale bezetting van 8 kinderen per bus\\n';
   message+='• eerst bestaande bussen zo veel mogelijk vullen tot 8, voordat een nieuwe bus wordt gebruikt\\n';
+  message+='• geen twee kinderen met hetzelfde ophaalmoment bij één chauffeur\\n';
+  message+='• ook minimale reistijd tussen opeenvolgende stops wordt gecontroleerd\\n';
   message+='• ophaaltijden en tijdsdruk\\n';
   message+='• schoolcombinaties\\n';
   message+='• ritten in dezelfde straat\\n';
