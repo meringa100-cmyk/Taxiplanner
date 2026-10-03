@@ -1272,8 +1272,14 @@ function renderRealMapMarkers(){
     });
     if(!rides.length)return;
 
-    const coords=rides.map((k,i)=>coordForKid(k,driverNames.indexOf(d),i));
-    // Draw the route in exact planner-volgorde: eerste rit, daarna dichtstbijzijnde haalbare stop.
+    // coordForKid werkt in [lon,lat] zodat OSRM ermee kan rekenen.
+    // Leaflet verwacht voor markers/lijnen juist [lat,lon].
+    const coords=rides.map((k,i)=>{
+      const p=coordForKid(k,driverNames.indexOf(d),i);
+      return [p[1],p[0]];
+    });
+
+    // Teken per chauffeur de volledige route in exact de geoptimaliseerde volgorde.
     if(coords.length>1){
       const line=L.polyline(coords,{weight:5,opacity:.75});
       line.addTo(realMap);routeLines.push(line);routeCount++;
