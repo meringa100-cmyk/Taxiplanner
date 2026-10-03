@@ -586,7 +586,7 @@ function startPlannerAutomation(){
 
 
 
-const STORAGE_KEY='taxiPlannerStateV730';
+const STORAGE_KEY='taxiPlannerStateV731';
 
 function saveState(){
  try{
@@ -617,17 +617,23 @@ function loadState(){
 
 function seed(){
  kids=[];
- const demoTimes=Array.from({length:100},(_,i)=>420+((i%8)*10));
+ const demoTimes=Array.from({length:100},(_,i)=>420+(Math.floor(i/4)%8)*10);
  for(let i=0;i<100;i++){
   const school=schools[i%schools.length];
+  const n=i+1;
+  // Compact demo coordinates around Emmen: deliberately close enough to test
+  // full 8-child buses without artificial Drenthe-wide travel times.
+  const lat=52.772 + ((n*7)%29)*0.0010;
+  const lon=6.862 + ((n*11)%55)*0.0010;
   kids.push({
-   id:'k'+(i+1),
-   name:names[i%names.length]+' '+(i+1),
+   id:'k'+n,
+   name:names[i%names.length]+' '+n,
    timeMin:demoTimes[i],
    time:fmtTime(demoTimes[i]),
    address:streets[i%streets.length]+' '+(10+i),
    school,
    destination:school,
+   lat,lon,
    driver:driverNames[Math.floor(i/8)],
    fixed:i<35,
    status:'waiting',
@@ -637,7 +643,6 @@ function seed(){
   });
  }
 }
-
 function fmtTime(m){return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0')}
 function statusText(s){return ({waiting:'Wachtend',picked:'Onderweg',school:'Op school',absent:'🚫 Afgemeld',loose:'📋 Loosmelding'})[s]||s}
 function active(k){return k.status==='waiting'||k.status==='picked'}
@@ -1492,42 +1497,31 @@ function runAI(silent=false){
   const groups=[];
   const unplanned=[];
 
-  // Maak per school zo groot mogelijke groepen. Als een 8e kind een harde
-  // routevoorwaarde breekt, wordt de groep op dat punt gesplitst.
+  // Maak per school groepen door verschillende ophaaltijden over dezelfde
+  // bus te verdelen. Zo voorkom je dat drie kinderen van dezelfde school met
+  // exact dezelfde tijd elkaar blokkeren en blijven 8 verschillende tijdsloten
+  // beschikbaar voor één volle bus.
   for(const arr of Object.values(bySchool)){
-    let group=[];
-    for(const k of arr){
-      if(!schoolDeadlineOk(k)){
-        unplanned.push(k);
-        continue;
-      }
-      if(group.length<MAX && groupSchool(group,k)){
-        const trial=[...group,k];
-        const fakeDriver=driverNames.find(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d));
-        // Bij het groeperen controleren we route-intern zonder bestaande chauffeurroute.
-        const ordered=trial.slice().sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
-        let ok=true;
-        for(let i=1;i<ordered.length;i++){
-          if((ordered[i].timeMin||0)===(ordered[i-1].timeMin||0))ok=false;
-          const gap=(ordered[i].timeMin||0)-(ordered[i-1].timeMin||0);
-          const travel=routeMinutesBetween(ordered[i-1],ordered[i],driverNames.indexOf(fakeDriver));
-          if(gap<0 || travel>gap+15)ok=false;
-        }
-        if(ok && routeDurationEstimate(ordered,driverNames.indexOf(fakeDriver))<=MAX_ROUTE_MINUTES){
-          group=trial;
-          continue;
-        }
-      }
-      if(group.length){
-        groups.push(group);
-        group=[k];
-      }else{
-        group=[k];
-      }
-    }
-    if(group.length)groups.push(group);
-  }
+    const buckets=new Map();
+    arr.forEach(k=>{
+      const t=Number(k.timeMin)||0;
+      if(!buckets.has(t))buckets.set(t,[]);
+      buckets.get(t).push(k);
+    });
 
+    const times=[...buckets.keys()].sort((a,b)=>a-b);
+    while(times.some(t=>(buckets.get(t)||[]).length)){
+      const group=[];
+      for(const t of times){
+        const bucket=buckets.get(t);
+        if(bucket && bucket.length && group.length<MAX){
+          group.push(bucket.shift());
+        }
+      }
+      if(group.length)groups.push(group);
+      else break;
+    }
+  }
   // Groepen eerst zo vol mogelijk plaatsen. Bij een bestaande picked-route
   // wordt alleen een groep geaccepteerd als de volledige route haalbaar blijft.
   groups.sort((a,b)=>b.length-a.length);
@@ -2118,7 +2112,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=730").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=731").catch(()=>{}));}
 </script>
 
 </body>
