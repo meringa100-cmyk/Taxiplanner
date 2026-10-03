@@ -1025,9 +1025,10 @@ async function geocodeEmmenAddresses(){
   for(let pi=0;pi<drenthePlaces.length;pi++){
     const place=drenthePlaces[pi];
     try{
-      const q=encodeURIComponent(place+', Drenthe');
+      const q=encodeURIComponent('*');
+      const fq=encodeURIComponent('type:adres AND woonplaatsnaam:"'+place+'"');
       const url='https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?q='+q+
-        '&rows=10&fq=type:adres&fl=weergavenaam,centroide_ll';
+        '&rows=20&fq='+fq+'&fl=weergavenaam,centroide_ll,woonplaatsnaam';
       const res=await fetch(url);
       if(!res.ok)continue;
       const data=await res.json();
@@ -1056,9 +1057,10 @@ async function geocodeEmmenAddresses(){
     for(const place of fallbackPlaces){
       if(found.length>=kids.length)break;
       try{
-        const q=encodeURIComponent('adres '+place+', Drenthe');
+        const q=encodeURIComponent('*');
+        const fq=encodeURIComponent('type:adres AND woonplaatsnaam:"'+place+'"');
         const url='https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?q='+q+
-          '&rows=50&fq=type:adres&fl=weergavenaam,centroide_ll';
+          '&rows=50&fq='+fq+'&fl=weergavenaam,centroide_ll,woonplaatsnaam';
         const res=await fetch(url);
         if(!res.ok)continue;
         const data=await res.json();
