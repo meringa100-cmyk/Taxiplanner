@@ -1009,7 +1009,7 @@ async function geocodeEmmenAddresses(){
 
   // Alleen opnieuw ophalen wanneer de huidige demo-adressen nog niet uit
   // de Drenthe/BAG-bron komen. Zo blijven handmatig gewijzigde adressen intact.
-  const ADDRESS_GEO_VERSION='drenthe-v2';
+  const ADDRESS_GEO_VERSION='drenthe-v3';
   const needsRefresh=kids.some(k=>k.addressGeoVersion!==ADDRESS_GEO_VERSION);
   if(!needsRefresh && kids.every(k=>Number.isFinite(k.lat)&&Number.isFinite(k.lon))){
     addressesReady=true;
@@ -1026,8 +1026,8 @@ async function geocodeEmmenAddresses(){
   for(let pi=0;pi<drenthePlaces.length;pi++){
     const place=drenthePlaces[pi];
     try{
-      const q=encodeURIComponent('*');
-      const fq=encodeURIComponent('type:adres AND woonplaatsnaam:"'+place+'"');
+      const q=encodeURIComponent(place);
+      const fq=encodeURIComponent('type:adres');
       const url='https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?q='+q+
         '&rows=20&fq='+fq+'&fl=weergavenaam,centroide_ll,woonplaatsnaam';
       const res=await fetch(url);
@@ -1060,8 +1060,8 @@ async function geocodeEmmenAddresses(){
     for(const place of fallbackPlaces){
       if(found.length>=kids.length)break;
       try{
-        const q=encodeURIComponent('*');
-        const fq=encodeURIComponent('type:adres AND woonplaatsnaam:"'+place+'"');
+        const q=encodeURIComponent(place);
+        const fq=encodeURIComponent('type:adres');
         const url='https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?q='+q+
           '&rows=50&fq='+fq+'&fl=weergavenaam,centroide_ll,woonplaatsnaam';
         const res=await fetch(url);
