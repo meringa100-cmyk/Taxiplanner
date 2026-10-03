@@ -840,6 +840,7 @@ async function runDayStartCheck(){
   const unassigned=kids.filter(k=>active(k)&&!k.driver);
   const overloaded=driverNames.filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d)&&load(d)>MAX);
   const routeProblems=[];
+  const routeConflictDetails=[];
   const longRoutes=[];
   const deadlineProblems=[];
 
@@ -859,7 +860,16 @@ async function runDayStartCheck(){
     for(let i=1;i<q.length;i++){
       const gap=(q[i].timeMin||0)-(q[i-1].timeMin||0);
       const travel=routeMinutesBetween(q[i-1],q[i],di);
-      if(gap===0 || (gap>=0&&travel>gap+15))routeProblems.push(d);
+      if(gap===0 || (gap>=0&&travel>gap+15)){
+        routeProblems.push(d);
+        routeConflictDetails.push({
+          driver:d,
+          prev:q[i-1],
+          cur:q[i],
+          gap,
+          travel
+        });
+      }
     }
   });
 
@@ -881,8 +891,14 @@ async function runDayStartCheck(){
     const details=uniqueRouteDrivers.map(d=>
       d+' ('+routeCounts[d]+' conflict'+(routeCounts[d]===1?'':'en')+')'
     ).join(', ');
+    const conflictDetails=routeConflictDetails.map(x=>{
+      const p=x.prev?.time || fmtTime(x.prev?.timeMin||0);
+      const q=x.cur?.time || fmtTime(x.cur?.timeMin||0);
+      return x.driver+' · '+p+' → '+q+' · '+x.gap+' min ruimte / '+x.travel+' min reistijd';
+    }).join('<br>↳ ');
     summary+='<div class="daystart-item">🛣️ '+uniqueRouteDrivers.length+' chauffeur'+(uniqueRouteDrivers.length===1?'':'s')+' met routeconflicten.</div>'+
-      '<div class="daystart-item daystart-detail">↳ '+details+'</div>';
+      '<div class="daystart-item daystart-detail">↳ '+details+'</div>'+
+      '<div class="daystart-item daystart-detail" style="font-size:.92em">↳ '+conflictDetails+'</div>';
   }
   if(longRoutes.length)summary+='<div class="daystart-item">⏱️ '+longRoutes.length+' route'+(longRoutes.length===1?'':'s')+' langer dan 90 minuten.</div>';
   if(uniqueDeadlineDrivers.length){
