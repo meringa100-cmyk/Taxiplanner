@@ -1217,26 +1217,8 @@ async function calculateRealRoutes(){
       });
       if(rides.length<2)continue;
 
-      const coords=rides.map((k,i)=>coordForDriverStop(driverNames.indexOf(d),i));
-
-      // Use OSRM Trip for efficient ordering, then Route for the road-following geometry.
-      let ordered=rides;
-      try{
-        const trip=await osrmTrip(coords);
-        const waypoints=trip.trips[0].waypoints||[];
-        if(waypoints.length===rides.length){
-          // OSRM returns waypoints in input order; waypoint_index tells us
-          // their position in the optimized trip. Keep the original index.
-          ordered=waypoints
-            .map((w,inputIndex)=>({w,inputIndex}))
-            .sort((a,b)=>a.w.waypoint_index-b.w.waypoint_index)
-            .map(x=>rides[x.inputIndex])
-            .filter(Boolean);
-        }
-      }catch(e){
-        // Fall back to the planner's time order if optimization is unavailable.
-      }
-
+      // De kaart volgt exact de routevolgorde die de planner heeft berekend.
+      const ordered=rides;
       const routeCoords=ordered.map((k,i)=>coordForKid(k,driverNames.indexOf(d),i));
       const route=await osrmRoute(routeCoords);
       const line=L.geoJSON(route.geometry,{style:{weight:6,opacity:.85}});
@@ -1281,11 +1263,15 @@ function renderRealMapMarkers(){
   let routeCount=0;
 
   visibleDrivers.forEach((d,di)=>{
-    const rides=kids.filter(k=>k.driver===d && active(k)).sort((a,b)=>a.timeMin-b.timeMin);
+    const rides=kids.filter(k=>k.driver===d && active(k)).sort((a,b)=>{
+      const ao=Number.isFinite(a.routeOrder)?a.routeOrder:9999;
+      const bo=Number.isFinite(b.routeOrder)?b.routeOrder:9999;
+      return ao-bo || a.timeMin-b.timeMin;
+    });
     if(!rides.length)return;
 
-    const coords=rides.map((k,i)=>points[(driverNames.indexOf(d)+i)%points.length]);
-    // Draw the route in the same order as the planner's pickup times.
+    const coords=rides.map((k,i)=>coordForKid(k,driverNames.indexOf(d),i));
+    // Draw the route in exact planner-volgorde: eerste rit, daarna dichtstbijzijnde haalbare stop.
     if(coords.length>1){
       const line=L.polyline(coords,{weight:5,opacity:.75});
       line.addTo(realMap);routeLines.push(line);routeCount++;
@@ -1309,7 +1295,7 @@ function renderRealMapMarkers(){
   const info=document.getElementById('routeInfo');
   if(info) info.textContent=chosen==='ALL'
     ? `${routeCount} actieve demo-routes zichtbaar. Nummers = volgorde van de stops.`
-    : `${routeCount?'Route':''} van ${chosen}: stops zijn gesorteerd op ophaaltijd.`;
+    : `${routeCount?'Route':''} van ${chosen}: stops volgen de geoptimaliseerde rijvolgorde.`;
 }
 
 function showAllRoutes(){
