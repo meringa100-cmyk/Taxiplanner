@@ -1090,6 +1090,9 @@ async function geocodeEmmenAddresses(){
   });
 
   addressesReady=assigned===kids.length;
+  // Bewaar de echte BAG-adressen en coordinaten ook in de planner-state.
+  // Anders zouden ze na een refresh weer verdwijnen.
+  if(assigned>0) saveState();
   if(info)info.textContent='📍 '+assigned+' van '+kids.length+' kinderen gekoppeld aan echte BAG-adressen verspreid over Drenthe.';
   renderRealMapMarkers();
 
