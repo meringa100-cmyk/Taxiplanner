@@ -1236,6 +1236,60 @@ async function calculateRealRoutes(){
   }
 }
 
+async function geocodeEmmenAddresses(){
+  // V71.9: volledig lokale demo-adressen. Geen externe geocoder meer.
+  // Hierdoor kan één plaats nooit alle kinderen overnemen.
+  const drenthePlaces=[
+    ['Assen','Stationsstraat',53.000,6.562],
+    ['Emmen','Hondsrugweg',52.785,6.897],
+    ['Hoogeveen','Hoofdstraat',52.725,6.476],
+    ['Meppel','Hoofdstraat',52.695,6.194],
+    ['Coevorden','Friesestraat',52.662,6.740],
+    ['Beilen','Brinkstraat',52.863,6.513],
+    ['Borger','Hoofdstraat',52.923,6.794],
+    ['Dwingeloo','Brink',52.834,6.370],
+    ['Diever','Hoofdstraat',52.855,6.290],
+    ['Eelde','Hoofdweg',53.135,6.562],
+    ['Gieten','Stationsstraat',53.005,6.760],
+    ['Gasselte','Dorpsstraat',52.971,6.795],
+    ['Klazienaveen','Langestraat',52.725,6.991],
+    ['Nieuw-Amsterdam','Vaart NZ',52.711,6.854],
+    ['Erica','Verlengde Vaart ZZ',52.711,6.928],
+    ['Schoonebeek','Europaweg',52.662,6.884],
+    ['Oosterhesselen','Burgemeester de Kockstraat',52.755,6.724],
+    ['Ruinen','Brink',52.762,6.355],
+    ['Roden','Heerestraat',53.137,6.428],
+    ['Peize','Hoofdstraat',53.146,6.496],
+    ['Zuidlaren','Stationsweg',53.094,6.681],
+    ['Vries','Dorpsstraat',53.074,6.578],
+    ['Smilde','Hoofdweg',52.948,6.448],
+    ['Westerbork','Hoofdstraat',52.851,6.607],
+    ['Zuidwolde','Hoofdstraat',52.668,6.420]
+  ];
+  const ADDRESS_GEO_VERSION='drenthe-v5';
+  const info=document.getElementById('routeInfo');
+  const perPlace=Math.ceil(kids.length/drenthePlaces.length);
+  kids.forEach((k,i)=>{
+    const placeIndex=Math.floor(i/perPlace)%drenthePlaces.length;
+    const p=drenthePlaces[placeIndex];
+    const nr=10+(i%perPlace)*2;
+    const offset=(i%perPlace)-((perPlace-1)/2);
+    k.address=p[1]+' '+nr+', '+p[0];
+    k.lat=p[2]+offset*0.0012;
+    k.lon=p[3]+offset*0.0015;
+    k.addressSource='DEMO-Drenthe';
+    k.addressGeoVersion=ADDRESS_GEO_VERSION;
+  });
+  addressesReady=kids.length>0;
+  saveState();
+  if(info)info.textContent='📍 '+kids.length+' kinderen verdeeld over '+drenthePlaces.length+' plaatsen in Drenthe.';
+  try{renderRealMapMarkers();}catch(e){}
+  if(realMap){
+    const pts=kids.filter(k=>Number.isFinite(k.lat)&&Number.isFinite(k.lon)).map(k=>[k.lat,k.lon]);
+    if(pts.length)realMap.fitBounds(pts,{padding:[25,25],maxZoom:11});
+  }
+}
+
 function renderRealMapMarkers(){
   if(!realMap)return;
   mapMarkers.forEach(m=>realMap.removeLayer(m));
