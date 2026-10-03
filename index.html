@@ -1270,8 +1270,14 @@ function renderRealMapMarkers(){
     });
     if(!rides.length)return;
 
-    const coords=rides.map((k,i)=>coordForKid(k,driverNames.indexOf(d),i));
-    // Draw the route in exact planner-volgorde: eerste rit, daarna dichtstbijzijnde haalbare stop.
+    // coordForKid werkt in [lon,lat] zodat OSRM ermee kan rekenen.
+    // Leaflet verwacht voor markers/lijnen juist [lat,lon].
+    const coords=rides.map((k,i)=>{
+      const p=coordForKid(k,driverNames.indexOf(d),i);
+      return [p[1],p[0]];
+    });
+
+    // Teken per chauffeur de volledige route in exact de geoptimaliseerde volgorde.
     if(coords.length>1){
       const line=L.polyline(coords,{weight:5,opacity:.75});
       line.addTo(realMap);routeLines.push(line);routeCount++;
@@ -1280,14 +1286,15 @@ function renderRealMapMarkers(){
     rides.forEach((assigned,i)=>{
       const p=coords[i];
       const color=assigned.status==='picked'?'#d97706':'#1769aa';
+      const childNumber=String(i+1);
       const icon=L.divIcon({
         className:'',
-        html:`<div style="width:36px;height:36px;border-radius:50%;background:${color};color:#fff;border:3px solid #fff;box-shadow:0 2px 7px #0006;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:bold">${i+1}</div>`,
+        html:`<div style="width:36px;height:36px;border-radius:50%;background:${color};color:#fff;border:3px solid #fff;box-shadow:0 2px 7px #0006;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:bold">${childNumber}</div>`,
         iconSize:[36,36],iconAnchor:[18,18]
       });
       const m=L.marker(p,{icon}).addTo(realMap);
-      m.bindTooltip(`${d} • stop ${i+1}`,{direction:'top'});
-      m.bindPopup(`<b>${d}</b><br>Stop ${i+1}<br>${assigned.name}<br>${assigned.time}<br>${statusText(assigned.status)}<br><button onclick="openDriverDetails('${d}')">Chauffeurdetails</button>`);
+      m.bindTooltip(`${d} • route-stop ${i+1}`,{direction:'top'});
+      m.bindPopup(`<b>${d}</b><br>Route-stop ${i+1}<br>${assigned.name}<br>${assigned.time}<br>${statusText(assigned.status)}<br><button onclick="openDriverDetails('${d}')">Chauffeurdetails</button>`);
       mapMarkers.push(m);
     });
   });
