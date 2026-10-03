@@ -720,6 +720,10 @@ function renderAttention(){
 }
 async function runDayStartCheck(){
   const box=document.getElementById('dayStartCheck');
+  // Iedere klik voert bewust een volledig nieuwe controle uit.
+  try{ if(typeof renderAll==='function') renderAll(); }catch(e){ console.warn('Dagstart refresh',e); }
+  try{ if(typeof saveState==='function') saveState(); }catch(e){}
+  if(box) box.dataset.runId=String(Date.now());
   if(!box)return;
   box.innerHTML='<div class="daystart-result daystart-warn"><b>🔎 Dagstartcontrole bezig…</b><div class="small muted">Beschikbaarheid en route/tijdconflicten worden gecontroleerd.</div></div>';
 
