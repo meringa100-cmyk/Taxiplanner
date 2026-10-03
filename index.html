@@ -1903,7 +1903,11 @@ function addRide(){
 function find(id){return kids.find(k=>k.id===id)}
 function closeModal(){document.getElementById('modal').classList.add('hidden')}
 document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
-try{if(!loadState())seed();}catch(e){console.error('Taxi Planner state error:',e);seed();}renderAll();startPlannerAutomation();
+try{if(!loadState())seed();}catch(e){console.error('Taxi Planner state error:',e);seed();}
+renderAll();
+startPlannerAutomation();
+// Haal de echte BAG-adressen van heel Drenthe ook op zonder dat de Live-kaart eerst geopend hoeft te worden.
+setTimeout(()=>{try{geocodeEmmenAddresses();}catch(e){console.warn('Drenthe-adressen:',e);}},500);
 </script>
 
 
