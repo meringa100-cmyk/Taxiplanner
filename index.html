@@ -586,7 +586,7 @@ function startPlannerAutomation(){
 
 
 
-const STORAGE_KEY='taxiPlannerStateV734';
+const STORAGE_KEY='taxiPlannerStateV735';
 
 function saveState(){
  try{
@@ -594,6 +594,24 @@ function saveState(){
    kids,driverUnavailable,busIssues,replacementAssignments,replacementSeq,demoCounter,parentDriverChanges
   }));
  }catch(e){}
+}
+
+function normalizeBuiltInDemo(){
+  // Herstel alleen de ingebouwde 100-kind demo als er door een oude
+  // planner/cache kinderen zonder chauffeur zijn blijven staan.
+  const demoKids=kids.filter(k=>/^k\\d+$/.test(String(k.id)));
+  const isDemo=kids.length===100 && demoKids.length===100 &&
+    demoKids.every(k=>k.status==='waiting');
+  if(!isDemo)return false;
+
+  let changed=false;
+  demoKids.forEach(k=>{
+    const n=parseInt(String(k.id).slice(1),10);
+    const wanted=driverNames[Math.floor((n-1)/8)]||'';
+    if(k.driver!==wanted){k.driver=wanted;changed=true;}
+    k.routeOrder=(n-1)%8+1;
+  });
+  return changed;
 }
 
 function loadState(){
@@ -609,6 +627,7 @@ function loadState(){
   parentDriverChanges=state.parentDriverChanges||{};
   replacementSeq=Number(state.replacementSeq)||1;
   demoCounter=Number(state.demoCounter)||101;
+  normalizeBuiltInDemo();
   return true;
  }catch(e){
   return false;
@@ -2226,7 +2245,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=734").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=735").catch(()=>{}));}
 </script>
 
 </body>
