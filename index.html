@@ -432,7 +432,7 @@ async function validateRouteMinutes(driver, rides){
   }
 }
 
-async function redistributeUnavailableDriver(brokenDriver){
+async function redistributeUnavailableDriver(brokenDriver,changeReason='ziek/niet beschikbaar'){
   const affected=activeUnassignedForDriver(brokenDriver).sort((a,b)=>a.timeMin-b.timeMin);
   const originalDrivers=new Map(affected.map(k=>[k.id,brokenDriver]));
   if(!affected.length)return {moved:0,drivers:0};
@@ -527,7 +527,7 @@ async function redistributeUnavailableDriver(brokenDriver){
   affected.forEach(k=>{
     const oldDriver=originalDrivers.get(k.id);
     if(oldDriver && k.driver && k.driver!==oldDriver){
-      parentDriverChanges[k.id]={from:oldDriver,to:k.driver,reason:'ziek/niet beschikbaar',at:Date.now()};
+      parentDriverChanges[k.id]={from:oldDriver,to:k.driver,reason:changeReason,at:Date.now()};
     }
   });
   return {moved,drivers:[...groups.values()].filter(g=>g.some(k=>affected.some(a=>a.id===k.id))).length};
@@ -1403,16 +1403,26 @@ function reportBusIssue(d){
   document.getElementById('modal').classList.remove('hidden');
 }
 
-function saveBusIssue(d,reason){
+async function saveBusIssue(d,reason){
   const bus=busForDriver(d);
   busIssues[d]={reason:reason,at:Date.now(),bus:bus};
 
-  // Existing automatic planning logic stays active for waiting, non-fixed rides.
-  const moved=autoReplan();
-  createReplacementTrip(d);
+  // Bus kapot = chauffeur kan de route niet meer uitvoeren.
+  // Verdeel daarom direct ALLE actieve kinderen, ook vaste chauffeurrelaties.
+  // De chauffeur blijft zichtbaar, maar heeft geen actieve kinderen meer.
+  renderAll();
+  logPlannerAutomation('⏳ Automatische herverdeling gestart voor '+d+' wegens busstoring…');
+
+  const result=await redistributeUnavailableDriver(d,'busstoring');
   renderAll();
 
-  showBusReplacement(d,moved);
+  if(result.moved){
+    logPlannerAutomation('🚌 '+bus+' storing: '+result.moved+' kinderen automatisch verdeeld over '+result.drivers+' beschikbare chauffeurs.');
+  }else{
+    logPlannerAutomation('⚠️ '+bus+' storing: kinderen konden niet automatisch worden verdeeld.');
+  }
+
+  showBusReplacement(d,result.moved);
 }
 
 
