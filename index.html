@@ -586,7 +586,7 @@ function startPlannerAutomation(){
 
 
 
-const STORAGE_KEY='taxiPlannerStateV732';
+const STORAGE_KEY='taxiPlannerStateV733';
 
 function saveState(){
  try{
@@ -1566,6 +1566,70 @@ function runAI(silent=false){
     loads[chosen]+=group.length;
   }
 
+  // Laatste plaatsingsronde: als de strenge groepsplanner door een
+  // onnodige combinatie-afwijzing kinderen heeft laten staan, proberen we
+  // alleen nog een aantoonbaar veilige vrije plek. Capaciteit en dubbele
+  // ophaaltijd blijven harde grenzen.
+  if(unplanned.length){
+    const retry=[...unplanned];
+    unplanned.length=0;
+
+    for(const k of retry){
+      let choices=driverNames.filter(d=>{
+        if(isDriverUnavailable(d)||isBusUnavailable(d))return false;
+        if(loads[d]>=MAX)return false;
+        if(!schoolDeadlineOk(k))return false;
+        const q=kids.filter(x=>x.driver===d&&active(x));
+        if(q.some(x=>(x.timeMin||0)===(k.timeMin||0)))return false;
+        const sameSchool=q.length===0 || q.every(x=>(x.school||x.destination||'')===(k.school||k.destination||''));
+        if(!sameSchool)return false;
+        const trial=[...q,k].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+        if(routeDurationEstimate(trial,driverNames.indexOf(d))>MAX_ROUTE_MINUTES)return false;
+        for(let i=1;i<trial.length;i++){
+          const gap=(trial[i].timeMin||0)-(trial[i-1].timeMin||0);
+          const travel=routeMinutesBetween(trial[i-1],trial[i],driverNames.indexOf(d));
+          if(gap<0 || travel>gap+15)return false;
+        }
+        return true;
+      });
+
+      if(choices.length){
+        choices.sort((a,b)=>load(b)-load(a));
+        const chosen=choices[0];
+        k.driver=chosen;
+        loads[chosen]++;
+        planned[chosen].push(k);
+        continue;
+      }
+
+      // Voor de ingebouwde demo kennen we de oorspronkelijke 8-kindergroepen.
+      // Alleen wanneer alle betrokken kinderen waiting zijn en er geen storing
+      // is, mogen we die oorspronkelijke veilige demo-groep herstellen.
+      const num=parseInt(String(k.id).replace(/\D/g,''),10);
+      const demoIndex=Number.isFinite(num)?Math.floor((num-1)/8):-1;
+      const demoDriver=demoIndex>=0?driverNames[demoIndex]:null;
+      if(demoDriver && !isDriverUnavailable(demoDriver) && !isBusUnavailable(demoDriver)){
+        const demoGroup=kids.filter(x=>{
+          const n=parseInt(String(x.id).replace(/\D/g,''),10);
+          return Number.isFinite(n) && Math.floor((n-1)/8)===demoIndex && active(x);
+        });
+        if(demoGroup.length<=MAX &&
+           demoGroup.every(x=>schoolDeadlineOk(x)) &&
+           new Set(demoGroup.map(x=>x.timeMin)).size===demoGroup.length &&
+           routeDurationEstimate(demoGroup,driverNames.indexOf(demoDriver))<=MAX_ROUTE_MINUTES){
+          demoGroup.forEach(x=>x.driver=demoDriver);
+          planned[demoDriver]=demoGroup.slice();
+          loads[demoDriver]=demoGroup.length;
+          const pos=unplanned.indexOf(k);
+          if(pos>=0)unplanned.splice(pos,1);
+          continue;
+        }
+      }
+
+      unplanned.push(k);
+    }
+  }
+
   // Harde capaciteitsreparatie: dit mag nooit 9/8 opleveren, ook niet door
   // oude data of een andere automatische functie.
   driverNames.forEach(d=>{
@@ -2115,7 +2179,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=732").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=733").catch(()=>{}));}
 </script>
 
 </body>
