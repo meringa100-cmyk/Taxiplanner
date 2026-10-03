@@ -1295,11 +1295,9 @@ function renderRealMapMarkers(){
   const visibleDrivers=chosen==='ALL'?driverNames:[chosen];
 
   visibleDrivers.forEach((d)=>{
-    const rides=kids.filter(k=>k.driver===d && active(k)).sort((a,b)=>{
-      const ao=Number.isFinite(a.routeOrder)?a.routeOrder:9999;
-      const bo=Number.isFinite(b.routeOrder)?b.routeOrder:9999;
-      return ao-bo || a.timeMin-b.timeMin;
-    });
+    // Gebruik exact dezelfde rittenlijst als het chauffeurscherm.
+    // Zo kan de kaart nooit minder actieve kinderen tonen dan de chauffeur.
+    const rides=getDriverQueue(d);
     if(!rides.length)return;
 
     // Alleen echte adressen/coördinaten gebruiken. De rechte demo-lijnen
@@ -1323,8 +1321,8 @@ function renderRealMapMarkers(){
 
   const info=document.getElementById('routeInfo');
   if(info) info.textContent=chosen==='ALL'
-    ? '📍 Stops weergegeven. Echte routes worden over het wegennet berekend…'
-    : '📍 Stops van '+chosen+' weergegeven. Echte route wordt over het wegennet berekend.';
+    ? '📍 '+visibleDrivers.reduce((n,d)=>n+getDriverQueue(d).length,0)+' actieve kinderen / stops weergegeven. Echte routes worden over het wegennet berekend…'
+    : '📍 '+getDriverQueue(chosen).length+' actieve kinderen / stops voor '+chosen+'. Echte route wordt over het wegennet berekend.';
 
   // Eén keer na het tekenen van de markers de echte wegroute ophalen.
   // Geen rechte lijnen meer tussen adressen.
