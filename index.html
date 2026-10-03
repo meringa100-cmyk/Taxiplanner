@@ -1065,7 +1065,7 @@ function coordForKid(k, driverIndex, stopIndex){
   const baseRides=kids.filter(x=>x.driver===d && active(x)).sort((a,b)=>a.timeMin-b.timeMin);
   const baseIndex=baseRides.indexOf(k);
   const pos=baseIndex>=0?baseIndex:stopIndex;
-  return realRoadPoints[(driverIndex+pos)%realRoadPoints.length;');
+  return realRoadPoints[(driverIndex+pos)%realRoadPoints.length];');
   const url='https://router.project-osrm.org/route/v1/driving/'+joined+
     '?overview=full&geometries=geojson&steps=true';
   const res=await fetch(url);
