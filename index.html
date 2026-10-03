@@ -586,7 +586,7 @@ function startPlannerAutomation(){
 
 
 
-const STORAGE_KEY='taxiPlannerStateV735';
+const STORAGE_KEY='taxiPlannerStateV736';
 
 function saveState(){
  try{
@@ -599,7 +599,7 @@ function saveState(){
 function normalizeBuiltInDemo(){
   // Herstel alleen de ingebouwde 100-kind demo als er door een oude
   // planner/cache kinderen zonder chauffeur zijn blijven staan.
-  const demoKids=kids.filter(k=>/^k\\d+$/.test(String(k.id)));
+  const demoKids=kids.filter(k=>String(k.id).startsWith('k') && /^[0-9]+$/.test(String(k.id).slice(1)));
   const isDemo=kids.length===100 && demoKids.length===100 &&
     demoKids.every(k=>k.status==='waiting');
   if(!isDemo)return false;
@@ -2245,7 +2245,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=735").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=736").catch(()=>{}));}
 </script>
 
 </body>
