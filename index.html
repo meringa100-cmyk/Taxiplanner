@@ -586,7 +586,7 @@ function startPlannerAutomation(){
 
 
 
-const STORAGE_KEY='taxiPlannerStateV744';
+const STORAGE_KEY='taxiPlannerStateV746';
 
 function saveState(){
  try{
@@ -875,9 +875,28 @@ async function runDayStartCheck(){
   if(broken.length)summary+='<div class="daystart-item">🚌 '+broken.length+' bus'+(broken.length===1?'':'sen')+' met storing.</div>';
   if(unassigned.length)summary+='<div class="daystart-item">⚠️ '+unassigned.length+' rit'+(unassigned.length===1?'':'ten')+' zonder chauffeur.</div>';
   if(overloaded.length)summary+='<div class="daystart-item">🔴 '+overloaded.length+' chauffeur'+(overloaded.length===1?'':'s')+' boven de capaciteit.</div>';
-  if(uniqueRouteDrivers.length)summary+='<div class="daystart-item">🛣️ '+uniqueRouteDrivers.length+' chauffeur'+(uniqueRouteDrivers.length===1?'':'s')+' met routeconflicten.</div>';
+  if(uniqueRouteDrivers.length){
+    const routeCounts={};
+    routeProblems.forEach(d=>routeCounts[d]=(routeCounts[d]||0)+1);
+    const details=uniqueRouteDrivers.map(d=>
+      d+' ('+routeCounts[d]+' conflict'+(routeCounts[d]===1?'':'en')+')'
+    ).join(', ');
+    summary+='<div class="daystart-item">🛣️ '+uniqueRouteDrivers.length+' chauffeur'+(uniqueRouteDrivers.length===1?'':'s')+' met routeconflicten.</div>'+
+      '<div class="daystart-item daystart-detail">↳ '+details+'</div>';
+  }
   if(longRoutes.length)summary+='<div class="daystart-item">⏱️ '+longRoutes.length+' route'+(longRoutes.length===1?'':'s')+' langer dan 90 minuten.</div>';
-  if(uniqueDeadlineDrivers.length)summary+='<div class="daystart-item">🏫 '+uniqueDeadlineDrivers.length+' chauffeur'+(uniqueDeadlineDrivers.length===1?'':'s')+' met een schooldeadline-probleem.</div>';
+  if(uniqueDeadlineDrivers.length){
+    const deadlineCounts={};
+    deadlineProblems.forEach(k=>{
+      const d=k.driver||'Onbekend';
+      deadlineCounts[d]=(deadlineCounts[d]||0)+1;
+    });
+    const details=uniqueDeadlineDrivers.map(d=>
+      d+' ('+deadlineCounts[d]+' kind'+(deadlineCounts[d]===1?'':'eren')+')'
+    ).join(', ');
+    summary+='<div class="daystart-item">🏫 '+uniqueDeadlineDrivers.length+' chauffeur'+(uniqueDeadlineDrivers.length===1?'':'s')+' met een schooldeadline-probleem.</div>'+
+      '<div class="daystart-item daystart-detail">↳ '+details+'</div>';
+  }
 
   box.innerHTML='<div class="daystart-result '+status+'">'+
     '<h3 style="margin:0">🔎 Dagstartcontrole — '+(totalIssues?'Aandacht nodig':'Alles in orde')+'</h3>'+
@@ -2378,7 +2397,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=744").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=746").catch(()=>{}));}
 </script>
 
 </body>
