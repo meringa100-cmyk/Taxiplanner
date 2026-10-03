@@ -1494,15 +1494,18 @@ function runAI(){
   function assignmentCost(k,d){
     let cost=0;
 
-    // Een bestaande vaste relatie heeft sterke voorkeur.
+    // Een bestaande vaste relatie heeft sterke voorkeur, maar nooit ten koste
+    // van een harde veiligheids-/routevoorwaarde.
     if(k.fixed){
       cost += d===k.driver ? 0 : 10000;
     }
 
-    // Vul bestaande bussen eerst, maar alleen als de rit haalbaar blijft.
-    cost += loads[d]*2;
+    const trial=[...planned[d],k].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+    const routeMin=routeDurationEstimate(trial,driverNames.indexOf(d));
 
-    // Houd de AI-score als tweede criterium.
+    // Kies bij gelijke haalbaarheid de chauffeur met de kortste totale route.
+    cost += routeMin*5;
+    cost += loads[d]*2;
     cost += aiScore(d,k,loads)*0.01;
 
     return cost;
@@ -1553,6 +1556,10 @@ function runAI(){
     const q=kids.filter(k=>k.driver===d&&active(k))
       .sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
 
+    if(routeDurationEstimate(q,driverNames.indexOf(d))>MAX_ROUTE_MINUTES){
+      conflicts.push(d+' • totale route is langer dan '+MAX_ROUTE_MINUTES+' minuten');
+    }
+
     for(const k of q){
       if(!schoolDeadlineOk(k)){
         conflicts.push(d+' • '+k.name+' → school deadline 08:30');
@@ -1576,7 +1583,7 @@ function runAI(){
   message+='• maximale route per chauffeur: 90 minuten\\n';
   message+='• voldoende reistijd tussen opeenvolgende stops\\n';
   message+='• ±15 minuten aankomsttolerantie\\n';
-  message+='• vaste chauffeur-kindrelaties eerst behouden\\n';
+  message+='• vaste chauffeur-kindrelaties eerst behouden, zolang alle harde regels haalbaar blijven\\n';
 
   if(movedFixed.length){
     message+='\\n⚠️ '+movedFixed.length+' vaste relatie(s) zijn verplaatst omdat de oorspronkelijke combinatie qua tijd/reistijd niet haalbaar was.';
@@ -2047,7 +2054,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=722").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=723").catch(()=>{}));}
 </script>
 
 </body>
