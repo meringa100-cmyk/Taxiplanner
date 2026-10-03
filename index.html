@@ -316,6 +316,33 @@ const MAX=8;
 const driverNames=["Jan de Vries — 1001","Peter Jansen — 1002","Mark Smit — 1003","Erik Bakker — 1004","Ronald Meijer — 1005","Dennis Mulder — 1006","Patrick Visser — 1007","Richard Bos — 1008","Marco de Boer — 1009","Jeroen Dijkstra — 1010","Willem Kuiper — 1011","Henk van Dijk — 1012","Arjan de Jong — 1013","Michel Vos — 1014","Robert Schipper — 1015","Frank Hendriks — 1016","Sander Post — 1017","Gert van der Meer — 1018","Kees Brouwer — 1019","Theo van den Berg — 1020","Danny Prins — 1021","Johan Kok — 1022","Rene van Leeuwen — 1023","Dennis de Graaf — 1024","Bas van der Wal — 1025","Niels Timmerman — 1026","Tom Willems — 1027","Maarten van Dam — 1028","Rik Sanders — 1029","Bart van der Veen — 1030","Joost Martens — 1031","Wouter de Wit — 1032","Pieter van Beek — 1033","Stefan Jacobs — 1034","Gerard Hoekstra — 1035","Lars Meijer — 1036","Ruben Dekker — 1037","Andre Koster — 1038","Daan van der Heijden — 1039","Mike de Groot — 1040","Chris Verhoeven — 1041","Edwin Blom — 1042","Alex van der Linden — 1043","Timo van der Horst — 1044","Roy van Vliet — 1045","Bram de Bruin — 1046","Koen van der Meer — 1047","Nick Smeets — 1048","Jasper van den Broek — 1049","Ramon van der Laan — 1050"];
 const names=['Jamie','Noa','Luca','Milan','Sophie','Sem','Daan','Emma','Finn','Lisa','Mees','Tess'];
 const schools=['Terra College','De Atlas','Praktijkschool','Speciale school'];
+
+// Harde schooldeadline: ieder kind moet uiterlijk om 08:30 op school kunnen zijn.
+const SCHOOL_DEADLINE_MIN=8*60+30;
+const schoolLocations={
+  'Terra College':{lat:52.772208,lon:6.887196},
+  'De Atlas':{lat:52.7758,lon:6.9450},
+  'Praktijkschool':{lat:52.77696,lon:6.94502},
+  'Speciale school':{lat:52.7758,lon:6.9450}
+};
+function schoolPoint(k){
+  return schoolLocations[k?.school] || schoolLocations[k?.destination] || null;
+}
+function pickupToSchoolMinutes(k){
+  const s=schoolPoint(k);
+  if(!s || !Number.isFinite(k?.lat) || !Number.isFinite(k?.lon)) return 20;
+  const km=geoDistanceKm({lat:k.lat,lon:k.lon},s);
+  if(!Number.isFinite(km)) return 20;
+  // Conservatieve inschatting zodat de planner niet te krap plant.
+  return Math.max(5,Math.ceil((km/30)*60));
+}
+function schoolArrivalMinutes(k){
+  return (k?.timeMin||0)+pickupToSchoolMinutes(k);
+}
+function schoolDeadlineOk(k){
+  return schoolArrivalMinutes(k)<=SCHOOL_DEADLINE_MIN;
+}
+
 const streets=['Laan van de Marel','Emmerhout','Boslaan','Hoofdstraat','Stationsstraat'];
 let kids=[];
 let previousPlan=null;
@@ -1431,11 +1458,14 @@ function runAI(){
   driverNames.forEach(d=>loads[d]=planned[d].length);
 
   function timeFeasible(k,d){
+    // Hard rule: this child must be able to reach school by 08:30.
+    if(!schoolDeadlineOk(k)) return false;
+
     const list=planned[d];
     const all=[...list,k].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
 
     for(let i=1;i<all.length;i++){
-      const prev=all[i-1], next=all[i];
+      const prev=all[i], next=all[i];
       const gap=(next.timeMin||0)-(prev.timeMin||0);
       if(gap<0)return false;
 
@@ -1507,6 +1537,12 @@ function runAI(){
     const q=kids.filter(k=>k.driver===d&&active(k))
       .sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
 
+    for(const k of q){
+      if(!schoolDeadlineOk(k)){
+        conflicts.push(d+' • '+k.name+' → school deadline 08:30');
+      }
+    }
+
     for(let i=1;i<q.length;i++){
       const gap=(q[i].timeMin||0)-(q[i-1].timeMin||0);
       const travel=routeMinutesBetween(q[i-1],q[i],driverNames.indexOf(d));
@@ -1518,6 +1554,7 @@ function runAI(){
 
   let message='🤖 AI-planning klaar!\\n\\n';
   message+=changes+' ritten opnieuw verdeeld.\\n';
+  message+='• schooldeadline: uiterlijk 08:30\\n';
   message+='• maximaal 8 kinderen per bus\\n';
   message+='• geen dubbele ophaaltijden per chauffeur\\n';
   message+='• voldoende reistijd tussen opeenvolgende stops\\n';
@@ -1993,7 +2030,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=720").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=721").catch(()=>{}));}
 </script>
 
 </body>
