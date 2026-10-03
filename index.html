@@ -1061,7 +1061,7 @@ function coordForKid(k, driverIndex, stopIndex){
   if(k && Number.isFinite(k.lon) && Number.isFinite(k.lat)) return [k.lon,k.lat];
   // Demo-coördinaten zijn stabiel per kind, zodat een route-optimalisatie
   // niet zelf de ligging van een kind verandert wanneer de volgorde wijzigt.
-  const n=k && k.id ? (parseInt(String(k.id).replace(/\\D/g,''),10)||0) : stopIndex;
+  const n=k && k.id ? (parseInt(String(k.id).replace(/\D/g,''),10)||0) : stopIndex;
   return realRoadPoints[(driverIndex*3+n)%realRoadPoints.length];
 }
 
