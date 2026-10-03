@@ -1402,6 +1402,7 @@ function aiScore(driver,kid,loads){
 function runAI(){
   previousPlan=kids.map(k=>({id:k.id,driver:k.driver}));
 
+  // Herplan alleen vrije wachtende ritten. Vaste relaties blijven staan.
   const candidates=kids
     .filter(k=>k.status==='waiting' && !k.fixed)
     .sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
@@ -1411,78 +1412,113 @@ function runAI(){
     return;
   }
 
-  const loads={};
-  driverNames.forEach(d=>loads[d]=load(d));
-
-  // Haal de te herplannen wachtende ritten eerst uit hun oude bezetting.
-  candidates.forEach(k=>{
-    if(typeof loads[k.driver]==='number' && loads[k.driver]>0) loads[k.driver]--;
+  // Maak een tijdelijke planning per chauffeur. De vrije ritten worden
+  // eerst volledig losgemaakt, anders zouden oude ritten de nieuwe controle
+  // ten onrechte blokkeren.
+  const planned={};
+  driverNames.forEach(d=>{
+    planned[d]=kids.filter(k=>
+      k.driver===d &&
+      active(k) &&
+      !candidates.includes(k)
+    ).sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
   });
+
+  const loads={};
+  driverNames.forEach(d=>loads[d]=planned[d].length);
+
+  function timeFeasible(k,d){
+    const list=planned[d];
+    const all=[...list,k].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+
+    for(let i=1;i<all.length;i++){
+      const prev=all[i-1], next=all[i];
+      const gap=(next.timeMin||0)-(prev.timeMin||0);
+      if(gap<0)return false;
+
+      const travel=routeMinutesBetween(prev,next,driverNames.indexOf(d));
+      // ±15 minuten aankomsttolerantie: de chauffeur mag maximaal
+      // 15 minuten later aankomen en kan eerder wachten.
+      if(travel>gap+15)return false;
+    }
+    return true;
+  }
 
   const unplanned=[];
 
-  candidates.forEach(k=>{
+  for(const k of candidates){
     const choices=driverNames.filter(d=>
       !isDriverUnavailable(d) &&
       !isBusUnavailable(d) &&
       loads[d]<MAX &&
-      !driverTimeConflict(k,d)
+      timeFeasible(k,d)
     );
-
-    // Als alle chauffeurs bezet zijn op dit tijdstip, plan deze rit niet
-    // dubbel in: laat hem openstaan voor een volgende planningsronde.
-    // Zo ontstaan geen twee kinderen op exact hetzelfde moment bij één chauffeur.
 
     if(!choices.length){
       unplanned.push(k);
-      return;
+      continue;
     }
 
+    // Eerst een bus die al zoveel mogelijk gevuld is, maar alleen uit
+    // chauffeurs die de rit qua tijd daadwerkelijk kunnen rijden.
     choices.sort((a,b)=>{
-      // Eerst tijdtechnisch haalbaar, daarna pas de bezetting.
-      // Zo krijgt een chauffeur nooit twee kinderen tegelijk.
-      const loadDiff=loads[b]-loads[a];
-      if(loadDiff!==0) return loadDiff;
+      if(loads[b]!==loads[a])return loads[b]-loads[a];
       const scoreA=aiScore(a,k,loads);
       const scoreB=aiScore(b,k,loads);
-      if(scoreA!==scoreB) return scoreA-scoreB;
+      if(scoreA!==scoreB)return scoreA-scoreB;
       return a.localeCompare(b);
     });
 
     const chosen=choices[0];
     k.driver=chosen;
+    planned[chosen].push(k);
+    planned[chosen].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
     loads[chosen]++;
-  });
+  }
 
   const changes=candidates.filter(k=>{
     const old=previousPlan.find(p=>p.id===k.id);
     return old && old.driver!==k.driver;
   }).length;
 
-  const distribution=driverNames
-    .map(d=>({d,count:kids.filter(k=>k.driver===d && active(k)).length}))
-    .filter(x=>x.count>0)
-    .sort((a,b)=>b.count-a.count);
+  // Controleer na het verdelen nogmaals alle actieve ritten.
+  const conflicts=[];
+  driverNames.forEach(d=>{
+    const q=kids.filter(k=>k.driver===d&&active(k))
+      .sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+    for(let i=1;i<q.length;i++){
+      const gap=(q[i].timeMin||0)-(q[i-1].timeMin||0);
+      const travel=routeMinutesBetween(q[i-1],q[i],driverNames.indexOf(d));
+      if(gap<0 || travel>gap+15){
+        conflicts.push(d+' • '+q[i-1].name+' → '+q[i].name);
+      }
+    }
+  });
 
-  const overloaded=distribution.filter(x=>x.count>MAX);
   let message='🤖 AI-planning klaar!\\n\\n';
   message+=changes+' ritten opnieuw verdeeld.\\n';
   message+='De AI heeft nu rekening gehouden met:\\n';
+  message+='• maximaal 8 kinderen per bus\\n';
+  message+='• bestaande bussen eerst zo veel mogelijk vullen\\n';
+  message+='• geen dubbele ophaaltijden per chauffeur\\n';
+  message+='• minimaal benodigde reistijd tussen opeenvolgende stops\\n';
+  message+='• ±15 minuten aankomsttolerantie\\n';
   message+='• vaste chauffeur-kindrelaties\\n';
-  message+='• beschikbaarheid chauffeur en bus\\n';
-  message+='• maximale bezetting van 8 kinderen per bus\\n';
-  message+='• eerst bestaande bussen zo veel mogelijk vullen tot 8, voordat een nieuwe bus wordt gebruikt\\n';
-  message+='• geen twee kinderen met hetzelfde ophaalmoment bij één chauffeur\\n';
-  message+='• ook minimale reistijd tussen opeenvolgende stops wordt gecontroleerd\\n';
-  message+='• ophaaltijden en tijdsdruk\\n';
-  message+='• schoolcombinaties\\n';
-  message+='• ritten in dezelfde straat\\n';
-  message+='• spreiding van de routebelasting\\n';
-  if(unplanned.length) message+='\\n⚠️ '+unplanned.length+' rit(ten) konden niet worden geplaatst wegens capaciteit/beschikbaarheid.';
-  if(overloaded.length) message+='\\n⚠️ Controle: er is nog een chauffeur boven de maximale bezetting.';
-  alert(message);
+  message+='• beschikbaarheid van chauffeur en bus\\n';
+
+  if(unplanned.length){
+    message+='\\n⚠️ '+unplanned.length+' rit(ten) konden niet veilig worden geplaatst en zijn niet geforceerd toegewezen.';
+  }
+  if(conflicts.length){
+    message+='\\n⚠️ '+conflicts.length+' bestaande routeconflicten blijven over. Deze komen uit vaste/bestaande ritten en worden niet geforceerd opgelost.';
+  }else{
+    message+='\\n✅ Geen tijd/reisconflicten gevonden in de actieve planning.';
+  }
+
   renderAll();
-  // Na de verdeling ook de rijvolgorde geografisch optimaliseren.
+  alert(message);
+
+  // Alleen optimaliseren nadat de nieuwe chauffeurverdeling vaststaat.
   optimizeAllRoutes();
 }
 function resetDemo(){if(confirm('Demo terugzetten?')){localStorage.removeItem(STORAGE_KEY);driverUnavailable={};busIssues={};replacementAssignments={};replacementSeq=1;demoCounter=101;seed();renderAll()}}
