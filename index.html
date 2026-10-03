@@ -586,7 +586,7 @@ function startPlannerAutomation(){
 
 
 
-const STORAGE_KEY='taxiPlannerStateV742';
+const STORAGE_KEY='taxiPlannerStateV743';
 
 function saveState(){
  try{
@@ -1562,42 +1562,72 @@ function runAI(silent=false){
       q.forEach((k,i)=>k.routeOrder=i+1);
     });
 
-    // V742: volledige ±15 min speelruimte voor route-optimalisatie.
+    // V743: optimaliseer de hele route als één geheel.
+    // Geen losse twee-stop verschuivingen meer: eerst bepalen we voor alle
+    // kinderen de minimale haalbare tijden binnen ±15 minuten van hun
+    // oorspronkelijke tijd, met behoud van volgorde en 08:30.
     let demoAdjusted=0;
     groups.forEach((q,d)=>{
       const di=driverNames.indexOf(d);
       q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
-      const original=new Map(q.map(k=>[k.id,Number(k.timeMin)||0]));
+      const original=q.map(k=>({k,t:Number(k.timeMin)||0}));
 
-      for(let pass=0;pass<16;pass++){
-        let changed=false;
-        q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
-        for(let i=1;i<q.length;i++){
-          const prev=q[i-1],cur=q[i];
-          const required=Math.max(1,routeMinutesBetween(prev,cur,di)-15);
-          if((cur.timeMin||0)-(prev.timeMin||0)>=required)continue;
-          if(cur.status==='waiting'){
-            const target=Math.min(original.get(cur.id)+15,(prev.timeMin||0)+required);
-            if(target>cur.timeMin){cur.timeMin=target;cur.time=fmtTime(target);demoAdjusted++;changed=true;continue;}
-          }
-          if(prev.status==='waiting'){
-            const target=Math.max(original.get(prev.id)-15,(cur.timeMin||0)-required);
-            if(target<prev.timeMin&&target>=0){prev.timeMin=target;prev.time=fmtTime(target);demoAdjusted++;changed=true;}
-          }
+      // Voor elke stop bepalen we de minimale tijd die nodig is na de vorige.
+      // Daarna controleren we van achter naar voren of de schooldeadline gehaald
+      // kan worden. Als dat kan, houden we de oorspronkelijke tijden zo veel
+      // mogelijk intact.
+      const earliest=q.map((k,i)=>{
+        const base=original[i].t;
+        if(i===0)return base;
+        const prev=q[i-1];
+        const travel=routeMinutesBetween(prev,k,di);
+        return Math.max(base, (q[i-1].timeMin||0)+Math.max(1,travel-15));
+      });
+
+      // Eerst zo weinig mogelijk naar achter schuiven.
+      for(let i=0;i<q.length;i++){
+        const base=original[i].t;
+        const target=Math.min(base+15,earliest[i]);
+        if(target>q[i].timeMin){
+          q[i].timeMin=target;
+          q[i].time=fmtTime(target);
+          demoAdjusted++;
         }
-        if(!changed)break;
       }
 
+      // Als de laatste stop te laat is, verschuif de hele route vanaf achteren
+      // naar voren. Elke wijziging blijft binnen 15 minuten van origineel.
       q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
-      const last=q[q.length-1];
-      const late=Math.max(0,schoolArrivalMinutes(last)-SCHOOL_DEADLINE_MIN);
+      let late=Math.max(0,schoolArrivalMinutes(q[q.length-1])-SCHOOL_DEADLINE_MIN);
       if(late>0){
-        const shift=Math.min(15,late);
-        q.forEach(k=>{
-          if(k.status!=='waiting')return;
-          const target=Math.max(original.get(k.id)-15,(k.timeMin||0)-shift);
-          if(target<k.timeMin){k.timeMin=target;k.time=fmtTime(target);demoAdjusted++;}
-        });
+        for(let i=q.length-1;i>=0&&late>0;i--){
+          const idx=original.findIndex(x=>x.k.id===q[i].id);
+          const base=original[idx]?.t ?? q[i].timeMin;
+          const minAllowed=base-15;
+          const room=Math.max(0,(q[i].timeMin||0)-minAllowed);
+          const move=Math.min(room,late);
+          if(move>0){
+            q[i].timeMin-=move;
+            q[i].time=fmtTime(q[i].timeMin);
+            demoAdjusted++;
+            late-=move;
+          }
+        }
+      }
+
+      // Tweede voorwaartse ronde na eventuele vervroeging.
+      q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+      for(let i=1;i<q.length;i++){
+        const prev=q[i-1],cur=q[i];
+        const required=Math.max(1,routeMinutesBetween(prev,cur,di)-15);
+        const target=Math.max(cur.timeMin||0,(prev.timeMin||0)+required);
+        const idx=original.findIndex(x=>x.k.id===cur.id);
+        const maxAllowed=(original[idx]?.t ?? cur.timeMin)+15;
+        if(target<=maxAllowed && target>cur.timeMin){
+          cur.timeMin=target;
+          cur.time=fmtTime(target);
+          demoAdjusted++;
+        }
       }
 
       q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
@@ -2371,7 +2401,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=742").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=743").catch(()=>{}));}
 </script>
 
 </body>
