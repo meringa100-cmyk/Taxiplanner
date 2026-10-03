@@ -1280,6 +1280,7 @@ async function calculateRealRoutes(){
 
 function renderRealMapMarkers(){
   if(!realMap)return;
+
   mapMarkers.forEach(m=>realMap.removeLayer(m));
   routeLines.forEach(l=>realMap.removeLayer(l));
   mapMarkers=[];routeLines=[];
@@ -1287,24 +1288,13 @@ function renderRealMapMarkers(){
   const select=document.getElementById('mapDriver');
   if(select){
     const current=select.value;
-    select.innerHTML='<option value="ALL">Alle chauffeurs</option>'+driverNames.map(d=>`<option>${d}</option>`).join('');
+    select.innerHTML='<option value="ALL">Alle chauffeurs</option>'+driverNames.map(d=>'<option>'+d+'</option>').join('');
     if(current)select.value=current;
   }
   const chosen=select?.value||'ALL';
-
-  // Stable demo coordinates around real Emmen map area.
-  const points=[
-    [52.7905,6.8820],[52.7815,6.9100],[52.7735,6.9005],[52.7960,6.9060],
-    [52.7850,6.8705],[52.8040,6.8950],[52.7685,6.8840],[52.7880,6.9250],
-    [52.7760,6.9160],[52.7980,6.8750],[52.7600,6.9050],[52.8120,6.9150],
-    [52.8000,6.9200],[52.7700,6.9300],[52.7550,6.8900],[52.8150,6.8800],
-    [52.7850,6.8500],[52.7500,6.9200]
-  ];
-
   const visibleDrivers=chosen==='ALL'?driverNames:[chosen];
-  let routeCount=0;
 
-  visibleDrivers.forEach((d,di)=>{
+  visibleDrivers.forEach((d)=>{
     const rides=kids.filter(k=>k.driver===d && active(k)).sort((a,b)=>{
       const ao=Number.isFinite(a.routeOrder)?a.routeOrder:9999;
       const bo=Number.isFinite(b.routeOrder)?b.routeOrder:9999;
@@ -1312,39 +1302,36 @@ function renderRealMapMarkers(){
     });
     if(!rides.length)return;
 
-    // coordForKid werkt in [lon,lat] zodat OSRM ermee kan rekenen.
-    // Leaflet verwacht voor markers/lijnen juist [lat,lon].
-    const coords=rides.map((k,i)=>{
-      const p=coordForKid(k,driverNames.indexOf(d),i);
-      return [p[1],p[0]];
-    });
-
-    // Teken per chauffeur de volledige route in exact de geoptimaliseerde volgorde.
-    if(coords.length>1){
-      const line=L.polyline(coords,{weight:5,opacity:.75});
-      line.addTo(realMap);routeLines.push(line);routeCount++;
-    }
-
+    // Alleen echte adressen/coördinaten gebruiken. De rechte demo-lijnen
+    // zijn verwijderd: de route op de kaart wordt voortaan door OSRM
+    // over het echte wegennet getekend.
     rides.forEach((assigned,i)=>{
-      const p=coords[i];
+      const p=coordForKid(assigned,driverNames.indexOf(d),i);
+      const latlon=[p[1],p[0]];
       const color=assigned.status==='picked'?'#d97706':'#1769aa';
-      const childNumber=String(i+1);
       const icon=L.divIcon({
         className:'',
-        html:`<div style="width:36px;height:36px;border-radius:50%;background:${color};color:#fff;border:3px solid #fff;box-shadow:0 2px 7px #0006;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:bold">${childNumber}</div>`,
+        html:'<div style="width:36px;height:36px;border-radius:50%;background:'+color+';color:#fff;border:3px solid #fff;box-shadow:0 2px 7px #0006;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:bold">'+(i+1)+'</div>',
         iconSize:[36,36],iconAnchor:[18,18]
       });
-      const m=L.marker(p,{icon}).addTo(realMap);
-      m.bindTooltip(`${d} • route-stop ${i+1}`,{direction:'top'});
-      m.bindPopup(`<b>${d}</b><br>Route-stop ${i+1}<br>${assigned.name}<br>${assigned.time}<br>${statusText(assigned.status)}<br><button onclick="openDriverDetails('${d}')">Chauffeurdetails</button>`);
+      const m=L.marker(latlon,{icon}).addTo(realMap);
+      m.bindTooltip(d+' • route-stop '+(i+1),{direction:'top'});
+      m.bindPopup('<b>'+d+'</b><br>Route-stop '+(i+1)+'<br>'+assigned.name+'<br>'+assigned.time+'<br>'+statusText(assigned.status)+'<br><button onclick="openDriverDetails(\''+d+'\')">Chauffeurdetails</button>');
       mapMarkers.push(m);
     });
   });
 
   const info=document.getElementById('routeInfo');
   if(info) info.textContent=chosen==='ALL'
-    ? `${routeCount} actieve demo-routes zichtbaar. Nummers = volgorde van de stops.`
-    : `${routeCount?'Route':''} van ${chosen}: stops volgen de geoptimaliseerde rijvolgorde.`;
+    ? '📍 Stops weergegeven. Echte routes worden over het wegennet berekend…'
+    : '📍 Stops van '+chosen+' weergegeven. Echte route wordt over het wegennet berekend.';
+
+  // Eén keer na het tekenen van de markers de echte wegroute ophalen.
+  // Geen rechte lijnen meer tussen adressen.
+  if(!realRouteLoading && typeof calculateRealRoutes==='function'){
+    clearTimeout(window.__realRouteTimer);
+    window.__realRouteTimer=setTimeout(()=>calculateRealRoutes(),120);
+  }
 }
 
 function showAllRoutes(){
