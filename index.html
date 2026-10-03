@@ -641,7 +641,24 @@ function delayForKid(k){
   return Number(k && k.delay) > 0 ? Number(k.delay) : 0;
 }
 
-function renderAll(){saveState();renderDashboard();renderPlanning();renderDriver();renderParent();renderLive();renderDelayAlerts();updateParentDelayNotice();renderAttention();renderFleet();if(realMap)renderRealMapMarkers();}
+function renderAll(){
+  saveState();
+  const parts=[
+    ['dashboard',renderDashboard],
+    ['planning',renderPlanning],
+    ['driver',renderDriver],
+    ['parent',renderParent],
+    ['live',renderLive],
+    ['delayAlerts',renderDelayAlerts],
+    ['parentDelay',updateParentDelayNotice],
+    ['attention',renderAttention],
+    ['fleet',renderFleet]
+  ];
+  parts.forEach(([name,fn])=>{
+    try{fn()}catch(e){console.error('Taxi Planner render error:',name,e);}
+  });
+  try{if(typeof realMap!=='undefined'&&realMap)renderRealMapMarkers();}catch(e){console.error('Taxi Planner map render error:',e);}
+}
 
 
 function renderFleet(){
@@ -1883,7 +1900,7 @@ function addRide(){
 function find(id){return kids.find(k=>k.id===id)}
 function closeModal(){document.getElementById('modal').classList.add('hidden')}
 document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
-if(!loadState())seed();renderAll();startPlannerAutomation();
+try{if(!loadState())seed();}catch(e){console.error('Taxi Planner state error:',e);seed();}renderAll();startPlannerAutomation();
 </script>
 
 
