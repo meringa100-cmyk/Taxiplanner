@@ -586,7 +586,7 @@ function startPlannerAutomation(){
 
 
 
-const STORAGE_KEY='taxiPlannerStateV746';
+const STORAGE_KEY='taxiPlannerStateV749';
 
 function saveState(){
  try{
@@ -616,14 +616,15 @@ function normalizeBuiltInDemo(){
     const lat=baseLat+(pos%4)*0.00035;
     const lon=baseLon+Math.floor(pos/4)*0.00045;
     const wanted=driverNames[group]||'';
+    const wantedTime=420+(pos*10);
 
-    if(k.school!==school || k.destination!==school || k.timeMin!==timeMin ||
+    if(k.school!==school || k.destination!==school || k.timeMin!==wantedTime ||
        k.lat!==lat || k.lon!==lon || k.driver!==wanted){
       changed=true;
     }
     k.school=school;
     k.destination=school;
-    if(!Number.isFinite(Number(k.timeMin)))k.timeMin=420+(pos*10);
+    if(!Number.isFinite(Number(k.timeMin)))k.timeMin=wantedTime;
     k.time=fmtTime(k.timeMin);
     k.lat=lat;
     k.lon=lon;
@@ -1686,6 +1687,73 @@ function runAI(silent=false){
         }
         if(!changed)break;
       }
+      q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+      q.forEach((k,i)=>k.routeOrder=i+1);
+    });
+
+    // V749: schooldeadline-reparatie. Alleen kinderen die te laat op school
+    // dreigen te komen worden maximaal 15 minuten eerder gezet. De oorspronkelijke
+    // demo-ophaaltijd is de harde grens voor deze verschuiving.
+    let deadlineRepairs=0;
+    groups.forEach((q,d)=>{
+      q.forEach(k=>{
+        const n=parseInt(String(k.id).slice(1),10);
+        const pos=(n-1)%8;
+        const baseTime=420+(pos*10);
+        const arrival=schoolArrivalMinutes(k);
+        if(arrival<=SCHOOL_DEADLINE_MIN)return;
+
+        const needed=(SCHOOL_DEADLINE_MIN-pickupToSchoolMinutes(k));
+        const target=Math.max(baseTime-15,needed);
+        if(target<k.timeMin && target>=baseTime-15){
+          k.timeMin=target;
+          k.time=fmtTime(target);
+          deadlineRepairs++;
+        }
+      });
+
+      // Na het vervroegen van deadline-ritten opnieuw de routeafstand
+      // controleren. Alleen bij een nieuw conflict wordt binnen dezelfde
+      // ±15-minutenmarge nog lokaal gecorrigeerd.
+      const di=driverNames.indexOf(d);
+      const original=new Map(q.map(k=>{
+        const n=parseInt(String(k.id).slice(1),10);
+        const pos=(n-1)%8;
+        return [k.id,420+(pos*10)];
+      }));
+      for(let pass=0;pass<q.length*2;pass++){
+        q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+        let changed=false;
+        for(let i=1;i<q.length;i++){
+          const prev=q[i-1],cur=q[i];
+          const gap=(cur.timeMin||0)-(prev.timeMin||0);
+          const required=Math.max(1,routeMinutesBetween(prev,cur,di)-15);
+          if(gap>=required)continue;
+
+          if(cur.status==='waiting'){
+            const maxTime=original.get(cur.id)+15;
+            const target=Math.max(cur.timeMin||0,(prev.timeMin||0)+required);
+            if(target<=maxTime){
+              cur.timeMin=target;
+              cur.time=fmtTime(target);
+              changed=true;
+              continue;
+            }
+          }
+
+          if(prev.status==='waiting'){
+            const minTime=original.get(prev.id)-15;
+            const target=Math.min(prev.timeMin||0,(cur.timeMin||0)-required);
+            if(target>=minTime && target<prev.timeMin){
+              prev.timeMin=target;
+              prev.time=fmtTime(target);
+              changed=true;
+            }
+          }
+        }
+        if(!changed)break;
+      }
+
       q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
       q.forEach((k,i)=>k.routeOrder=i+1);
     });
