@@ -586,7 +586,7 @@ function startPlannerAutomation(){
 
 
 
-const STORAGE_KEY='taxiPlannerStateV737';
+const STORAGE_KEY='taxiPlannerStateV738';
 
 function saveState(){
  try{
@@ -597,8 +597,9 @@ function saveState(){
 }
 
 function normalizeBuiltInDemo(){
-  // Herstel alleen de ingebouwde 100-kind demo als er door een oude
-  // planner/cache kinderen zonder chauffeur zijn blijven staan.
+  // V738: herstel de volledige ingebouwde demo, niet alleen de chauffeur.
+  // Een oude lokale geocode kon de demo over heel Drenthe verspreiden en
+  // daardoor kunstmatige route- en schooldeadlineproblemen veroorzaken.
   const demoKids=kids.filter(k=>String(k.id).startsWith('k') && /^[0-9]+$/.test(String(k.id).slice(1)));
   const isDemo=kids.length===100 && demoKids.length===100 &&
     demoKids.every(k=>k.status==='waiting'||k.status==='picked'||k.status==='school');
@@ -607,10 +608,31 @@ function normalizeBuiltInDemo(){
   let changed=false;
   demoKids.forEach(k=>{
     const n=parseInt(String(k.id).slice(1),10);
-    const wanted=driverNames[Math.floor((n-1)/8)]||'';
-    if(k.driver!==wanted){k.driver=wanted;changed=true;}
-    k.routeOrder=(n-1)%8+1;
+    const group=Math.floor((n-1)/8);
+    const pos=(n-1)%8;
+    const school=schools[group%schools.length];
+    const timeMin=420+(pos*10);
+    const baseLat=52.772+(group%13)*0.0012;
+    const baseLon=6.862+(group%13)*0.0014;
+    const lat=baseLat+(pos%4)*0.00035;
+    const lon=baseLon+Math.floor(pos/4)*0.00045;
+    const wanted=driverNames[group]||'';
+
+    if(k.school!==school || k.destination!==school || k.timeMin!==timeMin ||
+       k.lat!==lat || k.lon!==lon || k.driver!==wanted){
+      changed=true;
+    }
+    k.school=school;
+    k.destination=school;
+    k.timeMin=timeMin;
+    k.time=fmtTime(timeMin);
+    k.lat=lat;
+    k.lon=lon;
+    k.address=streets[pos%streets.length]+' '+(10+n);
+    k.driver=wanted;
+    k.routeOrder=pos+1;
   });
+  addressesReady=true;
   return changed;
 }
 
@@ -628,6 +650,7 @@ function loadState(){
   replacementSeq=Number(state.replacementSeq)||1;
   demoCounter=Number(state.demoCounter)||101;
   normalizeBuiltInDemo();
+  addressesReady=kids.length>0 && kids.every(k=>Number.isFinite(k.lat)&&Number.isFinite(k.lon));
   return true;
  }catch(e){
   return false;
@@ -2245,7 +2268,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=737").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=738").catch(()=>{}));}
 </script>
 
 </body>
