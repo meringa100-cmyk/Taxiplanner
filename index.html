@@ -1459,8 +1459,8 @@ function renderRealMapMarkers(){
   const selectedPoints=selectedKids
     .filter(k=>Number.isFinite(k.lat)&&Number.isFinite(k.lon))
     .map(k=>[k.lat,k.lon]);
-  // Neem ook de scholen mee in het kaartvenster zodat het aankomstpunt
-  // altijd zichtbaar blijft.
+  // Eindpunten van de ritten zijn echte schoolpunten en worden apart
+  // zichtbaar gemaakt op de kaart.
   selectedKids.forEach(k=>{
     const s=schoolPoint(k);
     if(s && Number.isFinite(s.lat)&&Number.isFinite(s.lon)) selectedPoints.push([s.lat,s.lon]);
@@ -1495,6 +1495,23 @@ function renderRealMapMarkers(){
       m.bindPopup('<b>👦 '+assigned.name+'</b><br>🚕 '+d+'<br>🧭 Route-stop '+(i+1)+'<br>🕐 '+assigned.time+'<br>📍 <b>Ophalen:</b> '+pickupLabel+'<br>🏁 <b>Eindadres:</b> '+destinationLabel+'<br>'+statusText(assigned.status)+'<br><button onclick="openDriverDetails(\''+d+'\')">Chauffeurdetails</button>');
       mapMarkers.push(m);
     });
+
+    // 🏁 Eén duidelijk eindpunt per chauffeur: de school waar zijn laatste
+    // actieve kind aankomt. Dit is een apart kaartpunt, niet verstopt in de route.
+    const lastRide=rides[rides.length-1];
+    const end=schoolPoint(lastRide);
+    if(end && Number.isFinite(end.lat)&&Number.isFinite(end.lon)){
+      const endIcon=L.divIcon({
+        className:'',
+        html:'<div title="Eindadres" style="width:32px;height:32px;border-radius:8px;background:#b42318;color:#fff;border:3px solid #fff;box-shadow:0 2px 7px #0006;display:flex;align-items:center;justify-content:center;font-size:17px">🏁</div>',
+        iconSize:[32,32],iconAnchor:[16,16]
+      });
+      const em=L.marker([end.lat,end.lon],{icon:endIcon}).addTo(realMap);
+      const endAddress=lastRide.destinationAddress||end.address||lastRide.destination||lastRide.school||'School';
+      em.bindTooltip('🏁 <b>Eindadres</b><br>'+endAddress,{direction:'top',sticky:true,className:'taxi-map-label'});
+      em.bindPopup('<b>🏁 Eindadres</b><br>🚕 '+d+'<br>🏫 '+(lastRide.school||lastRide.destination||'School')+'<br>📍 '+endAddress);
+      mapMarkers.push(em);
+    }
   });
 
   const info=document.getElementById('routeInfo');
