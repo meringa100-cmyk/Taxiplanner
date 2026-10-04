@@ -520,7 +520,7 @@ async function geocodeExactDemoAddresses(){
   });
 
   addressesReady=true;
-  demoAddressSpreadVersion='v68';
+  demoAddressSpreadVersion='v69';
   saveState();
   renderAll();
   console.log('V768: '+new Set(selected.map(a=>a.town)).size+' plaatsen, 100 unieke huisadressen.');
@@ -810,7 +810,7 @@ function saveState(){
 function normalizeBuiltInDemo(){
   // V757: als de 60-straatspreiding al is opgeslagen, mag de oude
   // 13-groepen-normalisatie de woonadressen NOOIT meer overschrijven.
-  if(demoAddressSpreadVersion==='v61'||demoAddressSpreadVersion==='v62'||demoAddressSpreadVersion==='v63'||demoAddressSpreadVersion==='v64'||demoAddressSpreadVersion==='v65'||demoAddressSpreadVersion==='v66'||demoAddressSpreadVersion==='v68')return false;
+  if(demoAddressSpreadVersion==='v61'||demoAddressSpreadVersion==='v62'||demoAddressSpreadVersion==='v63'||demoAddressSpreadVersion==='v64'||demoAddressSpreadVersion==='v65'||demoAddressSpreadVersion==='v66'||demoAddressSpreadVersion==='v68'||demoAddressSpreadVersion==='v69')return false;
   // V73: elke demo-groep wordt eerst hard teruggezet naar zijn eigen plaats.
   // Daarna mag alleen een verse BAG-hit binnen diezelfde straat + plaats volgen.
   const demoKids=kids.filter(k=>/^k[0-9]+$/.test(String(k.id)));
@@ -2714,7 +2714,18 @@ renderAll();
 startPlannerAutomation();
 
 // V62: éénmalige echte straatspreiding voor de ingebouwde 100-kind-demo.
-setTimeout(()=>{ if(demoAddressSpreadVersion!=='v68') geocodeExactDemoAddresses(); },300);</script>
+setTimeout(async()=>{
+  // V769: oude demo-coordinaten mogen nooit blijven hangen.
+  if(demoAddressSpreadVersion!=='v69'){
+    demoAddressSpreadVersion='pending';
+    kids.filter(k=>/^k[0-9]+$/.test(String(k.id))).forEach(k=>{
+      delete k.lat; delete k.lon; delete k.demoTown; delete k.demoStreet;
+    });
+    addressesReady=false;
+    saveState();
+    await geocodeExactDemoAddresses();
+  }
+},500);</script>
 
 
 
