@@ -787,6 +787,9 @@ function saveState(){
 }
 
 function normalizeBuiltInDemo(){
+  // V757: als de 60-straatspreiding al is opgeslagen, mag de oude
+  // 13-groepen-normalisatie de woonadressen NOOIT meer overschrijven.
+  if(demoAddressSpreadVersion==='v60')return false;
   // V73: elke demo-groep wordt eerst hard teruggezet naar zijn eigen plaats.
   // Daarna mag alleen een verse BAG-hit binnen diezelfde straat + plaats volgen.
   const demoKids=kids.filter(k=>/^k[0-9]+$/.test(String(k.id)));
