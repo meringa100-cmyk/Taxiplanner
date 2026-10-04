@@ -1789,10 +1789,9 @@ function runAI(silent=false){
     // V750: nieuwe ritten mogen de vaste 100-kind-demo niet opnieuw laten
     // opbouwen. Alleen extra/niet-demo kinderen worden apart ingepland.
     const extraKids=kids.filter(k=>!demoKids.includes(k) && active(k));
-    const newRideWarnings=[];
     for(const k of extraKids){
-      // Een nieuwe rit krijgt eerst een beschikbare chauffeur/bus.
-      // Daarna controleren we apart of de schooldeadline haalbaar is.
+      // Een nieuw kind krijgt nog geen chauffeur uit addRide; zoek hier
+      // uitsluitend een werkelijk beschikbare bus met vrije capaciteit.
       const choices=driverNames.filter(d=>
         !isDriverUnavailable(d) &&
         !isBusUnavailable(d) &&
@@ -1802,18 +1801,6 @@ function runAI(silent=false){
         choices.sort((a,b)=>load(a)-load(b));
         k.driver=choices[0];
         k.routeOrder=1;
-        const arrival=schoolArrivalMinutes(k);
-        if(arrival>SCHOOL_DEADLINE_MIN){
-          k.deadlineProblem=true;
-          newRideWarnings.push({
-            name:k.name||'Nieuw kind',
-            driver:k.driver,
-            time:k.time||fmtTime(k.timeMin||0),
-            arrival:fmtTime(arrival)
-          });
-        }else{
-          k.deadlineProblem=false;
-        }
       }else{
         k.driver='';
         k.routeOrder=null;
@@ -1902,15 +1889,6 @@ function runAI(silent=false){
         k.driver=choices[0];
         k.routeOrder=(kids.filter(x=>x.driver===choices[0]&&active(x)).length);
       }
-    }
-
-    if(newRideWarnings.length){
-      const warningText=newRideWarnings.map(w=>
-        '⚠️ '+w.name+' ('+w.time+') bij '+w.driver+
-        ': aankomst geschat '+w.arrival+', ná schooldeadline 08:30.'
-      ).join('\\n');
-      if(!silent) alert('⚠️ Nieuwe rit gecontroleerd\\n\\n'+warningText+
-        '\\n\\nDe chauffeur is wel toegewezen. Controleer de ophaaltijd.');
     }
 
     const fullBuses=[...groups.values()].filter(q=>q.length===MAX).length;
@@ -2732,7 +2710,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=755").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=753").catch(()=>{}));}
 </script>
 
 </body>
