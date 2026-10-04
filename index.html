@@ -1491,7 +1491,7 @@ function renderRealMapMarkers(){
         sm.bindPopup('<b>🟢 VERTREK</b><br>👦 '+assigned.name+'<br>📍 '+pickupLabel+'<br>🚕 '+d);
         mapMarkers.push(sm);
       }
-      m.bindTooltip('👦 '+assigned.name+'<br>📍 '+pickupLabel,{direction:'top',permanent:true,sticky:true,className:'taxi-map-label'});
+      m.bindTooltip('👦 '+assigned.name+'<br>📍 '+pickupLabel,{direction:'top',sticky:true,className:'taxi-map-label'});
       m.bindPopup('<b>👦 '+assigned.name+'</b><br>🚕 '+d+'<br>🧭 Route-stop '+(i+1)+'<br>🕐 '+assigned.time+'<br>📍 <b>Ophalen:</b> '+pickupLabel+'<br>🏫 <b>Bestemming:</b> '+destinationLabel+'<br>'+statusText(assigned.status)+'<br><button onclick="openDriverDetails(\''+d+'\')">Chauffeurdetails</button>');
       mapMarkers.push(m);
     });
