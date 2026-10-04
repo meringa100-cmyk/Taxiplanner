@@ -1386,7 +1386,7 @@ async function calculateRealRoutes(){
         const bo=Number.isFinite(b.routeOrder)?b.routeOrder:9999;
         return ao-bo || a.timeMin-b.timeMin;
       });
-      if(rides.length<2)continue;
+      if(rides.length<1)continue;
 
       // De kaart volgt exact de routevolgorde die de planner heeft berekend.
       const ordered=rides;
@@ -1404,7 +1404,7 @@ async function calculateRealRoutes(){
       routeLines.push(line);
 
       // Duidelijke eindbestemming op de kaart: de school waar de kinderen
-      // aankomen. De laatste ophaalstop blijft het laatste kind-bolletje.
+      // aankomen. Ook bij één kind wordt het aankomstpunt getoond.
       if(school && Number.isFinite(school.lat)&&Number.isFinite(school.lon)){
         const arrivalIcon=L.divIcon({
           className:'',
@@ -1479,11 +1479,18 @@ function renderRealMapMarkers(){
         iconSize:[36,36],iconAnchor:[18,18]
       });
       const m=L.marker(latlon,{icon}).addTo(realMap);
-      if(i===0){
-        m.bindTooltip('🟢 VERTREK<br>👦 '+assigned.name+'<br>📍 '+(assigned.pickupAddress||assigned.address||'Ophaaladres onbekend'),{direction:'top',permanent:true,sticky:true,className:'taxi-map-start-label'});
-      }
       const pickupLabel=assigned.pickupAddress||assigned.address||'Ophaaladres onbekend';
       const destinationLabel=assigned.address||assigned.destination||'Bestemming onbekend';
+      if(i===0){
+        const startIcon=L.divIcon({
+          className:'',
+          html:'<div style="background:#16a34a;color:#fff;border:3px solid #fff;border-radius:10px;padding:6px 9px;font-weight:900;box-shadow:0 2px 8px #0006;white-space:nowrap">🟢 VERTREK<br><small>'+assigned.name+'</small></div>',
+          iconSize:[110,50],iconAnchor:[55,50]
+        });
+        const sm=L.marker(latlon,{icon:startIcon,zIndexOffset:1000}).addTo(realMap);
+        sm.bindPopup('<b>🟢 VERTREK</b><br>👦 '+assigned.name+'<br>📍 '+pickupLabel+'<br>🚕 '+d);
+        mapMarkers.push(sm);
+      }
       m.bindTooltip('👦 '+assigned.name+'<br>📍 '+pickupLabel,{direction:'top',permanent:true,sticky:true,className:'taxi-map-label'});
       m.bindPopup('<b>👦 '+assigned.name+'</b><br>🚕 '+d+'<br>🧭 Route-stop '+(i+1)+'<br>🕐 '+assigned.time+'<br>📍 <b>Ophalen:</b> '+pickupLabel+'<br>🏫 <b>Bestemming:</b> '+destinationLabel+'<br>'+statusText(assigned.status)+'<br><button onclick="openDriverDetails(\''+d+'\')">Chauffeurdetails</button>');
       mapMarkers.push(m);
