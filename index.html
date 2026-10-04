@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V71.9</title>
+<title>Taxi Planner V74</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V71.9</h1>
+<h1>🚕 Taxi Planner V74</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -369,74 +369,85 @@ async function pdokAddress(street,town,number){
     if(!res.ok)return null;
     const data=await res.json();
     const docs=data?.response?.docs||[];
-    const hit=docs.find(x=>
-      String(x.type||'').toLowerCase()==='adres' &&
-      String(x.weergavenaam||'').toLowerCase().startsWith((street+' '+number+',').toLowerCase()) &&
-      String(x.woonplaatsnaam||'').toLowerCase()===town.toLowerCase()
-    ) || docs.find(x=>
-      String(x.weergavenaam||'').toLowerCase().includes(street.toLowerCase()) &&
-      String(x.weergavenaam||'').toLowerCase().includes(String(number))
-    );
+    const townLc=town.toLowerCase();
+    const streetLc=street.toLowerCase();
+    const wantedNr=String(number);
+    const hit=docs.find(x=>{
+      const name=String(x.weergavenaam||'').toLowerCase();
+      const wn=String(x.woonplaatsnaam||'').toLowerCase();
+      const nr=String(x.huisnummer||'').trim();
+      return String(x.type||'').toLowerCase()==='adres' &&
+        wn===townLc &&
+        nr===wantedNr &&
+        name.includes(streetLc);
+    });
     if(!hit)return null;
-    const p=hit.centroid_ll||'';
-    const parts=String(p).replace('POINT(','').replace(')','').trim().split(/s+/).map(Number);
+    const parts=String(hit.centroid_ll||'').replace('POINT(','').replace(')','').trim().split(/\s+/).map(Number);
     if(parts.length!==2 || !Number.isFinite(parts[0]) || !Number.isFinite(parts[1]))return null;
     return {lon:parts[0],lat:parts[1],address:hit.weergavenaam||street+' '+number+', '+town};
   }catch(e){return null;}
 }
+
 async function geocodeExactDemoAddresses(){
-  // V73: oude caches bewust niet gebruiken. Eerst een schone BAG-query per
-  // straat + woonplaats, daarna pas de exacte huispunten toepassen.
-  const cacheKey='taxiPlannerExactAddressesV4';
-  let cache={}; try{cache=JSON.parse(localStorage.getItem(cacheKey)||'{}')||{};}catch(e){}
+  // V74: nooit meer een adres uit een andere plaats accepteren.
+  // Elke demo-groep heeft zijn eigen plaats + straat + huisnummerlijst.
+  // Alleen een BAG-hit met exact dezelfde plaats, straat én huisnummer mag
+  // de fallback vervangen. Geen oude V4-cache meer gebruiken.
   const resolved=[];
   for(let g=0;g<exactDemoAddresses.length;g++){
-    const spec=exactDemoAddresses[g], key=spec.street+'|'+spec.town;
-    let addresses=Array.isArray(cache[key])?cache[key]:[];
-    try{
-      const q=encodeURIComponent(spec.street+', '+spec.town+', Nederland');
-      const url='https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?q='+q+'&rows=100';
-      const res=await fetch(url,{headers:{'Accept':'application/json'}});
-      if(res.ok){
-        const data=await res.json();
-        const docs=(data?.response?.docs||[]).filter(x=>{
-          const dn=String(x.weergavenaam||'').toLowerCase();
-          const wn=String(x.woonplaatsnaam||'').toLowerCase();
-          const nr=Number(x.huisnummer);
-          return String(x.type||'').toLowerCase()==='adres' &&
-            wn===spec.town.toLowerCase() &&
-            dn.includes(spec.street.toLowerCase()) &&
-            Number.isFinite(nr);
-        });
-        docs.sort((a,b)=>Number(a.huisnummer)-Number(b.huisnummer));
-        addresses=[]; const seen=new Set();
-        for(const hit of docs){
-          const p=String(hit.centroid_ll||'').replace('POINT(','').replace(')','').trim().split(/\s+/).map(Number);
-          const nr=String(hit.huisnummer||'').trim();
-          if(p.length!==2||!Number.isFinite(p[0])||!Number.isFinite(p[1])||!nr||seen.has(nr))continue;
-          seen.add(nr);
-          addresses.push({lon:p[0],lat:p[1],address:hit.weergavenaam||spec.street+' '+nr+', '+spec.town,number:nr});
-          if(addresses.length>=8)break;
-        }
-        if(addresses.length>=8){cache[key]=addresses;try{localStorage.setItem(cacheKey,JSON.stringify(cache));}catch(e){}}
+    const spec=exactDemoAddresses[g];
+    const loc=drentheDemoLocations[g%drentheDemoLocations.length];
+    const addresses=[];
+    for(const number of spec.numbers){
+      const hit=await pdokAddress(spec.street,spec.town,number);
+      if(!hit)continue;
+      // Extra veiligheidshek: een hit mag niet honderden kilometers van
+      // het vaste demo-punt liggen, ook niet als een externe bron fout is.
+      const km=geoDistanceKm(
+        {lat:hit.lat,lon:hit.lon},
+        {lat:loc.lat,lon:loc.lon}
+      );
+      if(Number.isFinite(km) && km<=15){
+        addresses.push({...hit,number:String(number)});
       }
-    }catch(e){console.warn('BAG-query mislukt:',spec.street,spec.town,e);}
+      await new Promise(resolve=>setTimeout(resolve,120));
+    }
     resolved[g]=addresses;
-    await new Promise(resolve=>setTimeout(resolve,500));
+    await new Promise(resolve=>setTimeout(resolve,180));
   }
 
   const demoKids=kids.filter(k=>/^k[0-9]+$/.test(String(k.id)));
   if(demoKids.length!==100)return;
 
   demoKids.forEach(k=>{
-    const n=parseInt(String(k.id).slice(1),10), group=Math.floor((n-1)/8), pos=(n-1)%8;
+    const n=parseInt(String(k.id).slice(1),10);
+    const group=Math.floor((n-1)/8);
+    const pos=(n-1)%8;
+    const spec=exactDemoAddresses[group];
+    const loc=drentheDemoLocations[group%drentheDemoLocations.length];
+    // Eerst altijd de gegarandeerd juiste plaats/straat als fallback.
+    const fallback=loc.street+', '+loc.town+', Drenthe';
+    k.demoTown=loc.town;
+    k.demoStreet=loc.street;
+    k.demoGroup=group+1;
+    k.address=fallback;
+    k.pickupAddress=fallback;
+    k.lat=loc.lat+(pos%4)*0.00008;
+    k.lon=loc.lon+Math.floor(pos/4)*0.00010;
+
     const hit=resolved[group]?.[pos];
-    if(!hit)return;
-    k.lat=Number(hit.lat); k.lon=Number(hit.lon);
-    k.address=hit.address; k.pickupAddress=hit.address;
-    const s=schoolPoint(k); k.destinationAddress=s?.address||k.destination||k.school||'';
+    if(hit){
+      k.lat=Number(hit.lat);
+      k.lon=Number(hit.lon);
+      k.address=hit.address;
+      k.pickupAddress=hit.address;
+    }
+    const sp=schoolLocations[k.school];
+    k.destinationAddress=sp?.address||k.destination||k.school||'';
   });
-  addressesReady=true; saveState(); renderAll();
+  addressesReady=true;
+  saveState();
+  renderAll();
 }
 function demoLocationForKid(k){
   const n=parseInt(String(k?.id||'').slice(1),10);
@@ -2772,7 +2783,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=746").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=750").catch(()=>{}));}
 </script>
 
 </body>
