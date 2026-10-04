@@ -1780,6 +1780,23 @@ function runAI(silent=false){
       q.forEach((k,i)=>k.routeOrder=i+1);
     });
 
+    // V751: laatste synchronisatie. Na toevoegen/herplannen mag geen actieve
+    // rit een leeg chauffeurveld houden als er nog een vrije chauffeur/bus is.
+    const orphanKids=kids.filter(k=>active(k)&&!k.driver);
+    for(const k of orphanKids){
+      const choices=driverNames.filter(d=>
+        !isDriverUnavailable(d) &&
+        !isBusUnavailable(d) &&
+        load(d)<MAX &&
+        schoolDeadlineOk(k)
+      );
+      if(choices.length){
+        choices.sort((a,b)=>load(a)-load(b));
+        k.driver=choices[0];
+        k.routeOrder=(kids.filter(x=>x.driver===choices[0]&&active(x)).length);
+      }
+    }
+
     const fullBuses=[...groups.values()].filter(q=>q.length===MAX).length;
     const partialBuses=[...groups.values()].filter(q=>q.length<MAX).length;
 
