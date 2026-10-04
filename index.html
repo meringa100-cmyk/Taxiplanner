@@ -456,7 +456,7 @@ async function geocodeExactDemoAddresses(){
       if(added>=plan.count)break;
       const x=docsForStreet.find(d=>String(d.centroide_ll||d.centroid_ll||'').includes('POINT('));
       if(!x)continue;
-      const raw=String(x.centroide_ll||x.centroid_ll||'').replace('POINT(','').replace(')','').trim().split(/\\s+/).map(Number);
+      const raw=String(x.centroide_ll||x.centroid_ll||'').replace('POINT(','').replace(')','').trim().split(/\s+/).map(Number);
       if(raw.length!==2||!Number.isFinite(raw[0])||!Number.isFinite(raw[1]))continue;
       all.push({
         town:plan.town,
@@ -2768,7 +2768,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=753").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=757").catch(()=>{}));}
 </script>
 
 </body>
