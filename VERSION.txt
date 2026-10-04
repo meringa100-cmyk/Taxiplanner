@@ -1,3 +1,3 @@
-Taxi Planner V749
-Deployment refresh: 2026-10-03
-Stabiele routeplanning en schooldeadline-optimalisatie toegevoegd.
+Taxi Planner V74
+Deployment refresh: 2026-10-04
+Code cleanup and route/address validation groundwork.
