@@ -344,6 +344,13 @@ const drentheDemoLocations=[
   {town:'Erica',street:'Verlengde Vaart NZ',lat:52.7119677,lon:6.9057844},
   {town:'Westerbork',street:'Hoofdstraat',lat:52.8500,lon:6.6080}
 ];
+function demoLocationForKid(k){
+  const n=parseInt(String(k?.id||'').slice(1),10);
+  if(!Number.isFinite(n)||n<1||n>100)return null;
+  const group=Math.floor((n-1)/8);
+  return drentheDemoLocations[group%drentheDemoLocations.length]||null;
+}
+
 function schoolPoint(k){
   return schoolLocations[k?.school] || schoolLocations[k?.destination] || null;
 }
@@ -630,7 +637,7 @@ function normalizeBuiltInDemo(){
     const group=Math.floor((n-1)/8);
     const pos=(n-1)%8;
     const school=schools[group%schools.length];
-    const loc=drentheDemoLocations[group%drentheDemoLocations.length];
+    const loc=demoLocationForKid(k)||drentheDemoLocations[group%drentheDemoLocations.length];
     const lat=loc.lat+(pos%4)*0.00008;
     const lon=loc.lon+Math.floor(pos/4)*0.00010;
     const wanted=driverNames[group]||'';
@@ -1227,6 +1234,18 @@ function coordForDriverStop(driverIndex, stopIndex){
 }
 
 function coordForKid(k, driverIndex, stopIndex){
+  // De ingebouwde demo gebruikt uitsluitend zijn eigen vaste plaatsbron.
+  // Hierdoor kan een oude opgeslagen coördinaat nooit een Emmen-kind
+  // bijvoorbeeld naar Dwingeloo verplaatsen.
+  const demoLoc=demoLocationForKid(k);
+  if(demoLoc){
+    const n=parseInt(String(k.id).slice(1),10);
+    const pos=(n-1)%8;
+    return [
+      demoLoc.lon+Math.floor(pos/4)*0.00010,
+      demoLoc.lat+(pos%4)*0.00008
+    ];
+  }
   if(k && Number.isFinite(k.lon) && Number.isFinite(k.lat)) return [k.lon,k.lat];
   // Demo-coördinaten zijn stabiel per kind, zodat een route-optimalisatie
   // niet zelf de ligging van een kind verandert wanneer de volgorde wijzigt.
