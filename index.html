@@ -1607,12 +1607,9 @@ function runAI(silent=false){
   // (12x8 + 1x4). Gebruik daarvoor een deterministische plaatsing.
   // Zo kan een bestaande/kapotte opgeslagen demo-planning de AI niet meer
   // onnodig leegtrekken voordat de echte routecontrole begint.
-  const demoKids=kids.filter(k=>{
-    const n=parseInt(String(k.id).slice(1),10);
-    return /^k[0-9]+$/.test(String(k.id)) && Number.isInteger(n) && n>=1 && n<=100;
-  });
+  const demoKids=kids.filter(k=>String(k.id).startsWith('k') && /^[0-9]+$/.test(String(k.id).slice(1)));
   const isBuiltInDemo=demoKids.length===100 &&
-    demoKids.every(k=>k.status==='waiting'||k.status==='picked'||k.status==='school');
+    demoKids.every(k=>k.status==='waiting' && Number.isFinite(Number(k.timeMin)));
 
   // V739: als een route qua ophaaltijden nét niet haalbaar is, mag de AI
   // de ophaaltijd van wachtende kinderen maximaal 15 minuten verschuiven.
@@ -2578,7 +2575,7 @@ async function geocodePickupAddress(address){
   }
 }
 
-async async function addRide(){
+async function addRide(){
  const t=document.getElementById('newTime').value||'08:30';
  const parts=t.split(':').map(Number);
  const h=Number.isFinite(parts[0])?parts[0]:8;
@@ -2712,7 +2709,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=752").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=751").catch(()=>{}));}
 </script>
 
 </body>
