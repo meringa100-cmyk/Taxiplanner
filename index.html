@@ -482,26 +482,22 @@ async function geocodeExactDemoAddresses(){
     });
   }
 
-  const seen=new Set();
+  // V64: de batchresultaten zijn hierboven al direct aan pool toegevoegd.
+  // Belangrijk: hier mag geen tweede "results" loop staan; buiten de batch
+  // bestaat die variabele niet en zou de hele spreiding stoppen.
 
-  results.forEach(x=>{
-    if(!x)return;
-    const key=x.street.toLowerCase();
-    if(seen.has(key))return;
-    seen.add(key);
-    pool.push(x);
-  });
-
-  if(pool.length<60){
-    console.warn('V62: slechts '+pool.length+' unieke Emmen-straten gevonden. Spreiding niet toegepast.');
+  if(pool.length<8){
+    console.warn('V64: slechts '+pool.length+' unieke Emmen-straten gevonden; spreiding niet toegepast.');
     return;
   }
 
-  // Exact 100 kinderen over 60 verschillende straten:
-  // 40 straten krijgen 2 kinderen, 20 straten krijgen 1 kind.
+  // Gebruik maximaal 60 echte straten. Als er minder beschikbaar zijn,
+  // gebruiken we alsnog alle gevonden straten in plaats van de oude cluster.
   const selected=pool.slice(0,60);
   demoKids.forEach((k,i)=>{
-    const streetIndex=Math.floor(i*60/100);
+    // Bewust niet per 8 kinderen dezelfde straat: zo krijgt iedere
+    // chauffeur meerdere verschillende ophaalgebieden.
+    const streetIndex=(i*17)%selected.length;
     const base=selected[streetIndex];
     if(!base)return;
 
@@ -518,10 +514,10 @@ async function geocodeExactDemoAddresses(){
   });
 
   addressesReady=true;
-  demoAddressSpreadVersion='v63';
+  demoAddressSpreadVersion='v64';
   saveState();
   renderAll();
-  console.log('V63: 100 kinderen verdeeld over '+selected.length+' verschillende echte Emmen-straten.');
+  console.log('V64: 100 kinderen verdeeld over '+selected.length+' verschillende echte Emmen-straten.');
 }
 function demoLocationForKid(k){
   const n=parseInt(String(k?.id||'').slice(1),10);
@@ -808,7 +804,7 @@ function saveState(){
 function normalizeBuiltInDemo(){
   // V757: als de 60-straatspreiding al is opgeslagen, mag de oude
   // 13-groepen-normalisatie de woonadressen NOOIT meer overschrijven.
-  if(demoAddressSpreadVersion==='v61'||demoAddressSpreadVersion==='v62'||demoAddressSpreadVersion==='v63')return false;
+  if(demoAddressSpreadVersion==='v61'||demoAddressSpreadVersion==='v62'||demoAddressSpreadVersion==='v63'||demoAddressSpreadVersion==='v64')return false;
   // V73: elke demo-groep wordt eerst hard teruggezet naar zijn eigen plaats.
   // Daarna mag alleen een verse BAG-hit binnen diezelfde straat + plaats volgen.
   const demoKids=kids.filter(k=>/^k[0-9]+$/.test(String(k.id)));
@@ -2712,7 +2708,7 @@ renderAll();
 startPlannerAutomation();
 
 // V62: éénmalige echte straatspreiding voor de ingebouwde 100-kind-demo.
-setTimeout(()=>{ if(demoAddressSpreadVersion!=='v63') geocodeExactDemoAddresses(); },300);</script>
+setTimeout(()=>{ if(demoAddressSpreadVersion!=='v64') geocodeExactDemoAddresses(); },300);</script>
 
 
 
@@ -2790,7 +2786,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=760").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=761").catch(()=>{}));}
 </script>
 
 </body>
