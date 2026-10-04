@@ -1825,6 +1825,21 @@ function runAI(silent=false){
 
   // Haal alleen wachtende ritten uit de bestaande planning. Onderweg zijnde
   // ritten blijven staan en worden meegenomen als harde bezetting.
+  // Nieuwe personen mogen, net als de bestaande ritten, binnen de
+  // afgesproken ±15 minuten worden verschoven als dat nodig is om de
+  // schooldeadline te halen. Dit voorkomt dat een nieuwe rit direct
+  // "zonder chauffeur" blijft omdat bijvoorbeeld 08:30 te laat blijkt.
+  kids.filter(k=>k.status==='waiting' && k.newlyAdded).forEach(k=>{
+    if(schoolDeadlineOk(k))return;
+    const needed=SCHOOL_DEADLINE_MIN-pickupToSchoolMinutes(k);
+    const original=Number(k.timeMin)||0;
+    const target=Math.max(original-15,needed);
+    if(target<original && target>=original-15){
+      k.timeMin=target;
+      k.time=fmtTime(target);
+    }
+  });
+
   const waiting=kids.filter(k=>k.status==='waiting');
   waiting.forEach(k=>{k.driver='';k.routeOrder=null;});
 
@@ -2429,6 +2444,10 @@ function addRide(){
    id:newId,
    name:document.getElementById('newName').value||'Nieuw kind',
    time:t,timeMin:h*60+m,address,school,destination,
+   // Nieuwe ritten krijgen meteen een geldige Emmen-coördinaat zodat de AI
+   // de route/reistijd ook echt kan beoordelen.
+   lat:52.772+(kids.length%13)*0.0012,
+   lon:6.862+(kids.length%13)*0.0014,
    driver:driverNames[0],fixed:false,status:'waiting',
    approach:'Rustig en duidelijk aanspreken.',
    safety:'Veilig instappen en gordel.',
