@@ -344,6 +344,83 @@ const drentheDemoLocations=[
   {town:'Erica',street:'Verlengde Vaart NZ',lat:52.7119677,lon:6.9057844},
   {town:'Westerbork',street:'Hoofdstraat',lat:52.8500,lon:6.6080}
 ];
+// Exacte demo-adressen: per straat zoeken we bestaande BAG-adressen via PDOK.
+// Daardoor worden even/oneven kanten en echte huisnummers automatisch gerespecteerd.
+const exactDemoAddresses=[
+  {town:'Emmen',street:'Laan van de Marel',numbers:[2,6,8,10,12,14,16,18]},
+  {town:'Coevorden',street:'Stationsstraat',numbers:[2,4,6,8,10,12,14,16]},
+  {town:'Hoogeveen',street:'Hoofdstraat',numbers:[2,4,6,8,10,12,14,16]},
+  {town:'Assen',street:'Rolderstraat',numbers:[2,4,6,8,10,12,14,16]},
+  {town:'Meppel',street:'Stationsweg',numbers:[2,4,6,8,10,12,14,16]},
+  {town:'Beilen',street:'Brinkstraat',numbers:[2,4,6,8,10,12,14,16]},
+  {town:'Borger',street:'Hoofdstraat',numbers:[2,4,6,8,10,12,14,16]},
+  {town:'Odoorn',street:'Valtherweg',numbers:[2,4,6,8,10,12,14,16]},
+  {town:'Dalen',street:'Hoofdstraat',numbers:[2,4,6,8,10,12,14,16]},
+  {town:'Nieuw-Amsterdam',street:'Vaart NZ',numbers:[2,4,6,8,10,12,14,16]},
+  {town:'Klazienaveen',street:'Langestraat',numbers:[2,4,6,8,10,12,14,16]},
+  {town:'Erica',street:'Verlengde Vaart NZ',numbers:[2,4,6,8,10,12,14,16]},
+  {town:'Westerbork',street:'Hoofdstraat',numbers:[2,4,6,8,10,12,14,16]}
+];
+async function pdokAddress(street,town,number){
+  try{
+    const q=encodeURIComponent(street+' '+number+', '+town+', Nederland');
+    const url='https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?q='+q+'&rows=10';
+    const res=await fetch(url,{headers:{'Accept':'application/json'}});
+    if(!res.ok)return null;
+    const data=await res.json();
+    const docs=data?.response?.docs||[];
+    const hit=docs.find(x=>
+      String(x.type||'').toLowerCase()==='adres' &&
+      String(x.weergavenaam||'').toLowerCase().startsWith((street+' '+number+',').toLowerCase()) &&
+      String(x.woonplaatsnaam||'').toLowerCase()===town.toLowerCase()
+    ) || docs.find(x=>
+      String(x.weergavenaam||'').toLowerCase().includes(street.toLowerCase()) &&
+      String(x.weergavenaam||'').toLowerCase().includes(String(number))
+    );
+    if(!hit)return null;
+    const p=hit.centroid_ll||'';
+    const parts=String(p).replace('POINT(','').replace(')','').trim().split(/s+/).map(Number);
+    if(parts.length!==2 || !Number.isFinite(parts[0]) || !Number.isFinite(parts[1]))return null;
+    return {lon:parts[0],lat:parts[1],address:hit.weergavenaam||street+' '+number+', '+town};
+  }catch(e){return null;}
+}
+async function geocodeExactDemoAddresses(){
+  const cacheKey='taxiPlannerExactAddressesV1';
+  let cache={};
+  try{cache=JSON.parse(localStorage.getItem(cacheKey)||'{}')||{};}catch(e){}
+  const resolved=[];
+  for(let g=0;g<exactDemoAddresses.length;g++){
+    const spec=exactDemoAddresses[g];
+    const addresses=[];
+    for(const number of spec.numbers){
+      const key=spec.street+'|'+spec.town+'|'+number;
+      let hit=cache[key];
+      if(!hit) hit=await pdokAddress(spec.street,spec.town,number);
+      if(hit){
+        cache[key]=hit;
+        addresses.push(hit);
+      }
+    }
+    resolved[g]=addresses;
+  }
+  try{localStorage.setItem(cacheKey,JSON.stringify(cache));}catch(e){}
+  const demoKids=kids.filter(k=>/^k[0-9]+$/.test(String(k.id)));
+  if(demoKids.length!==100)return;
+  demoKids.forEach(k=>{
+    const n=parseInt(String(k.id).slice(1),10);
+    const group=Math.floor((n-1)/8);
+    const pos=(n-1)%8;
+    const hit=resolved[group]?.[pos];
+    if(!hit)return;
+    k.lat=hit.lat;k.lon=hit.lon;
+    k.address=hit.address;
+    k.pickupAddress=hit.address;
+    const s=schoolPoint(k);
+    k.destinationAddress=s?.address||k.destination||k.school||'';
+  });
+  saveState();
+  renderAll();
+}
 function demoLocationForKid(k){
   const n=parseInt(String(k?.id||'').slice(1),10);
   if(!Number.isFinite(n)||n<1||n>100)return null;
@@ -2660,7 +2737,8 @@ async function refreshVerifiedDemoLocations(){
     renderAll();
   }
 }
-refreshVerifiedDemoLocations();</script>
+refreshVerifiedDemoLocations();
+setTimeout(()=>geocodeExactDemoAddresses(),2500);</script>
 
 
 
