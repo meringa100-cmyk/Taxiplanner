@@ -1453,7 +1453,7 @@ function renderRealMapMarkers(){
       });
       const m=L.marker(latlon,{icon}).addTo(realMap);
       m.bindTooltip(d+' • route-stop '+(i+1),{direction:'top'});
-      m.bindPopup('<b>'+d+'</b><br>Route-stop '+(i+1)+'<br>'+assigned.name+'<br>'+assigned.time+'<br>'+statusText(assigned.status)+'<br><button onclick="openDriverDetails(\''+d+'\')">Chauffeurdetails</button>');
+      m.bindPopup('<b>'+d+'</b><br>Route-stop '+(i+1)+'<br>'+assigned.name+'<br>'+assigned.time+'<br>📍 '+(assigned.pickupAddress||assigned.address||'Ophaaladres onbekend')+'<br>🏫 '+(assigned.address||assigned.destination||'Bestemming onbekend')+'<br>'+statusText(assigned.status)+'<br><button onclick="openDriverDetails(\''+d+'\')">Chauffeurdetails</button>');
       mapMarkers.push(m);
     });
   });
@@ -2466,7 +2466,9 @@ function openAdd(){
  <p>🕐 Ophaaltijd</p>
  <input id="newTime" type="time" style="width:100%" value="08:30">
  <p>📍 <b>Ophaaladres</b></p>
- <input id="newPickupAddress" style="width:100%" value="" placeholder="Bijv. Laan van de Marel 12, Emmen">
+ <input id="newPickupAddress" style="width:100%" value="" placeholder="Bijv. Laan van de Marel 12">
+ <p>🏘️ <b>Plaats</b></p>
+ <input id="newPickupCity" style="width:100%" value="Emmen" placeholder="Bijv. Hoogeveen">
  <p>🏫 Waarheen?</p>
  <select id="newDestination" style="width:100%" onchange="toggleNewDestination()">
    ${destinationOptions}
@@ -2486,12 +2488,33 @@ function toggleNewDestination(){
  if(isSchool && !address.value) address.value=select.value;
  address.placeholder=isSchool?'Bestemmingsadres (optioneel)':'Vul de bestemming / het adres in';
 }
-function addRide(){
+async function geocodePickupAddress(address){
+  const query=String(address||'').trim();
+  if(!query)return null;
+  try{
+    const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=nl&q='+encodeURIComponent(query);
+    const res=await fetch(url,{headers:{'Accept':'application/json'}});
+    if(!res.ok)throw new Error('Geocoding mislukt');
+    const data=await res.json();
+    if(!Array.isArray(data)||!data.length)return null;
+    const lat=Number(data[0].lat), lon=Number(data[0].lon);
+    if(!Number.isFinite(lat)||!Number.isFinite(lon))return null;
+    return {lat,lon,display_name:data[0].display_name||query};
+  }catch(e){
+    console.warn('Ophaaladres kon niet op de kaart worden gevonden:',e);
+    return null;
+  }
+}
+
+async function addRide(){
  const t=document.getElementById('newTime').value||'08:30';
  const parts=t.split(':').map(Number);
  const h=Number.isFinite(parts[0])?parts[0]:8;
  const m=Number.isFinite(parts[1])?parts[1]:30;
- const pickupAddress=document.getElementById('newPickupAddress')?.value.trim()||'Ophaaladres onbekend';
+ const pickupStreet=document.getElementById('newPickupAddress')?.value.trim()||'';
+ const pickupCity=document.getElementById('newPickupCity')?.value.trim()||'';
+ const pickupAddress=[pickupStreet,pickupCity].filter(Boolean).join(', ')||'Ophaaladres onbekend';
+ const pickupGeo=await geocodePickupAddress(pickupAddress+', Nederland');
  const destination=document.getElementById('newDestination')?.value||'Nieuwe bestemming';
  const address=document.getElementById('newAddress')?.value.trim()||destination;
  const school=schools.includes(destination)?destination:'Nieuwe bestemming';
@@ -2503,8 +2526,8 @@ function addRide(){
    pickupAddress,
    address,
    school,destination,
-   lat:52.772+(kids.length%13)*0.0012,
-   lon:6.862+(kids.length%13)*0.0014,
+   lat:pickupGeo?.lat ?? 52.7860+(kids.length%13)*0.0012,
+   lon:pickupGeo?.lon ?? 6.8980+(kids.length%13)*0.0014,
    driver:'',fixed:false,status:'waiting',
    approach:'Rustig en duidelijk aanspreken.',
    safety:'Veilig instappen en gordel.',
@@ -2525,7 +2548,7 @@ function addRide(){
    }
  },100);
 
- alert('✅ Rit toegevoegd: '+newKid.name+' → '+(newKid.destination||newKid.address)+'\n📍 Ophalen: '+newKid.pickupAddress+' om '+newKid.time+'.');
+ alert('✅ Rit toegevoegd: '+newKid.name+' → '+(newKid.destination||newKid.address)+'\n📍 Ophalen: '+newKid.pickupAddress+' om '+newKid.time+'.'+(pickupGeo?'\n🗺️ Ophaaladres op de kaart geplaatst.':'\n⚠️ Adres niet exact gevonden; controleer het adres.') );
 }
 function find(id){return kids.find(k=>k.id===id)}
 function closeModal(){document.getElementById('modal').classList.add('hidden')}
