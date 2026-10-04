@@ -1400,35 +1400,12 @@ async function calculateRealRoutes(){
         routeCoords.push([school.lon,school.lat]);
       }
 
-      // Duidelijk vertrekpunt: altijd bij het eerste echte ophaaladres.
-      const start=coordForKid(first,driverIndex,0);
-      const startIcon=L.divIcon({
-        className:'',
-        html:'<div style="background:#16a34a;color:#fff;border:3px solid #fff;border-radius:10px;padding:6px 9px;font-weight:900;box-shadow:0 2px 8px #0006;white-space:nowrap">🟢 VERTREK<br><small>'+first.name+'</small><br><small>'+ (first.pickupAddress||first.address||'Adres onbekend') +'</small></div>',
-        iconSize:[110,50],iconAnchor:[55,50]
-      });
-      const sm=L.marker([start[1],start[0]],{icon:startIcon,zIndexOffset:2000}).addTo(realMap);
-      sm.bindPopup('<b>🟢 VERTREK</b><br>👦 '+first.name+'<br>📍 '+(first.pickupAddress||first.address||'Ophaaladres onbekend')+'<br>🚕 '+d);
-      mapMarkers.push(sm);
-
       const route=await osrmRoute(routeCoords);
       const line=L.geoJSON(route.geometry,{style:{weight:6,opacity:.85}});
       line.addTo(realMap);
       line.bindPopup('<b>'+d+'</b><br>'+Math.round(route.distance/1000*10)/10+' km • '+Math.round(route.duration/60)+' min<br>🏫 Aankomst: '+(last.school||last.destination||'School'));
       routeLines.push(line);
 
-      // Duidelijke eindbestemming op de kaart: de school waar de kinderen
-      // aankomen. Ook bij één kind wordt het aankomstpunt getoond.
-      if(school && Number.isFinite(school.lat)&&Number.isFinite(school.lon)){
-        const arrivalIcon=L.divIcon({
-          className:'',
-          html:'<div style="background:#b91c1c;color:#fff;border:3px solid #fff;border-radius:10px;padding:5px 8px;font-weight:800;box-shadow:0 2px 8px #0005;white-space:nowrap">🔴 AANKOMST<br><small style="font-weight:700">'+(last.school||last.destination||'School')+'</small></div>',
-          iconSize:[120,48],iconAnchor:[60,48]
-        });
-        const am=L.marker([school.lat,school.lon],{icon:arrivalIcon}).addTo(realMap);
-        am.bindPopup('<b>🏫 AANKOMST</b><br>'+ (last.school||last.destination||'School') +'<br>Chauffeur: '+d+'<br>Kinderen: '+ordered.length);
-        mapMarkers.push(am);
-      }
       completed++;
     }
     realRouteMode=true;
@@ -1495,16 +1472,6 @@ function renderRealMapMarkers(){
       const m=L.marker(latlon,{icon}).addTo(realMap);
       const pickupLabel=assigned.pickupAddress||assigned.address||'Ophaaladres onbekend';
       const destinationLabel=assigned.address||assigned.destination||'Bestemming onbekend';
-      if(i===0){
-        const startIcon=L.divIcon({
-          className:'',
-          html:'<div style="background:#16a34a;color:#fff;border:3px solid #fff;border-radius:10px;padding:6px 9px;font-weight:900;box-shadow:0 2px 8px #0006;white-space:nowrap">🟢 VERTREK<br><small>'+assigned.name+'</small></div>',
-          iconSize:[110,50],iconAnchor:[55,50]
-        });
-        const sm=L.marker(latlon,{icon:startIcon,zIndexOffset:1000}).addTo(realMap);
-        sm.bindPopup('<b>🟢 VERTREK</b><br>👦 '+assigned.name+'<br>📍 '+pickupLabel+'<br>🚕 '+d);
-        mapMarkers.push(sm);
-      }
       m.bindTooltip('👦 <b>'+assigned.name+'</b><br>📍 '+pickupLabel+'<br>🏫 '+destinationLabel,{direction:'top',sticky:true,className:'taxi-map-label'});
       m.bindPopup('<b>👦 '+assigned.name+'</b><br>🚕 '+d+'<br>🧭 Route-stop '+(i+1)+'<br>🕐 '+assigned.time+'<br>📍 <b>Ophalen:</b> '+pickupLabel+'<br>🏫 <b>Bestemming:</b> '+destinationLabel+'<br>'+statusText(assigned.status)+'<br><button onclick="openDriverDetails(\''+d+'\')">Chauffeurdetails</button>');
       mapMarkers.push(m);
