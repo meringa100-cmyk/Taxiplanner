@@ -1584,7 +1584,24 @@ function renderRealMapMarkers(){
     // over het echte wegennet getekend.
     rides.forEach((assigned,i)=>{
       const p=coordForKid(assigned,driverNames.indexOf(d),i);
-      const latlon=[p[1],p[0]];
+      let latlon=[p[1],p[0]];
+
+      // V772: markers die exact op elkaar liggen automatisch uitwaaieren.
+      // Er is geen marker-clustering; ieder kind blijft een eigen marker.
+      const overlap=rides.slice(0,i).filter((x,j)=>{
+        const q=coordForKid(x,driverNames.indexOf(d),j);
+        return Math.abs(q[0]-p[0])<0.00005 && Math.abs(q[1]-p[1])<0.00005;
+      });
+      if(overlap.length){
+        const total=rides.filter((x,j)=>{
+          const q=coordForKid(x,driverNames.indexOf(d),j);
+          return Math.abs(q[0]-p[0])<0.00005 && Math.abs(q[1]-p[1])<0.00005;
+        }).length;
+        const angle=(overlap.length/Math.max(total,1))*Math.PI*2-Math.PI/2;
+        const radius=0.00025;
+        latlon=[p[1]+Math.sin(angle)*radius,p[0]+Math.cos(angle)*radius];
+      }
+
       const color=assigned.status==='picked'?'#d97706':'#1769aa';
       const icon=L.divIcon({
         className:'',
