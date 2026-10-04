@@ -385,43 +385,82 @@ async function pdokAddress(street,town,number){
   }catch(e){return null;}
 }
 async function geocodeExactDemoAddresses(){
-  const cacheKey='taxiPlannerExactAddressesV1';
+  const cacheKey='taxiPlannerExactAddressesV2';
   let cache={};
   try{cache=JSON.parse(localStorage.getItem(cacheKey)||'{}')||{};}catch(e){}
+
   const resolved=[];
   for(let g=0;g<exactDemoAddresses.length;g++){
     const spec=exactDemoAddresses[g];
-    const addresses=[];
-    for(const number of spec.numbers){
-      const key=spec.street+'|'+spec.town+'|'+number;
-      let hit=cache[key];
-      if(!hit) hit=await pdokAddress(spec.street,spec.town,number);
-      if(hit){
-        cache[key]=hit;
-        addresses.push(hit);
-      }
+    const cacheGroup=cache[spec.street+'|'+spec.town];
+    let addresses=Array.isArray(cacheGroup)?cacheGroup:[];
+
+    if(addresses.length<8){
+      try{
+        const q=encodeURIComponent(spec.street+', '+spec.town+', Nederland');
+        const url='https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?q='+q+'&rows=100';
+        const res=await fetch(url,{headers:{'Accept':'application/json'}});
+        if(res.ok){
+          const data=await res.json();
+          const docs=(data?.response?.docs||[]).filter(x=>{
+            const dn=String(x.weergavenaam||'').toLowerCase();
+            return String(x.type||'').toLowerCase()==='adres' &&
+              dn.includes(spec.street.toLowerCase()) &&
+              dn.includes(spec.town.toLowerCase());
+          });
+
+          // Gebruik echte adressen uit de straat. Sorteer numeriek zodat de
+          // demo geen zelfbedachte 2-4-6-8 reeks meer maakt.
+          docs.sort((x,y)=>{
+            const nx=Number(String(x.huisnummer||'').replace(/\D/g,''))||999999;
+            const ny=Number(String(y.huisnummer||'').replace(/\D/g,''))||999999;
+            return nx-ny;
+          });
+
+          addresses=[];
+          for(const hit of docs){
+            const p=String(hit.centroid_ll||'').replace('POINT(','').replace(')','').trim().split(/\s+/).map(Number);
+            if(p.length!==2 || !Number.isFinite(p[0]) || !Number.isFinite(p[1]))continue;
+            addresses.push({
+              lon:p[0],
+              lat:p[1],
+              address:hit.weergavenaam||'',
+              number:hit.huisnummer||''
+            });
+            if(addresses.length>=8)break;
+          }
+          cache[spec.street+'|'+spec.town]=addresses;
+          try{localStorage.setItem(cacheKey,JSON.stringify(cache));}catch(e){}
+        }
+      }catch(e){console.warn('Exacte BAG-adressen niet opgehaald:',spec.street,spec.town,e);}
     }
     resolved[g]=addresses;
+    await new Promise(resolve=>setTimeout(resolve,1000));
   }
-  try{localStorage.setItem(cacheKey,JSON.stringify(cache));}catch(e){}
+
   const demoKids=kids.filter(k=>/^k[0-9]+$/.test(String(k.id)));
   if(demoKids.length!==100)return;
+
   demoKids.forEach(k=>{
     const n=parseInt(String(k.id).slice(1),10);
     const group=Math.floor((n-1)/8);
     const pos=(n-1)%8;
     const hit=resolved[group]?.[pos];
     if(!hit)return;
-    k.lat=hit.lat;k.lon=hit.lon;
+
+    // Dit zijn nu de echte BAG-coördinaten van precies het getoonde huis.
+    k.lat=hit.lat;
+    k.lon=hit.lon;
     k.address=hit.address;
     k.pickupAddress=hit.address;
+
     const s=schoolPoint(k);
     k.destinationAddress=s?.address||k.destination||k.school||'';
   });
+
   saveState();
   renderAll();
-}
-function demoLocationForKid(k){
+}function demoLocationForKid(k){
   const n=parseInt(String(k?.id||'').slice(1),10);
   if(!Number.isFinite(n)||n<1||n>100)return null;
   const group=Math.floor((n-1)/8);
@@ -1311,12 +1350,11 @@ function coordForDriverStop(driverIndex, stopIndex){
 }
 
 function coordForKid(k, driverIndex, stopIndex){
-  // Demo: exact dezelfde vaste straatlocatie voor alle kinderen uit de groep.
-  // Geen oude localStorage-coördinaten en geen kunstmatige verschuiving over
-  // de kaart; zo blijft de marker aantoonbaar op de bedoelde straat.
+  // Exact BAG/PDOK-adres gaat altijd vóór een straatfallback.
+  // De route moet naar het daadwerkelijke huispunt rijden.
+  if(k && Number.isFinite(k.lon) && Number.isFinite(k.lat)) return [k.lon,k.lat];
   const demoLoc=demoLocationForKid(k);
   if(demoLoc) return [demoLoc.lon,demoLoc.lat];
-  if(k && Number.isFinite(k.lon) && Number.isFinite(k.lat)) return [k.lon,k.lat];
   // Demo-coördinaten zijn stabiel per kind, zodat een route-optimalisatie
   // niet zelf de ligging van een kind verandert wanneer de volgorde wijzigt.
   const n=k && k.id ? (parseInt(String(k.id).replace(/\D/g,''),10)||0) : stopIndex;
