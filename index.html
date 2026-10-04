@@ -389,67 +389,120 @@ async function pdokAddress(street,town,number){
 }
 
 async function geocodeExactDemoAddresses(){
-  // V74: nooit meer een adres uit een andere plaats accepteren.
-  // Elke demo-groep heeft zijn eigen plaats + straat + huisnummerlijst.
-  // Alleen een BAG-hit met exact dezelfde plaats, straat én huisnummer mag
-  // de fallback vervangen. Geen oude V4-cache meer gebruiken.
-  const resolved=[];
-  for(let g=0;g<exactDemoAddresses.length;g++){
-    const spec=exactDemoAddresses[g];
-    const loc=drentheDemoLocations[g%drentheDemoLocations.length];
-    const addresses={};
-    for(const number of spec.numbers){
-      const hit=await pdokAddress(spec.street,spec.town,number);
-      if(!hit)continue;
-      // Extra veiligheidshek: een hit mag niet honderden kilometers van
-      // het vaste demo-punt liggen, ook niet als een externe bron fout is.
-      const km=geoDistanceKm(
-        {lat:hit.lat,lon:hit.lon},
-        {lat:loc.lat,lon:loc.lon}
-      );
-      if(Number.isFinite(km) && km<=15){
-        addresses[String(number)]={...hit,number:String(number)};
-      }
-      await new Promise(resolve=>setTimeout(resolve,120));
+  // V60: verdeel de eerste 100 demo-kinderen over 60 ECHTE straten.
+  // De straten/adressen komen rechtstreeks uit de actuele BAG via PDOK.
+  // Per plaats worden meerdere verschillende straten gekozen; daardoor
+  // staan kinderen niet meer met z'n allen in één straat.
+  const demoKids=kids.filter(k=>{
+    const n=parseInt(String(k.id).slice(1),10);
+    return /^k[0-9]+$/.test(String(k.id)) && Number.isInteger(n) && n>=1 && n<=100;
+  });
+  if(demoKids.length<100)return;
+
+  const townPlans=[
+    {town:'Emmen',count:6},
+    {town:'Coevorden',count:6},
+    {town:'Hoogeveen',count:5},
+    {town:'Assen',count:5},
+    {town:'Meppel',count:5},
+    {town:'Beilen',count:5},
+    {town:'Borger',count:5},
+    {town:'Odoorn',count:5},
+    {town:'Dalen',count:4},
+    {town:'Nieuw-Amsterdam',count:4},
+    {town:'Klazienaveen',count:4},
+    {town:'Erica',count:3},
+    {town:'Westerbork',count:3}
+  ];
+
+  async function fetchTownAddresses(town){
+    try{
+      const params=new URLSearchParams({
+        q:'"'+town+'"',
+        fq:'type:adres',
+        fl:'weergavenaam,type,straatnaam,woonplaatsnaam,huisnummer,huisletter,huisnummertoevoeging,centroide_ll,centroid_ll',
+        rows:'100'
+      });
+      const url='https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?'+params.toString();
+      const res=await fetch(url,{headers:{'Accept':'application/json'}});
+      if(!res.ok)return [];
+      const data=await res.json();
+      return Array.isArray(data?.response?.docs)?data.response.docs:[];
+    }catch(e){
+      console.warn('PDOK spreiding '+town+':',e);
+      return [];
     }
-    resolved[g]=addresses;
-    await new Promise(resolve=>setTimeout(resolve,180));
   }
 
-  const demoKids=kids.filter(k=>/^k[0-9]+$/.test(String(k.id)));
-  if(demoKids.length!==100)return;
+  const all=[];
+  for(const plan of townPlans){
+    const docs=await fetchTownAddresses(plan.town);
+    const byStreet=new Map();
 
-  demoKids.forEach(k=>{
-    const n=parseInt(String(k.id).slice(1),10);
-    const group=Math.floor((n-1)/8);
-    const pos=(n-1)%8;
-    const spec=exactDemoAddresses[group];
-    const loc=drentheDemoLocations[group%drentheDemoLocations.length];
-    // Eerst altijd de gegarandeerd juiste plaats/straat als fallback.
-    const fallbackNumber=spec?.numbers?.[pos];
-    const fallback=loc.street+' '+fallbackNumber+', '+loc.town+', Drenthe';
-    k.demoTown=loc.town;
-    k.demoStreet=loc.street;
-    k.demoGroup=group+1;
-    k.address=fallback;
-    k.pickupAddress=fallback;
-    k.lat=loc.lat+(pos%4)*0.00008;
-    k.lon=loc.lon+Math.floor(pos/4)*0.00010;
+    docs.filter(x=>
+      String(x.type||'').toLowerCase()==='adres' &&
+      String(x.woonplaatsnaam||'').toLowerCase()===plan.town.toLowerCase() &&
+      x.straatnaam
+    ).forEach(x=>{
+      const street=String(x.straatnaam).trim();
+      if(!street)return;
+      const key=plan.town+'|'+street.toLowerCase();
+      if(!byStreet.has(key))byStreet.set(key,[]);
+      byStreet.get(key).push(x);
+    });
 
-    const wantedNumber=spec?.numbers?.[pos];
-    const hit=resolved[group]?.[String(wantedNumber)];
-    if(hit){
-      k.lat=Number(hit.lat);
-      k.lon=Number(hit.lon);
-      k.address=hit.address;
-      k.pickupAddress=hit.address;
+    let added=0;
+    for(const [key,docsForStreet] of byStreet){
+      if(added>=plan.count)break;
+      const x=docsForStreet.find(d=>String(d.centroide_ll||d.centroid_ll||'').includes('POINT('));
+      if(!x)continue;
+      const raw=String(x.centroide_ll||x.centroid_ll||'').replace('POINT(','').replace(')','').trim().split(/\\s+/).map(Number);
+      if(raw.length!==2||!Number.isFinite(raw[0])||!Number.isFinite(raw[1]))continue;
+      all.push({
+        town:plan.town,
+        street:String(x.straatnaam),
+        address:x.weergavenaam||String(x.straatnaam)+' '+(x.huisnummer||'')+', '+plan.town,
+        number:String(x.huisnummer||''),
+        lat:raw[1],
+        lon:raw[0]
+      });
+      added++;
     }
+  }
+
+  // Alleen doorgaan als PDOK daadwerkelijk minstens 60 verschillende
+  // fysieke straten heeft gevonden. Anders laten we de bestaande stabiele
+  // demo-adressen ongemoeid.
+  if(all.length<60){
+    console.warn('V60: slechts '+all.length+' verschillende straten gevonden; bestaande adressen behouden.');
+    return;
+  }
+
+  // De eerste 40 straten krijgen 2 kinderen, de laatste 20 één kind.
+  // Daardoor zijn er exact 100 kinderen verdeeld over exact 60 straten.
+  const pool=all.slice(0,60);
+  demoKids.forEach((k,i)=>{
+    const streetIndex=Math.floor(i*60/100);
+    const base=pool[streetIndex];
+    if(!base)return;
+
+    k.demoTown=base.town;
+    k.demoStreet=base.street;
+    k.demoGroup=streetIndex+1;
+    k.address=base.address;
+    k.pickupAddress=base.address;
+    k.lat=base.lat;
+    k.lon=base.lon;
+
     const sp=schoolLocations[k.school];
     k.destinationAddress=sp?.address||k.destination||k.school||'';
   });
+
   addressesReady=true;
+  demoAddressSpreadVersion='v60';
   saveState();
   renderAll();
+  console.log('V60: 100 kinderen verdeeld over '+pool.length+' verschillende straten.');
 }
 function demoLocationForKid(k){
   const n=parseInt(String(k?.id||'').slice(1),10);
@@ -483,6 +536,7 @@ const streets=['Laan van de Marel','Emmerhout','Boslaan','Hoofdstraat','Stations
 let kids=[];
 let previousPlan=null;
 let demoCounter=101;
+let demoAddressSpreadVersion='';
 
 const busNumbers=Array.from({length:50},(_,i)=>'Bus '+String(i+1).padStart(2,'0'));
 let busIssues={};
@@ -727,7 +781,7 @@ const STORAGE_KEY='taxiPlannerStateV749';
 function saveState(){
  try{
   localStorage.setItem(STORAGE_KEY,JSON.stringify({
-   kids,driverUnavailable,busIssues,replacementAssignments,replacementSeq,demoCounter,parentDriverChanges
+   kids,driverUnavailable,busIssues,replacementAssignments,replacementSeq,demoCounter,parentDriverChanges,demoAddressSpreadVersion
   }));
  }catch(e){}
 }
@@ -769,6 +823,7 @@ function loadState(){
   parentDriverChanges=state.parentDriverChanges||{};
   replacementSeq=Number(state.replacementSeq)||1;
   demoCounter=Number(state.demoCounter)||101;
+  demoAddressSpreadVersion=state.demoAddressSpreadVersion||'';
   normalizeBuiltInDemo();
   addressesReady=kids.length>0 && kids.every(k=>Number.isFinite(k.lat)&&Number.isFinite(k.lon));
   return true;
@@ -2635,7 +2690,7 @@ renderAll();
 startPlannerAutomation();
 
 // V72: geen achtergrond-geocoding meer die exacte huispunten kan overschrijven.
-setTimeout(()=>geocodeExactDemoAddresses(),300);</script>
+setTimeout(()=>{ if(demoAddressSpreadVersion!=='v60') geocodeExactDemoAddresses(); },300);</script>
 
 
 
