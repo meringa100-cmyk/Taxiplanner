@@ -1404,7 +1404,7 @@ async function calculateRealRoutes(){
       const start=coordForKid(first,driverIndex,0);
       const startIcon=L.divIcon({
         className:'',
-        html:'<div style="background:#16a34a;color:#fff;border:3px solid #fff;border-radius:10px;padding:6px 9px;font-weight:900;box-shadow:0 2px 8px #0006;white-space:nowrap">🟢 VERTREK<br><small>'+first.name+'</small></div>',
+        html:'<div style="background:#16a34a;color:#fff;border:3px solid #fff;border-radius:10px;padding:6px 9px;font-weight:900;box-shadow:0 2px 8px #0006;white-space:nowrap">🟢 VERTREK<br><small>'+first.name+'</small><br><small>'+ (first.pickupAddress||first.address||'Adres onbekend') +'</small></div>',
         iconSize:[110,50],iconAnchor:[55,50]
       });
       const sm=L.marker([start[1],start[0]],{icon:startIcon,zIndexOffset:2000}).addTo(realMap);
@@ -1505,7 +1505,7 @@ function renderRealMapMarkers(){
         sm.bindPopup('<b>🟢 VERTREK</b><br>👦 '+assigned.name+'<br>📍 '+pickupLabel+'<br>🚕 '+d);
         mapMarkers.push(sm);
       }
-      m.bindTooltip('👦 '+assigned.name+'<br>📍 '+pickupLabel,{direction:'top',sticky:true,className:'taxi-map-label'});
+      m.bindTooltip('👦 <b>'+assigned.name+'</b><br>📍 '+pickupLabel+'<br>🏫 '+destinationLabel,{direction:'top',sticky:true,className:'taxi-map-label'});
       m.bindPopup('<b>👦 '+assigned.name+'</b><br>🚕 '+d+'<br>🧭 Route-stop '+(i+1)+'<br>🕐 '+assigned.time+'<br>📍 <b>Ophalen:</b> '+pickupLabel+'<br>🏫 <b>Bestemming:</b> '+destinationLabel+'<br>'+statusText(assigned.status)+'<br><button onclick="openDriverDetails(\''+d+'\')">Chauffeurdetails</button>');
       mapMarkers.push(m);
     });
