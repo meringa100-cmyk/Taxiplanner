@@ -1607,7 +1607,10 @@ function runAI(silent=false){
   // (12x8 + 1x4). Gebruik daarvoor een deterministische plaatsing.
   // Zo kan een bestaande/kapotte opgeslagen demo-planning de AI niet meer
   // onnodig leegtrekken voordat de echte routecontrole begint.
-  const demoKids=kids.filter(k=>String(k.id).startsWith('k') && /^[0-9]+$/.test(String(k.id).slice(1)));
+  const demoKids=kids.filter(k=>{
+    const n=parseInt(String(k.id).slice(1),10);
+    return /^k[0-9]+$/.test(String(k.id)) && Number.isInteger(n) && n>=1 && n<=100;
+  });
   const isBuiltInDemo=demoKids.length===100 &&
     demoKids.every(k=>k.status==='waiting' && Number.isFinite(Number(k.timeMin)));
 
