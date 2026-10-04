@@ -1516,7 +1516,6 @@ function runAI(silent=false){
   // onnodig leegtrekken voordat de echte routecontrole begint.
   const demoKids=kids.filter(k=>String(k.id).startsWith('k') && /^[0-9]+$/.test(String(k.id).slice(1)));
   const isBuiltInDemo=demoKids.length===100 &&
-    kids.length===100 &&
     demoKids.every(k=>k.status==='waiting' && Number.isFinite(Number(k.timeMin)));
 
   // V739: als een route qua ophaaltijden nét niet haalbaar is, mag de AI
@@ -1690,6 +1689,29 @@ function runAI(silent=false){
       q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
       q.forEach((k,i)=>k.routeOrder=i+1);
     });
+
+    // V750: nieuwe ritten mogen de vaste 100-kind-demo niet opnieuw laten
+    // opbouwen. Alleen extra/niet-demo kinderen worden apart ingepland.
+    const extraKids=kids.filter(k=>!demoKids.includes(k) && active(k));
+    for(const k of extraKids){
+      // Een nieuw kind krijgt nog geen chauffeur uit addRide; zoek hier
+      // uitsluitend een werkelijk beschikbare bus met vrije capaciteit.
+      const choices=driverNames.filter(d=>
+        !isDriverUnavailable(d) &&
+        !isBusUnavailable(d) &&
+        load(d)<MAX &&
+        schoolDeadlineOk(k) &&
+        routeDurationEstimate([k],driverNames.indexOf(d))<=MAX_ROUTE_MINUTES
+      );
+      if(choices.length){
+        choices.sort((a,b)=>load(a)-load(b));
+        k.driver=choices[0];
+        k.routeOrder=1;
+      }else{
+        k.driver='';
+        k.routeOrder=null;
+      }
+    }
 
     // V749: schooldeadline-reparatie. Alleen kinderen die te laat op school
     // dreigen te komen worden maximaal 15 minuten eerder gezet. De oorspronkelijke
@@ -2451,7 +2473,7 @@ function addRide(){
    school,destination,
    lat:52.772+(kids.length%13)*0.0012,
    lon:6.862+(kids.length%13)*0.0014,
-   driver:driverNames[0],fixed:false,status:'waiting',
+   driver:'',fixed:false,status:'waiting',
    approach:'Rustig en duidelijk aanspreken.',
    safety:'Veilig instappen en gordel.',
    important:'Nieuw profiel.',
