@@ -382,7 +382,7 @@ async function pdokAddress(street,town,number){
         name.includes(streetLc);
     });
     if(!hit)return null;
-    const parts=String(hit.centroid_ll||'').replace('POINT(','').replace(')','').trim().split(/\s+/).map(Number);
+    const parts=String(hit.centroide_ll||hit.centroid_ll||'').replace('POINT(','').replace(')','').trim().split(/\s+/).map(Number);
     if(parts.length!==2 || !Number.isFinite(parts[0]) || !Number.isFinite(parts[1]))return null;
     return {lon:parts[0],lat:parts[1],address:hit.weergavenaam||street+' '+number+', '+town};
   }catch(e){return null;}
@@ -397,7 +397,7 @@ async function geocodeExactDemoAddresses(){
   for(let g=0;g<exactDemoAddresses.length;g++){
     const spec=exactDemoAddresses[g];
     const loc=drentheDemoLocations[g%drentheDemoLocations.length];
-    const addresses=[];
+    const addresses={};
     for(const number of spec.numbers){
       const hit=await pdokAddress(spec.street,spec.town,number);
       if(!hit)continue;
@@ -408,7 +408,7 @@ async function geocodeExactDemoAddresses(){
         {lat:loc.lat,lon:loc.lon}
       );
       if(Number.isFinite(km) && km<=15){
-        addresses.push({...hit,number:String(number)});
+        addresses[String(number)]={...hit,number:String(number)};
       }
       await new Promise(resolve=>setTimeout(resolve,120));
     }
@@ -426,7 +426,8 @@ async function geocodeExactDemoAddresses(){
     const spec=exactDemoAddresses[group];
     const loc=drentheDemoLocations[group%drentheDemoLocations.length];
     // Eerst altijd de gegarandeerd juiste plaats/straat als fallback.
-    const fallback=loc.street+', '+loc.town+', Drenthe';
+    const fallbackNumber=spec?.numbers?.[pos];
+    const fallback=loc.street+' '+fallbackNumber+', '+loc.town+', Drenthe';
     k.demoTown=loc.town;
     k.demoStreet=loc.street;
     k.demoGroup=group+1;
@@ -435,7 +436,8 @@ async function geocodeExactDemoAddresses(){
     k.lat=loc.lat+(pos%4)*0.00008;
     k.lon=loc.lon+Math.floor(pos/4)*0.00010;
 
-    const hit=resolved[group]?.[pos];
+    const wantedNumber=spec?.numbers?.[pos];
+    const hit=resolved[group]?.[String(wantedNumber)];
     if(hit){
       k.lat=Number(hit.lat);
       k.lon=Number(hit.lon);
