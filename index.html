@@ -616,7 +616,7 @@ function normalizeBuiltInDemo(){
   // Een oude lokale geocode kon de demo over heel Drenthe verspreiden en
   // daardoor kunstmatige route- en schooldeadlineproblemen veroorzaken.
   const demoKids=kids.filter(k=>String(k.id).startsWith('k') && /^[0-9]+$/.test(String(k.id).slice(1)));
-  const isDemo=kids.length===100 && demoKids.length===100 &&
+  const isDemo=demoKids.length===100 &&
     demoKids.every(k=>k.status==='waiting'||k.status==='picked'||k.status==='school');
   if(!isDemo)return false;
 
