@@ -389,9 +389,8 @@ async function pdokAddress(street,town,number){
 }
 
 async function geocodeExactDemoAddresses(){
-  // V773: haal per woonplaats een brede BAG-adressenpool op.
-  // De demo mag nooit terugvallen op de oude compacte seed-coordinaten
-  // wanneer de echte adressen nog niet geladen zijn.
+  // V774: robuuste PDOK-adresverzameling. Geen q=*; eerst bekende
+  // Locatieserver-query's, daarna in JavaScript exact op woonplaats filteren.
   const demoKids=kids.filter(k=>{
     const n=parseInt(String(k.id).slice(1),10);
     return /^k[0-9]+$/.test(String(k.id)) && Number.isInteger(n) && n>=1 && n<=100;
@@ -401,24 +400,20 @@ async function geocodeExactDemoAddresses(){
   const towns=['Emmen','Coevorden','Hoogeveen','Assen','Meppel','Beilen','Borger','Odoorn','Dalen','Nieuw-Amsterdam','Klazienaveen','Erica','Westerbork'];
 
   async function fetchTownAddresses(town){
+    const queries=[town,'straat '+town,'weg '+town];
     const all=[], seen=new Set();
-    // Pagina's ophalen zodat we niet alleen de eerste, vaak lokaal gegroepeerde,
-    // 500 resultaten van PDOK gebruiken.
-    for(let start=0;start<2500;start+=500){
+    for(const q of queries){
       try{
         const params=new URLSearchParams({
-          q:'*',
-          fq:'type:adres AND woonplaatsnaam:"'+town+'"',
+          q,
+          fq:'type:adres',
           fl:'weergavenaam,type,straatnaam,woonplaatsnaam,huisnummer,centroide_ll,centroid_ll',
-          rows:'500',
-          start:String(start)
+          rows:'500'
         });
         const res=await fetch('https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?'+params.toString(),{headers:{'Accept':'application/json'}});
-        if(!res.ok)break;
+        if(!res.ok)continue;
         const data=await res.json();
         const docs=Array.isArray(data?.response?.docs)?data.response.docs:[];
-        if(!docs.length)break;
-
         for(const x of docs){
           if(String(x.type||'').toLowerCase()!=='adres')continue;
           if(String(x.woonplaatsnaam||'').trim().toLowerCase()!==town.toLowerCase())continue;
@@ -431,59 +426,43 @@ async function geocodeExactDemoAddresses(){
           const key=(street+'|'+nr).toLowerCase();
           if(seen.has(key))continue;
           seen.add(key);
-          all.push({
-            town,street,number:nr,
-            address:x.weergavenaam||street+' '+nr+', '+town,
-            lat:raw[1],lon:raw[0]
-          });
+          all.push({town,street,number:nr,address:x.weergavenaam||street+' '+nr+', '+town,lat:raw[1],lon:raw[0]});
         }
-        if(docs.length<500)break;
-      }catch(e){
-        console.warn('PDOK '+town,e);
-        break;
-      }
+      }catch(e){console.warn('PDOK '+town,e);}
     }
     return all;
   }
 
-  const townPools=[];
+  const pools=[];
   for(const town of towns){
     const addresses=await fetchTownAddresses(town);
-    if(addresses.length<8){
-      console.warn('V773: te weinig BAG-adressen in '+town+': '+addresses.length);
-      continue;
-    }
-
-    // Eerst verschillende straten, daarna verschillende huisnummers.
-    const byStreet=new Map();
-    addresses.forEach(a=>{
-      if(!byStreet.has(a.street))byStreet.set(a.street,[]);
-      byStreet.get(a.street).push(a);
-    });
-    const streets=[...byStreet.keys()];
-    const spread=[];
-    for(let round=0;round<30;round++){
-      for(const street of streets){
-        const arr=byStreet.get(street);
-        if(arr[round])spread.push(arr[round]);
+    if(addresses.length>=8){
+      const byStreet=new Map();
+      addresses.forEach(a=>{if(!byStreet.has(a.street))byStreet.set(a.street,[]);byStreet.get(a.street).push(a);});
+      const streets=[...byStreet.keys()];
+      const spread=[];
+      // Eerst zoveel mogelijk verschillende straten.
+      for(let round=0;round<30;round++){
+        for(const street of streets){
+          const a=byStreet.get(street)[round];
+          if(a)spread.push(a);
+        }
       }
+      pools.push({town,addresses:spread});
     }
-    townPools.push({town,addresses:spread});
   }
 
-  if(townPools.length<10){
-    console.warn('V773: onvoldoende plaatsen met BAG-adressen: '+townPools.length);
+  if(pools.length<10){
+    console.warn('V774: slechts '+pools.length+' plaatsen met voldoende echte adressen.');
     return;
   }
 
-  // Gegarandeerd eerst één uniek huisadres uit iedere beschikbare plaats,
-  // daarna opnieuw rond alle plaatsen. Zo krijgt één chauffeur nooit acht
-  // kinderen uit hetzelfde compacte seed-gebied.
-  const selected=[], used=new Set();
+  const selected=[],used=new Set();
   let round=0;
-  while(selected.length<100 && round<30){
-    for(const p of townPools){
-      const a=p.addresses[round];
+  // Gegarandeerd rond alle plaatsen lopen.
+  while(selected.length<100 && round<100){
+    for(const pool of pools){
+      const a=pool.addresses[round];
       if(!a)continue;
       const key=(a.town+'|'+a.street+'|'+a.number).toLowerCase();
       if(used.has(key))continue;
@@ -495,7 +474,7 @@ async function geocodeExactDemoAddresses(){
   }
 
   if(selected.length<100){
-    console.warn('V773: slechts '+selected.length+' unieke BAG-adressen gevonden.');
+    console.warn('V774: slechts '+selected.length+' unieke adressen gevonden.');
     return;
   }
 
@@ -513,10 +492,10 @@ async function geocodeExactDemoAddresses(){
   });
 
   addressesReady=true;
-  demoAddressSpreadVersion='v70';
+  demoAddressSpreadVersion='v71';
   saveState();
   renderAll();
-  console.log('V773: 100 unieke BAG-adressen verdeeld over '+new Set(selected.map(a=>a.town)).size+' plaatsen en '+new Set(selected.map(a=>a.street+'|'+a.town)).size+' straten.');
+  console.log('V774: 100 echte adressen over '+new Set(selected.map(a=>a.town)).size+' plaatsen en '+new Set(selected.map(a=>a.street+'|'+a.town)).size+' straten.');
 }
 function demoLocationForKid(k){
   const n=parseInt(String(k?.id||'').slice(1),10);
@@ -803,7 +782,7 @@ function saveState(){
 function normalizeBuiltInDemo(){
   // V757: als de 60-straatspreiding al is opgeslagen, mag de oude
   // 13-groepen-normalisatie de woonadressen NOOIT meer overschrijven.
-  if(demoAddressSpreadVersion==='v61'||demoAddressSpreadVersion==='v62'||demoAddressSpreadVersion==='v63'||demoAddressSpreadVersion==='v64'||demoAddressSpreadVersion==='v65'||demoAddressSpreadVersion==='v66'||demoAddressSpreadVersion==='v68'||demoAddressSpreadVersion==='v69'||demoAddressSpreadVersion==='v70')return false;
+  if(demoAddressSpreadVersion==='v61'||demoAddressSpreadVersion==='v62'||demoAddressSpreadVersion==='v63'||demoAddressSpreadVersion==='v64'||demoAddressSpreadVersion==='v65'||demoAddressSpreadVersion==='v66'||demoAddressSpreadVersion==='v68'||demoAddressSpreadVersion==='v69'||demoAddressSpreadVersion==='v70'||demoAddressSpreadVersion==='v71')return false;
   // V73: elke demo-groep wordt eerst hard teruggezet naar zijn eigen plaats.
   // Daarna mag alleen een verse BAG-hit binnen diezelfde straat + plaats volgen.
   const demoKids=kids.filter(k=>/^k[0-9]+$/.test(String(k.id)));
@@ -1579,23 +1558,7 @@ function renderRealMapMarkers(){
       const p=coordForKid(assigned,driverNames.indexOf(d),i);
       let latlon=[p[1],p[0]];
 
-      // V772: markers die exact op elkaar liggen automatisch uitwaaieren.
-      // Er is geen marker-clustering; ieder kind blijft een eigen marker.
-      const overlap=rides.slice(0,i).filter((x,j)=>{
-        const q=coordForKid(x,driverNames.indexOf(d),j);
-        return Math.abs(q[0]-p[0])<0.00005 && Math.abs(q[1]-p[1])<0.00005;
-      });
-      if(overlap.length){
-        const total=rides.filter((x,j)=>{
-          const q=coordForKid(x,driverNames.indexOf(d),j);
-          return Math.abs(q[0]-p[0])<0.00005 && Math.abs(q[1]-p[1])<0.00005;
-        }).length;
-        const angle=(overlap.length/Math.max(total,1))*Math.PI*2-Math.PI/2;
-        const radius=0.00025;
-        latlon=[p[1]+Math.sin(angle)*radius,p[0]+Math.cos(angle)*radius];
-      }
-
-      const color=assigned.status==='picked'?'#d97706':'#1769aa';
+            const color=assigned.status==='picked'?'#d97706':'#1769aa';
       const icon=L.divIcon({
         className:'',
         html:'<div title="'+assigned.name+' • '+assigned.time+'" style="width:36px;height:36px;border-radius:50%;background:'+color+';color:#fff;border:3px solid #fff;box-shadow:0 2px 7px #0006;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:bold">'+(i+1)+'</div>',
@@ -2726,7 +2689,7 @@ startPlannerAutomation();
 // V62: éénmalige echte straatspreiding voor de ingebouwde 100-kind-demo.
 setTimeout(async()=>{
   // V769: oude demo-coordinaten mogen nooit blijven hangen.
-  if(demoAddressSpreadVersion!=='v70'){
+  if(demoAddressSpreadVersion!=='v71'){
     demoAddressSpreadVersion='pending';
     kids.filter(k=>/^k[0-9]+$/.test(String(k.id))).forEach(k=>{
       delete k.lat; delete k.lon; delete k.demoTown; delete k.demoStreet;
@@ -2813,7 +2776,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=773").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=774").catch(()=>{}));}
 </script>
 
 </body>
