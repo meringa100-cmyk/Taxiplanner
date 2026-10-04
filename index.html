@@ -328,8 +328,8 @@ const schoolLocations={
   'Speciale school':{lat:52.77775,lon:6.94468,address:'Ullevi 26, 7825 SE Emmen'}
 };
 const drentheDemoLocations=[
-  // Demo-locaties zijn straatniveau-punten. De tekst en marker verwijzen
-  // bewust naar dezelfde straat/plaats; er worden geen verzonnen huisnummers gebruikt.
+  // Straat/plaats zijn de zoektermen; lat/lon zijn alleen veilige fallbackpunten.
+  // Bij laden worden deze punten opnieuw gecontroleerd via een schone geocode-cache.
   {town:'Emmen',street:'Laan van de Marel',lat:52.7884433,lon:6.9365105},
   {town:'Coevorden',street:'Stationsstraat',lat:52.6643544,lon:6.7363784},
   {town:'Hoogeveen',street:'Hoofdstraat',lat:52.729056,lon:6.477155},
@@ -1234,18 +1234,11 @@ function coordForDriverStop(driverIndex, stopIndex){
 }
 
 function coordForKid(k, driverIndex, stopIndex){
-  // De ingebouwde demo gebruikt uitsluitend zijn eigen vaste plaatsbron.
-  // Hierdoor kan een oude opgeslagen coördinaat nooit een Emmen-kind
-  // bijvoorbeeld naar Dwingeloo verplaatsen.
+  // Demo: exact dezelfde vaste straatlocatie voor alle kinderen uit de groep.
+  // Geen oude localStorage-coördinaten en geen kunstmatige verschuiving over
+  // de kaart; zo blijft de marker aantoonbaar op de bedoelde straat.
   const demoLoc=demoLocationForKid(k);
-  if(demoLoc){
-    const n=parseInt(String(k.id).slice(1),10);
-    const pos=(n-1)%8;
-    return [
-      demoLoc.lon+Math.floor(pos/4)*0.00010,
-      demoLoc.lat+(pos%4)*0.00008
-    ];
-  }
+  if(demoLoc) return [demoLoc.lon,demoLoc.lat];
   if(k && Number.isFinite(k.lon) && Number.isFinite(k.lat)) return [k.lon,k.lat];
   // Demo-coördinaten zijn stabiel per kind, zodat een route-optimalisatie
   // niet zelf de ligging van een kind verandert wanneer de volgorde wijzigt.
@@ -2605,7 +2598,52 @@ if(!loadState())seed();
 // Geen achtergrond-geocoding: daardoor kunnen opgeslagen kaartpunten nooit
 // meer verwisselen met een ander adres of een andere plaats.
 renderAll();
-startPlannerAutomation();</script>
+startPlannerAutomation();
+
+const DEMO_GEOCODE_CACHE_KEY='taxiPlannerDemoGeoV2';
+async function refreshVerifiedDemoLocations(){
+  const cache={};
+  for(const loc of drentheDemoLocations){
+    try{
+      const q=loc.street+', '+loc.town+', Nederland';
+      const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&countrycodes=nl&q='+encodeURIComponent(q);
+      const res=await fetch(url,{headers:{'Accept':'application/json','Accept-Language':'nl'}});
+      if(!res.ok)continue;
+      const data=await res.json();
+      const wantedStreet=loc.street.toLowerCase();
+      const wantedTown=loc.town.toLowerCase();
+      const hit=(Array.isArray(data)?data:[]).find(x=>{
+        const dn=String(x.display_name||'').toLowerCase();
+        return dn.includes(wantedStreet) && dn.includes(wantedTown);
+      });
+      if(hit){
+        const lat=Number(hit.lat),lon=Number(hit.lon);
+        if(Number.isFinite(lat)&&Number.isFinite(lon)){
+          loc.lat=lat; loc.lon=lon;
+          loc.display_name=loc.street+', '+loc.town;
+          cache[loc.street+'|'+loc.town]={lat,lon,display_name:loc.display_name};
+        }
+      }
+    }catch(e){console.warn('Locatiecontrole mislukt:',loc.street,loc.town,e);}
+    await new Promise(resolve=>setTimeout(resolve,1100));
+  }
+  localStorage.setItem(DEMO_GEOCODE_CACHE_KEY,JSON.stringify(cache));
+  const demoKids=kids.filter(k=>/^k[0-9]+$/.test(String(k.id)));
+  if(demoKids.length===100){
+    demoKids.forEach(k=>{
+      const loc=demoLocationForKid(k);
+      if(!loc)return;
+      k.lat=loc.lat;k.lon=loc.lon;
+      k.address=loc.street+', '+loc.town;
+      k.pickupAddress=k.address;
+      const s=schoolPoint(k);
+      k.destinationAddress=s?.address||k.destination||k.school||'';
+    });
+    saveState();
+    renderAll();
+  }
+}
+refreshVerifiedDemoLocations();</script>
 
 
 
