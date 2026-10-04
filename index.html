@@ -1377,10 +1377,6 @@ async function optimizeAllRoutes(){
   const box=document.getElementById('routeInfo');
   if(box)box.textContent='🧭 Routes worden geografisch geoptimaliseerd…';
 
-  if(!addressesReady){
-    try{await geocodeEmmenAddresses();}catch(e){}
-  }
-
   let total=0, conflicts=0, drivers=0, longRoutes=0;
   for(const d of driverNames){
     const result=await optimizeDriverRoute(d);
