@@ -2582,15 +2582,6 @@ function childCardHtml(k){
    </div>
  </div>`;
 }
-function openChild(id){
- const k=find(id);if(!k)return;
- document.getElementById('modalBox').innerHTML=`<h2>👦 ${k.name}</h2>
- <p><b>Ophaaltijd:</b> ${k.time}</p><p><b>Chauffeur:</b> ${k.driver}</p><p><b>Adres:</b> ${k.address}</p><p><b>School:</b> ${k.school}</p>
- <p><b>Status:</b> ${statusText(k.status)}</p><p><b>Vaste relatie:</b> ${k.fixed?'Ja':'Nee'}</p>
- <h3>Chauffeurinformatie</h3><p><b>Hoe benaderen:</b> ${k.approach}</p><p><b>Veiligheid:</b> ${k.safety}</p><p><b>Belangrijk:</b> ${k.important}</p>
- <button onclick="editChild('${id}')">✏️ Profiel bewerken</button> <button onclick="closeModal()">Sluiten</button>`;
- document.getElementById('modal').classList.remove('hidden');
-}
 function editChild(id){
  const k=find(id);if(!k)return;
  document.getElementById('modalBox').innerHTML=`<h2>✏️ Profiel ${k.name}</h2>
