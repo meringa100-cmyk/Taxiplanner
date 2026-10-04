@@ -325,6 +325,21 @@ const schoolLocations={
   'Praktijkschool':{lat:52.78620,lon:6.88980},
   'Speciale school':{lat:52.77890,lon:6.95670}
 };
+const drentheDemoLocations=[
+  {town:'Emmen',street:'Laan van de Marel',lat:52.7860,lon:6.8980},
+  {town:'Coevorden',street:'Stationsstraat',lat:52.6610,lon:6.7400},
+  {town:'Hoogeveen',street:'Hoofdstraat',lat:52.7220,lon:6.4760},
+  {town:'Assen',street:'Rolderstraat',lat:52.9910,lon:6.5630},
+  {town:'Meppel',street:'Stationsweg',lat:52.6950,lon:6.1940},
+  {town:'Beilen',street:'Brinkstraat',lat:52.8640,lon:6.5150},
+  {town:'Borger',street:'Hoofdstraat',lat:52.9230,lon:6.7930},
+  {town:'Odoorn',street:'Valtherweg',lat:52.8500,lon:6.8480},
+  {town:'Dalen',street:'Hoofdstraat',lat:52.7000,lon:6.7550},
+  {town:'Nieuw-Amsterdam',street:'Vaart NZ',lat:52.7100,lon:6.8550},
+  {town:'Klazienaveen',street:'Langestraat',lat:52.7240,lon:6.9900},
+  {town:'Erica',street:'Verlengde Vaart NZ',lat:52.7130,lon:6.9260},
+  {town:'Westerbork',street:'Hoofdstraat',lat:52.8500,lon:6.6080}
+];
 function schoolPoint(k){
   return schoolLocations[k?.school] || schoolLocations[k?.destination] || null;
 }
@@ -611,10 +626,9 @@ function normalizeBuiltInDemo(){
     const group=Math.floor((n-1)/8);
     const pos=(n-1)%8;
     const school=schools[group%schools.length];
-    const baseLat=52.772+(group%13)*0.0012;
-    const baseLon=6.862+(group%13)*0.0014;
-    const lat=baseLat+(pos%4)*0.00035;
-    const lon=baseLon+Math.floor(pos/4)*0.00045;
+    const loc=drentheDemoLocations[group%drentheDemoLocations.length];
+    const lat=loc.lat+(pos%4)*0.00035;
+    const lon=loc.lon+Math.floor(pos/4)*0.00045;
     const wanted=driverNames[group]||'';
     const wantedTime=420+(pos*10);
 
@@ -628,7 +642,8 @@ function normalizeBuiltInDemo(){
     k.time=fmtTime(k.timeMin);
     k.lat=lat;
     k.lon=lon;
-    k.address=streets[pos%streets.length]+' '+(10+n);
+    k.address=loc.street+' '+(10+n)+', '+loc.town+', Drenthe';
+    k.pickupAddress=k.address;
     k.driver=wanted;
     k.routeOrder=pos+1;
   });
@@ -666,16 +681,16 @@ function seed(){
   const timeMin=420+(pos*10);
   // Elke demo-bus krijgt een compacte groep in Emmen met 8 verschillende
   // ophaaltijden. Daardoor is de testplanning bewust haalbaar.
-  const baseLat=52.772+(group%13)*0.0012;
-  const baseLon=6.862+(group%13)*0.0014;
-  const lat=baseLat+(pos%4)*0.00035;
-  const lon=baseLon+Math.floor(pos/4)*0.00045;
+  const loc=drentheDemoLocations[group%drentheDemoLocations.length];
+  const lat=loc.lat+(pos%4)*0.00035;
+  const lon=loc.lon+Math.floor(pos/4)*0.00045;
   kids.push({
    id:'k'+(i+1),
    name:names[i%names.length]+' '+(i+1),
    timeMin,
    time:fmtTime(timeMin),
-   address:streets[i%streets.length]+' '+(10+i),
+   address:loc.street+' '+(10+i)+', '+loc.town+', Drenthe',
+   pickupAddress:loc.street+' '+(10+i)+', '+loc.town+', Drenthe',
    school,
    destination:school,
    lat,lon,
