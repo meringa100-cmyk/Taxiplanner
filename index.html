@@ -389,101 +389,108 @@ async function pdokAddress(street,town,number){
 }
 
 async function geocodeExactDemoAddresses(){
-  // V60: verdeel de eerste 100 demo-kinderen over 60 ECHTE straten.
-  // De straten/adressen komen rechtstreeks uit de actuele BAG via PDOK.
-  // Per plaats worden meerdere verschillende straten gekozen; daardoor
-  // staan kinderen niet meer met z'n allen in één straat.
+  // V62: echte spreiding over minimaal 60 verschillende STRATEN.
+  // We vragen per straat een BAG-adres op via PDOK. De oude aanpak
+  // vroeg per woonplaats maar 100 adressen op; PDOK gaf daarbij vooral
+  // adressen uit een klein aantal straten terug. Daardoor bleef de kaart
+  // uiteindelijk met de oude 13 demo-locaties zitten.
   const demoKids=kids.filter(k=>{
     const n=parseInt(String(k.id).slice(1),10);
     return /^k[0-9]+$/.test(String(k.id)) && Number.isInteger(n) && n>=1 && n<=100;
   });
   if(demoKids.length<100)return;
 
-  const townPlans=[
-    {town:'Emmen',count:6},
-    {town:'Coevorden',count:6},
-    {town:'Hoogeveen',count:5},
-    {town:'Assen',count:5},
-    {town:'Meppel',count:5},
-    {town:'Beilen',count:5},
-    {town:'Borger',count:5},
-    {town:'Odoorn',count:5},
-    {town:'Dalen',count:4},
-    {town:'Nieuw-Amsterdam',count:4},
-    {town:'Klazienaveen',count:4},
-    {town:'Erica',count:3},
-    {town:'Westerbork',count:3}
+  // Ruime lijst met echte/gebruikte straten in Emmen. Alleen straten die
+  // PDOK daadwerkelijk teruggeeft worden gebruikt.
+  const candidateStreets=[
+    "Hondsrugweg","Weerdingerstraat","Wolfsbergenweg","Laan van de Marel",
+    "Emmalaan","Boslaan","Dordsestraat","Ermerweg","Wilhelminastraat",
+    "Stationsstraat","Hoofdstraat","Angelsloërdijk","Laan van de Eekharst",
+    "Rolderbrink","Bargeresstraat","Houtweg","Odoornerweg","Noordbargerstraat",
+    "Veenkampen","Dommersweg","Hesselterbrink","Kerspellaan",
+    "Eerste Bokslootweg","Tweede Bokslootweg","Derde Bokslootweg",
+    "Runde","Dordsedijk","Phileas Foggstraat","Nijbracht","Abel Tasmanstraat",
+    "Boermarkeweg","Slenerweg","Valtherzandweg","Haagjesweg",
+    "Laan van de Bork","Laan van de Iemenhees","Laan van de Muzen",
+    "Laan van de Kinholt","Laan van de Zeven Linden","Laan van de Bargerbeek",
+    "Laan van het Kwekebos","Burgemeester Tijmesstraat","Oosterbracht",
+    "Karel Doormanstraat","Prins Hendrikstraat","Prins Bernhardstraat",
+    "Prinsesselaan","Beatrixstraat","Julianastraat","Margrietstraat",
+    "Irenestraat","Oranjekanaal NZ","Oranjekanaal ZZ","Van Goghstraat",
+    "Rembrandtstraat","Vermeerstraat","Mondriaanstraat","Musselweg",
+    "Runde ZZ","Runde NZ","Sterrenkamp","Meester G.H. Schepersstraat",
+    "Nassaustraat","Koning Willem I straat","Graaf van Oranjelaan",
+    "Boermarke","Edisonstraat","Nijverheidsstraat","Industrieweg",
+    "Handelsweg","Westeind","Oude Zuidbargerstraat","Zuidbargerstraat",
+    "Kerkhoflaan","Weerdingerkanaal NZ","Weerdingerkanaal ZZ",
+    "Oeverzwaluw","Rietgans","Kievit","Meerkoet","Waterhoen","Zwaluw",
+    "Merel","Lijster","Vink","Mezenkamp","Kievitsweg","Hoenderkamp"
   ];
 
-  async function fetchTownAddresses(town){
+  async function fetchStreetAddress(street){
     try{
       const params=new URLSearchParams({
-        q:'"'+town+'"',
+        q:'"'+street+'", Emmen',
         fq:'type:adres',
-        fl:'weergavenaam,type,straatnaam,woonplaatsnaam,huisnummer,huisletter,huisnummertoevoeging,centroide_ll,centroid_ll',
-        rows:'100'
+        fl:'weergavenaam,type,straatnaam,woonplaatsnaam,huisnummer,centroide_ll,centroid_ll',
+        rows:'20'
       });
       const url='https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?'+params.toString();
       const res=await fetch(url,{headers:{'Accept':'application/json'}});
-      if(!res.ok)return [];
+      if(!res.ok)return null;
       const data=await res.json();
-      return Array.isArray(data?.response?.docs)?data.response.docs:[];
-    }catch(e){
-      console.warn('PDOK spreiding '+town+':',e);
-      return [];
-    }
-  }
+      const docs=Array.isArray(data?.response?.docs)?data.response.docs:[];
+      const streetLc=street.toLowerCase();
+      const hit=docs.find(x=>
+        String(x.type||'').toLowerCase()==='adres' &&
+        String(x.woonplaatsnaam||'').toLowerCase()==='emmen' &&
+        String(x.straatnaam||'').trim().toLowerCase()===streetLc &&
+        String(x.centroide_ll||x.centroid_ll||'').includes('POINT(')
+      );
+      if(!hit)return null;
 
-  const all=[];
-  for(const plan of townPlans){
-    const docs=await fetchTownAddresses(plan.town);
-    const byStreet=new Map();
+      const raw=String(hit.centroide_ll||hit.centroid_ll||'')
+        .replace('POINT(','').replace(')','').trim().split(/\s+/).map(Number);
+      if(raw.length!==2||!Number.isFinite(raw[0])||!Number.isFinite(raw[1]))return null;
 
-    docs.filter(x=>
-      String(x.type||'').toLowerCase()==='adres' &&
-      String(x.woonplaatsnaam||'').toLowerCase()===plan.town.toLowerCase() &&
-      x.straatnaam
-    ).forEach(x=>{
-      const street=String(x.straatnaam).trim();
-      if(!street)return;
-      const key=plan.town+'|'+street.toLowerCase();
-      if(!byStreet.has(key))byStreet.set(key,[]);
-      byStreet.get(key).push(x);
-    });
-
-    let added=0;
-    for(const [key,docsForStreet] of byStreet){
-      if(added>=plan.count)break;
-      const x=docsForStreet.find(d=>String(d.centroide_ll||d.centroid_ll||'').includes('POINT('));
-      if(!x)continue;
-      const raw=String(x.centroide_ll||x.centroid_ll||'').replace('POINT(','').replace(')','').trim().split(/\s+/).map(Number);
-      if(raw.length!==2||!Number.isFinite(raw[0])||!Number.isFinite(raw[1]))continue;
-      all.push({
-        town:plan.town,
-        street:String(x.straatnaam),
-        address:x.weergavenaam||String(x.straatnaam)+' '+(x.huisnummer||'')+', '+plan.town,
-        number:String(x.huisnummer||''),
+      return {
+        town:'Emmen',
+        street:String(hit.straatnaam),
+        address:hit.weergavenaam||street+', Emmen',
+        number:String(hit.huisnummer||''),
         lat:raw[1],
         lon:raw[0]
-      });
-      added++;
+      };
+    }catch(e){
+      console.warn('PDOK straat '+street+':',e);
+      return null;
     }
   }
 
-  // Alleen doorgaan als PDOK daadwerkelijk minstens 60 verschillende
-  // fysieke straten heeft gevonden. Anders laten we de bestaande stabiele
-  // demo-adressen ongemoeid.
-  if(all.length<60){
-    console.warn('V60: slechts '+all.length+' verschillende straten gevonden; bestaande adressen behouden.');
+  // Parallel ophalen zodat dit bij openen/resetten niet minutenlang duurt.
+  const results=await Promise.all(candidateStreets.map(fetchStreetAddress));
+  const pool=[];
+  const seen=new Set();
+
+  results.forEach(x=>{
+    if(!x)return;
+    const key=x.street.toLowerCase();
+    if(seen.has(key))return;
+    seen.add(key);
+    pool.push(x);
+  });
+
+  if(pool.length<60){
+    console.warn('V62: slechts '+pool.length+' unieke Emmen-straten gevonden. Spreiding niet toegepast.');
     return;
   }
 
-  // De eerste 40 straten krijgen 2 kinderen, de laatste 20 één kind.
-  // Daardoor zijn er exact 100 kinderen verdeeld over exact 60 straten.
-  const pool=all.slice(0,60);
+  // Exact 100 kinderen over 60 verschillende straten:
+  // 40 straten krijgen 2 kinderen, 20 straten krijgen 1 kind.
+  const selected=pool.slice(0,60);
   demoKids.forEach((k,i)=>{
     const streetIndex=Math.floor(i*60/100);
-    const base=pool[streetIndex];
+    const base=selected[streetIndex];
     if(!base)return;
 
     k.demoTown=base.town;
@@ -499,10 +506,10 @@ async function geocodeExactDemoAddresses(){
   });
 
   addressesReady=true;
-  demoAddressSpreadVersion='v61';
+  demoAddressSpreadVersion='v62';
   saveState();
   renderAll();
-  console.log('V60: 100 kinderen verdeeld over '+pool.length+' verschillende straten.');
+  console.log('V62: 100 kinderen verdeeld over '+selected.length+' verschillende echte Emmen-straten.');
 }
 function demoLocationForKid(k){
   const n=parseInt(String(k?.id||'').slice(1),10);
@@ -789,7 +796,7 @@ function saveState(){
 function normalizeBuiltInDemo(){
   // V757: als de 60-straatspreiding al is opgeslagen, mag de oude
   // 13-groepen-normalisatie de woonadressen NOOIT meer overschrijven.
-  if(demoAddressSpreadVersion==='v61')return false;
+  if(demoAddressSpreadVersion==='v61'||demoAddressSpreadVersion==='v62')return false;
   // V73: elke demo-groep wordt eerst hard teruggezet naar zijn eigen plaats.
   // Daarna mag alleen een verse BAG-hit binnen diezelfde straat + plaats volgen.
   const demoKids=kids.filter(k=>/^k[0-9]+$/.test(String(k.id)));
@@ -2692,8 +2699,8 @@ if(!loadState())seed();
 renderAll();
 startPlannerAutomation();
 
-// V72: geen achtergrond-geocoding meer die exacte huispunten kan overschrijven.
-setTimeout(()=>{ if(demoAddressSpreadVersion!=='v61') geocodeExactDemoAddresses(); },300);</script>
+// V62: éénmalige echte straatspreiding voor de ingebouwde 100-kind-demo.
+setTimeout(()=>{ if(demoAddressSpreadVersion!=='v62') geocodeExactDemoAddresses(); },300);</script>
 
 
 
