@@ -560,16 +560,6 @@ function demoLocationForKid(k){
 }
 
 function schoolPoint(k){
-  // Een handmatig ingevoerd bestemmingsadres is leidend.
-  // De geselecteerde school blijft beschikbaar als schoolinformatie,
-  // maar de route eindigt op het opgegeven adres.
-  if(k && Number.isFinite(k.destinationLat) && Number.isFinite(k.destinationLon)){
-    return {
-      lat:k.destinationLat,
-      lon:k.destinationLon,
-      address:k.destinationAddress||''
-    };
-  }
   return schoolLocations[k?.school] || schoolLocations[k?.destination] || null;
 }
 function pickupToSchoolMinutes(k){
@@ -2771,7 +2761,6 @@ async function addRide(){
  const destinationCity=document.getElementById('newDestinationCity')?.value.trim()||'Emmen';
  const rawAddress=document.getElementById('newAddress')?.value.trim()||destination;
  const address=[rawAddress,destinationCity].filter(Boolean).join(', ');
- const destinationGeo=await geocodePickupAddress(address+', Nederland');
  const school=schools.includes(destination)?destination:'Nieuwe bestemming';
  const newId='k'+demoCounter++;
  const newKid={
@@ -2780,9 +2769,6 @@ async function addRide(){
    time:t,timeMin:h*60+m,
    pickupAddress,
    address,
-   destinationAddress:address,
-   destinationLat:destinationGeo?.lat,
-   destinationLon:destinationGeo?.lon,
    school,destination,
    lat:pickupGeo?.lat ?? 52.7860+(kids.length%13)*0.0012,
    lon:pickupGeo?.lon ?? 6.8980+(kids.length%13)*0.0014,
