@@ -1795,9 +1795,7 @@ function runAI(silent=false){
       const choices=driverNames.filter(d=>
         !isDriverUnavailable(d) &&
         !isBusUnavailable(d) &&
-        load(d)<MAX &&
-        schoolDeadlineOk(k) &&
-        routeDurationEstimate([k],driverNames.indexOf(d))<=MAX_ROUTE_MINUTES
+        load(d)<MAX
       );
       if(choices.length){
         choices.sort((a,b)=>load(a)-load(b));
