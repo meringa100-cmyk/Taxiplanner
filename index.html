@@ -388,8 +388,61 @@ async function pdokAddress(street,town,number){
   }catch(e){return null;}
 }
 
+function applyGuaranteedDemoHomeSpread(){
+  const demoKids=kids.filter(k=>{
+    const n=parseInt(String(k.id).slice(1),10);
+    return /^k[0-9]+$/.test(String(k.id)) && Number.isInteger(n) && n>=1 && n<=100;
+  });
+  if(demoKids.length<100)return false;
+
+  // Gegarandeerde demo-thuispunten. Deze zijn bewust verspreid over
+  // verschillende plaatsen en straten, zodat overlappende markers
+  // onmogelijk zijn wanneer de externe geocoder niet beschikbaar is.
+  const homes=[
+    {town:'Emmen',street:'Laan van de Marel',lat:52.7884433,lon:6.9365105},
+    {town:'Coevorden',street:'Stationsstraat',lat:52.6643544,lon:6.7363784},
+    {town:'Hoogeveen',street:'Hoofdstraat',lat:52.729056,lon:6.477155},
+    {town:'Assen',street:'Rolderstraat',lat:52.9910,lon:6.5630},
+    {town:'Meppel',street:'Stationsweg',lat:52.6927470,lon:6.1914540},
+    {town:'Beilen',street:'Brinkstraat',lat:52.8640,lon:6.5150},
+    {town:'Borger',street:'Hoofdstraat',lat:52.9263192,lon:6.7902882},
+    {town:'Odoorn',street:'Valtherweg',lat:52.8503613,lon:6.8504359},
+    {town:'Dalen',street:'Hoofdstraat',lat:52.7000,lon:6.7550},
+    {town:'Nieuw-Amsterdam',street:'Vaart NZ',lat:52.7100,lon:6.8550},
+    {town:'Klazienaveen',street:'Langestraat',lat:52.7240,lon:6.9900},
+    {town:'Erica',street:'Verlengde Vaart NZ',lat:52.7119677,lon:6.9057844},
+    {town:'Westerbork',street:'Hoofdstraat',lat:52.8500,lon:6.6080}
+  ];
+
+  demoKids.forEach((k,i)=>{
+    const base=homes[i%homes.length];
+    const ring=Math.floor(i/homes.length);
+    const angle=(i*137.5)*Math.PI/180;
+    // Kleine huisnummer-spreiding rond het echte straatpunt.
+    // Groot genoeg om afzonderlijke woningen/markers te tonen.
+    const latOffset=Math.cos(angle)*(0.0012+ring*0.00012);
+    const lonOffset=Math.sin(angle)*(0.0018+ring*0.00016);
+    k.demoTown=base.town;
+    k.demoStreet=base.street;
+    k.demoGroup=i+1;
+    k.address=base.street+' '+(2+((i*2)%58))+', '+base.town;
+    k.pickupAddress=k.address;
+    k.lat=base.lat+latOffset;
+    k.lon=base.lon+lonOffset;
+    const sp=schoolLocations[k.school];
+    k.destinationAddress=sp?.address||k.destination||k.school||'';
+  });
+
+  addressesReady=true;
+  demoAddressSpreadVersion='v73';
+  saveState();
+  renderAll();
+  console.log('V776: gegarandeerde spreiding toegepast op 100 demo-kinderen.');
+  return true;
+}
+
 async function geocodeExactDemoAddresses(){
-  // V775: robuuste PDOK-adresverzameling. Geen q=*; eerst bekende
+  // V776: robuuste PDOK-adresverzameling. Geen q=*; eerst bekende
   // Locatieserver-query's, daarna in JavaScript exact op woonplaats filteren.
   const demoKids=kids.filter(k=>{
     const n=parseInt(String(k.id).slice(1),10);
@@ -453,7 +506,8 @@ async function geocodeExactDemoAddresses(){
   }
 
   if(pools.length<10){
-    console.warn('V775: slechts '+pools.length+' plaatsen met voldoende echte adressen.');
+    console.warn('V776: slechts '+pools.length+' plaatsen met voldoende echte adressen; gebruik gegarandeerde demo-spreiding.');
+    applyGuaranteedDemoHomeSpread();
     return;
   }
 
@@ -474,7 +528,8 @@ async function geocodeExactDemoAddresses(){
   }
 
   if(selected.length<100){
-    console.warn('V775: slechts '+selected.length+' unieke adressen gevonden.');
+    console.warn('V776: slechts '+selected.length+' unieke adressen gevonden; gebruik gegarandeerde demo-spreiding.');
+    applyGuaranteedDemoHomeSpread();
     return;
   }
 
@@ -495,7 +550,7 @@ async function geocodeExactDemoAddresses(){
   demoAddressSpreadVersion='v72';
   saveState();
   renderAll();
-  console.log('V775: 100 echte adressen over '+new Set(selected.map(a=>a.town)).size+' plaatsen en '+new Set(selected.map(a=>a.street+'|'+a.town)).size+' straten.');
+  console.log('V776: 100 echte adressen over '+new Set(selected.map(a=>a.town)).size+' plaatsen en '+new Set(selected.map(a=>a.street+'|'+a.town)).size+' straten.');
 }
 function demoLocationForKid(k){
   const n=parseInt(String(k?.id||'').slice(1),10);
@@ -782,7 +837,7 @@ function saveState(){
 function normalizeBuiltInDemo(){
   // V757: als de 60-straatspreiding al is opgeslagen, mag de oude
   // 13-groepen-normalisatie de woonadressen NOOIT meer overschrijven.
-  if(demoAddressSpreadVersion==='v61'||demoAddressSpreadVersion==='v62'||demoAddressSpreadVersion==='v63'||demoAddressSpreadVersion==='v64'||demoAddressSpreadVersion==='v65'||demoAddressSpreadVersion==='v66'||demoAddressSpreadVersion==='v68'||demoAddressSpreadVersion==='v69'||demoAddressSpreadVersion==='v70'||demoAddressSpreadVersion==='v71')return false;
+  if(demoAddressSpreadVersion==='v61'||demoAddressSpreadVersion==='v62'||demoAddressSpreadVersion==='v63'||demoAddressSpreadVersion==='v64'||demoAddressSpreadVersion==='v65'||demoAddressSpreadVersion==='v66'||demoAddressSpreadVersion==='v68'||demoAddressSpreadVersion==='v69'||demoAddressSpreadVersion==='v70'||demoAddressSpreadVersion==='v71'||demoAddressSpreadVersion==='v72'||demoAddressSpreadVersion==='v73')return false;
   // V73: elke demo-groep wordt eerst hard teruggezet naar zijn eigen plaats.
   // Daarna mag alleen een verse BAG-hit binnen diezelfde straat + plaats volgen.
   const demoKids=kids.filter(k=>/^k[0-9]+$/.test(String(k.id)));
@@ -2689,7 +2744,7 @@ startPlannerAutomation();
 // V62: éénmalige echte straatspreiding voor de ingebouwde 100-kind-demo.
 setTimeout(async()=>{
   // V769: oude demo-coordinaten mogen nooit blijven hangen.
-  if(demoAddressSpreadVersion!=='v72'){
+  if(demoAddressSpreadVersion!=='v73'){
     demoAddressSpreadVersion='pending';
     kids.filter(k=>/^k[0-9]+$/.test(String(k.id))).forEach(k=>{
       delete k.lat; delete k.lon; delete k.demoTown; delete k.demoStreet;
@@ -2776,7 +2831,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=775").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=776").catch(()=>{}));}
 </script>
 
 </body>
