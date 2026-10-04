@@ -37,6 +37,7 @@ input,select{padding:9px;border:1px solid #cbd3da;border-radius:8px}
 .mapMarker.busy{background:#d97706}.mapMarker.done{background:#4b5563}
 .mapMarker span{position:absolute;top:34px;white-space:nowrap;color:#18222d;background:#fff;padding:3px 6px;border-radius:5px;font-size:11px;box-shadow:0 1px 4px #0002}
 .mapHome{position:absolute;width:14px;height:14px;border-radius:50%;background:#3b7d3b;border:2px solid #fff;z-index:3}
+.taxi-map-label{font-size:13px;font-weight:700;padding:5px 8px;border-radius:8px;background:#fff;border:1px solid #cbd3da;box-shadow:0 2px 8px #0003;line-height:1.25}.taxi-map-label:before{border-top-color:#fff!important}
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
@@ -1452,8 +1453,10 @@ function renderRealMapMarkers(){
         iconSize:[36,36],iconAnchor:[18,18]
       });
       const m=L.marker(latlon,{icon}).addTo(realMap);
-      m.bindTooltip(d+' • route-stop '+(i+1),{direction:'top'});
-      m.bindPopup('<b>'+d+'</b><br>Route-stop '+(i+1)+'<br>'+assigned.name+'<br>'+assigned.time+'<br>📍 '+(assigned.pickupAddress||assigned.address||'Ophaaladres onbekend')+'<br>🏫 '+(assigned.address||assigned.destination||'Bestemming onbekend')+'<br>'+statusText(assigned.status)+'<br><button onclick="openDriverDetails(\''+d+'\')">Chauffeurdetails</button>');
+      const pickupLabel=assigned.pickupAddress||assigned.address||'Ophaaladres onbekend';
+      const destinationLabel=assigned.address||assigned.destination||'Bestemming onbekend';
+      m.bindTooltip('👦 '+assigned.name+'<br>📍 '+pickupLabel,{direction:'top',permanent:true,sticky:true,className:'taxi-map-label'});
+      m.bindPopup('<b>👦 '+assigned.name+'</b><br>🚕 '+d+'<br>🧭 Route-stop '+(i+1)+'<br>🕐 '+assigned.time+'<br>📍 <b>Ophalen:</b> '+pickupLabel+'<br>🏫 <b>Bestemming:</b> '+destinationLabel+'<br>'+statusText(assigned.status)+'<br><button onclick="openDriverDetails(\''+d+'\')">Chauffeurdetails</button>');
       mapMarkers.push(m);
     });
   });
