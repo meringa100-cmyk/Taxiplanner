@@ -2360,7 +2360,7 @@ function openDriverDetails(d){
 function openChild(id){
  const k=find(id);if(!k)return;
  document.getElementById('modalBox').innerHTML=`<h2>👦 ${k.name}</h2>
- <p><b>Ophaaltijd:</b> ${k.time}</p><p><b>Chauffeur:</b> ${k.driver}</p><p><b>Adres:</b> ${k.address}</p><p><b>School:</b> ${k.school}</p>
+ <p><b>Ophaaltijd:</b> ${k.time}</p><p><b>Ophaaladres:</b> ${k.pickupAddress||k.address||'Onbekend'}</p><p><b>Chauffeur:</b> ${k.driver}</p><p><b>Bestemmingsadres:</b> ${k.address}</p><p><b>School:</b> ${k.school}</p>
  <p><b>Status:</b> ${statusText(k.status)}</p><p><b>Vaste relatie:</b> ${k.fixed?'Ja':'Nee'}</p>
  <h3>Chauffeurinformatie</h3><p><b>Hoe benaderen:</b> ${k.approach}</p><p><b>Veiligheid:</b> ${k.safety}</p><p><b>Belangrijk:</b> ${k.important}</p>
  <button onclick="editChild('${id}')">✏️ Profiel bewerken</button> <button onclick="closeModal()">Sluiten</button>`;
@@ -2377,7 +2377,7 @@ function childCardHtml(k){
      <span class="arrow">▼</span>
    </button>
    <div class="child-details-v70">
-     <div class="child-meta-v70"><span>🚕 ${k.driver}</span><span>🧭 Route ${Number.isFinite(k.routeOrder)?k.routeOrder:'—'}</span><span>📍 ${k.address}</span><span>➡️ ${k.destination||k.school||'Bestemming onbekend'}</span><span>${k.fixed?'🔒 Vast':'🔄 Vrij planbaar'}</span></div>
+     <div class="child-meta-v70"><span>🚕 ${k.driver}</span><span>🧭 Route ${Number.isFinite(k.routeOrder)?k.routeOrder:'—'}</span><span>📍 Ophalen: ${k.pickupAddress||k.address||'Onbekend'}</span><span>🏫 Bestemming: ${k.address||k.destination||'Onbekend'}</span><span>➡️ ${k.destination||k.school||'Bestemming onbekend'}</span><span>${k.fixed?'🔒 Vast':'🔄 Vrij planbaar'}</span></div>
      <div class="child-info-v70"><b>Benadering:</b> ${k.approach}</div>
      <div class="child-info-v70"><b>Veiligheid:</b> ${k.safety}</div>
      <div class="child-info-v70"><b>Belangrijk:</b> ${k.important}</div>
