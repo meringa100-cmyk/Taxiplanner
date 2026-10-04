@@ -1710,6 +1710,60 @@ function aiScore(driver,kid,loads){
     - sameSchool*18
     - sameStreet*10;
 }
+
+function demoGroupValid(group){
+  if(!group || !group.length || group.length>MAX)return false;
+  const q=[...group].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+  const school=q[0]?.school||q[0]?.destination||'';
+  if(q.some(k=>(k.school||k.destination||'')!==school))return false;
+  if(new Set(q.map(k=>Number(k.timeMin)||0)).size!==q.length)return false;
+  for(const k of q){
+    if(!schoolDeadlineOk(k))return false;
+  }
+  if(routeDurationEstimate(q,0)>MAX_ROUTE_MINUTES)return false;
+  for(let i=1;i<q.length;i++){
+    const gap=(q[i].timeMin||0)-(q[i-1].timeMin||0);
+    const travel=routeMinutesBetween(q[i-1],q[i],0);
+    if(travel>gap+15)return false;
+  }
+  return true;
+}
+
+function buildDemoGeographicGroups(demoKids){
+  const groups=[];
+  for(const school of schools){
+    let remaining=demoKids.filter(k=>(k.school||k.destination||'')===school)
+      .sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+
+    while(remaining.length){
+      const seed=remaining.shift();
+      const group=[seed];
+
+      while(group.length<MAX && remaining.length){
+        const candidates=remaining.filter(k=>{
+          if((k.school||k.destination||'')!==school)return false;
+          return demoGroupValid(group.concat(k));
+        });
+        if(!candidates.length)break;
+
+        candidates.sort((a,b)=>{
+          const da=Math.min(...group.map(x=>geoDistanceKm(a,x)));
+          const db=Math.min(...group.map(x=>geoDistanceKm(b,x)));
+          if(da!==db)return da-db;
+          return (a.timeMin||0)-(b.timeMin||0);
+        });
+
+        const chosen=candidates[0];
+        group.push(chosen);
+        remaining.splice(remaining.indexOf(chosen),1);
+      }
+
+      groups.push(group);
+    }
+  }
+  return groups;
+}
+
 function runAI(silent=false){
   previousPlan=kids.map(k=>({id:k.id,driver:k.driver,fixed:k.fixed,status:k.status}));
 
@@ -1785,23 +1839,29 @@ function runAI(silent=false){
 
   driverNames.forEach(d=>adjustPickupTimes(d));
   if(isBuiltInDemo){
+    // V777: de demo wordt nu geografisch opnieuw gegroepeerd.
+    // De oude vaste k1-k8 / k9-k16-koppeling zorgde ervoor dat één bus
+    // kinderen uit meerdere Drentse plaatsen kreeg en daardoor onnodig
+    // routes van >90 minuten en reistijdconflicten veroorzaakte.
+    // De huiscoördinaten zelf blijven volledig ongemoeid: alleen de
+    // chauffeurstoewijzing verandert.
+    const demoGroups=buildDemoGeographicGroups(demoKids)
+      .sort((a,b)=>b.length-a.length);
+
     const groups=new Map();
-    demoKids.forEach(k=>{
-      const n=parseInt(String(k.id).slice(1),10);
-      const gi=Math.floor((n-1)/8);
-      const d=driverNames[gi];
-      k.driver=d||'';
-      k.routeOrder=(n-1)%8+1;
-      if(!groups.has(d))groups.set(d,[]);
-      groups.get(d).push(k);
+    demoGroups.forEach((q,i)=>{
+      const d=driverNames[i];
+      if(!d)return;
+      q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+      q.forEach((k,j)=>{
+        k.driver=d;
+        k.routeOrder=j+1;
+      });
+      groups.set(d,q);
     });
 
-    // Alleen de ingebouwde demo gebruikt deze vaste koppeling.
-    // De routevoorwaarden worden daarna door de normale controle getest.
-    groups.forEach((q,d)=>{
-      q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
-      q.forEach((k,i)=>k.routeOrder=i+1);
-    });
+    // Alleen de ingebouwde demo gebruikt deze geografische koppeling.
+    // De normale route- en schoolcontroles blijven daarna actief.
 
     // V744: stabiele route-tijd optimalisatie.
     let demoAdjusted=0;
