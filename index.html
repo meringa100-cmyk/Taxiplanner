@@ -322,10 +322,10 @@ const schools=['Terra College','De Atlas','Praktijkschool','Speciale school'];
 // Harde schooldeadline: ieder kind moet uiterlijk om 08:30 op school kunnen zijn.
 const SCHOOL_DEADLINE_MIN=8*60+30;
 const schoolLocations={
-  'Terra College':{lat:52.77593,lon:6.87886},
-  'De Atlas':{lat:52.77890,lon:6.95670},
-  'Praktijkschool':{lat:52.78620,lon:6.88980},
-  'Speciale school':{lat:52.77890,lon:6.95670}
+  'Terra College':{lat:52.772208011,lon:6.887195759,address:'Huizingsbrinkweg 9, 7812 BK Emmen'},
+  'De Atlas':{lat:52.77775,lon:6.94468,address:'Ullevi 26, 7825 SE Emmen'},
+  'Praktijkschool':{lat:52.77648,lon:6.94393,address:'Ullevi 22, 7825 SE Emmen'},
+  'Speciale school':{lat:52.77775,lon:6.94468,address:'Ullevi 26, 7825 SE Emmen'}
 };
 const drentheDemoLocations=[
   // Demo-locaties zijn straatniveau-punten. De tekst en marker verwijzen
@@ -1405,7 +1405,9 @@ async function calculateRealRoutes(){
       const route=await osrmRoute(routeCoords);
       const line=L.geoJSON(route.geometry,{style:{weight:6,opacity:.85}});
       line.addTo(realMap);
-      line.bindPopup('<b>'+d+'</b><br>'+Math.round(route.distance/1000*10)/10+' km • '+Math.round(route.duration/60)+' min<br>🏫 Aankomst: '+(last.school||last.destination||'School'));
+      const endSchool=schoolPoint(last);
+         const endAddress=last.destinationAddress||endSchool?.address||last.destination||last.school||'School';
+         line.bindPopup('<b>'+d+'</b><br>'+Math.round(route.distance/1000*10)/10+' km • '+Math.round(route.duration/60)+' min<br>🏁 Eindadres: '+endAddress);
       routeLines.push(line);
 
       completed++;
@@ -1473,9 +1475,10 @@ function renderRealMapMarkers(){
       });
       const m=L.marker(latlon,{icon}).addTo(realMap);
       const pickupLabel=assigned.pickupAddress||assigned.address||'Ophaaladres onbekend';
-      const destinationLabel=assigned.address||assigned.destination||'Bestemming onbekend';
-      m.bindTooltip('👦 <b>'+assigned.name+'</b><br>📍 '+pickupLabel+'<br>🏫 '+destinationLabel,{direction:'top',sticky:true,className:'taxi-map-label'});
-      m.bindPopup('<b>👦 '+assigned.name+'</b><br>🚕 '+d+'<br>🧭 Route-stop '+(i+1)+'<br>🕐 '+assigned.time+'<br>📍 <b>Ophalen:</b> '+pickupLabel+'<br>🏫 <b>Bestemming:</b> '+destinationLabel+'<br>'+statusText(assigned.status)+'<br><button onclick="openDriverDetails(\''+d+'\')">Chauffeurdetails</button>');
+      const school=schoolPoint(assigned);
+      const destinationLabel=assigned.destinationAddress||school?.address||assigned.destination||'Bestemming onbekend';
+      m.bindTooltip('👦 <b>'+assigned.name+'</b><br>📍 '+pickupLabel+'<br>🏁 '+destinationLabel,{direction:'top',sticky:true,className:'taxi-map-label'});
+      m.bindPopup('<b>👦 '+assigned.name+'</b><br>🚕 '+d+'<br>🧭 Route-stop '+(i+1)+'<br>🕐 '+assigned.time+'<br>📍 <b>Ophalen:</b> '+pickupLabel+'<br>🏁 <b>Eindadres:</b> '+destinationLabel+'<br>'+statusText(assigned.status)+'<br><button onclick="openDriverDetails(\''+d+'\')">Chauffeurdetails</button>');
       mapMarkers.push(m);
     });
   });
@@ -2575,7 +2578,60 @@ async function addRide(){
 function find(id){return kids.find(k=>k.id===id)}
 function closeModal(){document.getElementById('modal').classList.add('hidden')}
 document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
-if(!loadState())seed();renderAll();startPlannerAutomation();
+if(!loadState())seed();
+
+const DEMO_GEOCODE_CACHE_KEY='taxiPlannerDemoGeoV1';
+async function geocodeDemoLocationsOnce(){
+  try{
+    const cached=JSON.parse(localStorage.getItem(DEMO_GEOCODE_CACHE_KEY)||'{}');
+    let changed=false;
+    for(const loc of drentheDemoLocations){
+      const key=loc.street+'|'+loc.town;
+      if(cached[key] && Number.isFinite(cached[key].lat) && Number.isFinite(cached[key].lon)){
+        loc.lat=cached[key].lat; loc.lon=cached[key].lon;
+        loc.display_name=cached[key].display_name||loc.street+', '+loc.town;
+        continue;
+      }
+      try{
+        const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=nl&street='+encodeURIComponent(loc.street)+'&city='+encodeURIComponent(loc.town)+'&country='+encodeURIComponent('Nederland');
+        const res=await fetch(url,{headers:{'Accept':'application/json','Accept-Language':'nl'}});
+        if(!res.ok)continue;
+        const data=await res.json();
+        const hit=Array.isArray(data)&&data[0];
+        const lat=Number(hit?.lat), lon=Number(hit?.lon);
+        if(Number.isFinite(lat)&&Number.isFinite(lon)){
+          loc.lat=lat; loc.lon=lon;
+          loc.display_name=hit.display_name||loc.street+', '+loc.town;
+          cached[key]={lat,lon,display_name:loc.display_name};
+          changed=true;
+        }
+      }catch(e){ console.warn('Demo-locatie niet gegeocodeerd:',loc.street,loc.town,e); }
+      await new Promise(resolve=>setTimeout(resolve,1100));
+    }
+    if(changed)localStorage.setItem(DEMO_GEOCODE_CACHE_KEY,JSON.stringify(cached));
+    const demoKids=kids.filter(k=>String(k.id).startsWith('k') && /^[0-9]+$/.test(String(k.id).slice(1)));
+    if(demoKids.length===100){
+      demoKids.forEach(k=>{
+        const n=parseInt(String(k.id).slice(1),10);
+        const group=Math.floor((n-1)/8);
+        const pos=(n-1)%8;
+        const loc=drentheDemoLocations[group%drentheDemoLocations.length];
+        k.lat=loc.lat+(pos%4)*0.00012;
+        k.lon=loc.lon+Math.floor(pos/4)*0.00018;
+        k.address=loc.display_name||loc.street+', '+loc.town;
+        k.pickupAddress=k.address;
+        const s=schoolPoint(k);
+        if(s?.address)k.destinationAddress=s.address;
+      });
+      addressesReady=true;
+      saveState();
+      renderAll();
+    }
+  }catch(e){ console.warn('Demo-geocoding overgeslagen:',e); }
+}
+renderAll();
+startPlannerAutomation();
+geocodeDemoLocationsOnce();
 </script>
 
 
