@@ -1392,11 +1392,11 @@ async function calculateRealRoutes(){
       const ordered=rides;
       const driverIndex=driverNames.indexOf(d);
       const routeCoords=ordered.map((k,i)=>coordForKid(k,driverIndex,i));
+      const first=ordered[0];
       const last=ordered[ordered.length-1];
       const school=schoolPoint(last);
-      if(school && Number.isFinite(school.lat)&&Number.isFinite(school.lon)){
-        routeCoords.push([school.lon,school.lat]);
-      }
+      // De route begint bij de eerste ophaalstop en eindigt bij de school.
+      // De groene VERTREK-marker hoort dus bij de eerste stop; rood AANKOMST bij school.
       const route=await osrmRoute(routeCoords);
       const line=L.geoJSON(route.geometry,{style:{weight:6,opacity:.85}});
       line.addTo(realMap);
