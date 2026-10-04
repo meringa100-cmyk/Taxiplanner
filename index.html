@@ -473,6 +473,9 @@ function schoolArrivalMinutes(k){
   return (k?.timeMin||0)+pickupToSchoolMinutes(k);
 }
 function schoolDeadlineOk(k){
+  // Een rit die na 08:30 is ingevoerd is een speciale/niet-ochtendrit.
+  // Daarvoor geldt de vaste ochtenddeadline van 08:30 niet.
+  if(Number(k?.timeMin)>SCHOOL_DEADLINE_MIN)return true;
   return schoolArrivalMinutes(k)<=SCHOOL_DEADLINE_MIN;
 }
 
