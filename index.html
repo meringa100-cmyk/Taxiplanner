@@ -2409,15 +2409,17 @@ function openAdd(){
  <h2>➕ Rit toevoegen</h2>
  <p>Naam kind</p>
  <input id="newName" style="width:100%" value="Nieuw kind">
- <p>Tijd</p>
+ <p>🕐 Ophaaltijd</p>
  <input id="newTime" type="time" style="width:100%" value="08:30">
- <p>📍 Waarheen?</p>
+ <p>📍 <b>Ophaaladres</b></p>
+ <input id="newPickupAddress" style="width:100%" value="" placeholder="Bijv. Laan van de Marel 12, Emmen">
+ <p>🏫 Waarheen?</p>
  <select id="newDestination" style="width:100%" onchange="toggleNewDestination()">
    ${destinationOptions}
  </select>
- <p>Bestemmingsadres</p>
+ <p>📍 Bestemmingsadres</p>
  <input id="newAddress" style="width:100%" value="" placeholder="Bijv. school of huisadres">
- <p class="muted small">De gekozen bestemming wordt onderdeel van de nieuwe rit.</p>
+ <p class="muted small">De planner gebruikt het ophaaladres én het bestemmingsadres voor de nieuwe rit.</p>
  <p><button class="primary" onclick="addRide()">Toevoegen</button> <button onclick="closeModal()">Annuleren</button></p>`;
  document.getElementById('modal').classList.remove('hidden');
  toggleNewDestination();
@@ -2428,7 +2430,6 @@ function toggleNewDestination(){
  if(!select||!address)return;
  const isSchool=schools.includes(select.value);
  if(isSchool && !address.value) address.value=select.value;
- if(!isSchool && address.value===schools.find(s=>address.value===s)) address.value='';
  address.placeholder=isSchool?'Bestemmingsadres (optioneel)':'Vul de bestemming / het adres in';
 }
 function addRide(){
@@ -2436,6 +2437,7 @@ function addRide(){
  const parts=t.split(':').map(Number);
  const h=Number.isFinite(parts[0])?parts[0]:8;
  const m=Number.isFinite(parts[1])?parts[1]:30;
+ const pickupAddress=document.getElementById('newPickupAddress')?.value.trim()||'Ophaaladres onbekend';
  const destination=document.getElementById('newDestination')?.value||'Nieuwe bestemming';
  const address=document.getElementById('newAddress')?.value.trim()||destination;
  const school=schools.includes(destination)?destination:'Nieuwe bestemming';
@@ -2443,9 +2445,10 @@ function addRide(){
  const newKid={
    id:newId,
    name:document.getElementById('newName').value||'Nieuw kind',
-   time:t,timeMin:h*60+m,address,school,destination,
-   // Nieuwe ritten krijgen meteen een geldige Emmen-coördinaat zodat de AI
-   // de route/reistijd ook echt kan beoordelen.
+   time:t,timeMin:h*60+m,
+   pickupAddress,
+   address,
+   school,destination,
    lat:52.772+(kids.length%13)*0.0012,
    lon:6.862+(kids.length%13)*0.0014,
    driver:driverNames[0],fixed:false,status:'waiting',
@@ -2468,7 +2471,7 @@ function addRide(){
    }
  },100);
 
- alert('✅ Rit toegevoegd: '+newKid.name+' → '+(newKid.destination||newKid.address)+' om '+newKid.time+'.');
+ alert('✅ Rit toegevoegd: '+newKid.name+' → '+(newKid.destination||newKid.address)+'\n📍 Ophalen: '+newKid.pickupAddress+' om '+newKid.time+'.');
 }
 function find(id){return kids.find(k=>k.id===id)}
 function closeModal(){document.getElementById('modal').classList.add('hidden')}
