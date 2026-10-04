@@ -1396,7 +1396,21 @@ async function calculateRealRoutes(){
       const last=ordered[ordered.length-1];
       const school=schoolPoint(last);
       // De route begint bij de eerste ophaalstop en eindigt bij de school.
-      // De groene VERTREK-marker hoort dus bij de eerste stop; rood AANKOMST bij school.
+      if(school && Number.isFinite(school.lat)&&Number.isFinite(school.lon)){
+        routeCoords.push([school.lon,school.lat]);
+      }
+
+      // Duidelijk vertrekpunt: altijd bij het eerste echte ophaaladres.
+      const start=coordForKid(first,driverIndex,0);
+      const startIcon=L.divIcon({
+        className:'',
+        html:'<div style="background:#16a34a;color:#fff;border:3px solid #fff;border-radius:10px;padding:6px 9px;font-weight:900;box-shadow:0 2px 8px #0006;white-space:nowrap">🟢 VERTREK<br><small>'+first.name+'</small></div>',
+        iconSize:[110,50],iconAnchor:[55,50]
+      });
+      const sm=L.marker([start[1],start[0]],{icon:startIcon,zIndexOffset:2000}).addTo(realMap);
+      sm.bindPopup('<b>🟢 VERTREK</b><br>👦 '+first.name+'<br>📍 '+(first.pickupAddress||first.address||'Ophaaladres onbekend')+'<br>🚕 '+d);
+      mapMarkers.push(sm);
+
       const route=await osrmRoute(routeCoords);
       const line=L.geoJSON(route.geometry,{style:{weight:6,opacity:.85}});
       line.addTo(realMap);
