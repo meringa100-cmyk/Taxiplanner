@@ -1584,7 +1584,26 @@ function renderRealMapMarkers(){
     // over het echte wegennet getekend.
     rides.forEach((assigned,i)=>{
       const p=coordForKid(assigned,driverNames.indexOf(d),i);
-      const latlon=[p[1],p[0]];
+      let latlon=[p[1],p[0]];
+
+      // V770: als meerdere stops exact op elkaar liggen, spideren we ze
+      // alleen visueel rond het echte huispunt. De opgeslagen lat/lon blijft
+      // het echte adres; alleen de kaartmarkers worden uit elkaar gezet.
+      const samePoint=rides.filter((x,j)=>{
+        if(j===i)return false;
+        const q=coordForKid(x,driverNames.indexOf(d),j);
+        return Math.abs(q[0]-p[0])<0.00012 && Math.abs(q[1]-p[1])<0.00012;
+      });
+      if(samePoint.length){
+        const sameIndex=rides.slice(0,i).filter((x,j)=>{
+          const q=coordForKid(x,driverNames.indexOf(d),j);
+          return Math.abs(q[0]-p[0])<0.00012 && Math.abs(q[1]-p[1])<0.00012;
+        }).length;
+        const total=samePoint.length+1;
+        const radius=0.00028;
+        const angle=(sameIndex/total)*Math.PI*2-Math.PI/2;
+        latlon=[p[1]+Math.sin(angle)*radius,p[0]+Math.cos(angle)*radius];
+      }
       const color=assigned.status==='picked'?'#d97706':'#1769aa';
       const icon=L.divIcon({
         className:'',
