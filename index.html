@@ -2713,11 +2713,9 @@ function openAdd(){
  <select id="newDestination" style="width:100%" onchange="toggleNewDestination()">
    ${destinationOptions}
  </select>
- <p>📍 <b>Bestemmingsadres</b></p>
- <input id="newAddress" style="width:100%" value="" placeholder="Bijv. Hoofdstraat 12">
- <p>🏘️ <b>Plaats bestemming</b></p>
- <input id="newDestinationCity" style="width:100%" value="Emmen" placeholder="Bijv. Emmen">
- <p class="muted small">De planner gebruikt het bestemmingsadres én de plaats van bestemming voor de nieuwe rit.</p>
+ <p>📍 Bestemmingsadres</p>
+ <input id="newAddress" style="width:100%" value="" placeholder="Bijv. school of huisadres">
+ <p class="muted small">De planner gebruikt het ophaaladres én het bestemmingsadres voor de nieuwe rit.</p>
  <p><button class="primary" onclick="addRide()">Toevoegen</button> <button onclick="closeModal()">Annuleren</button></p>`;
  document.getElementById('modal').classList.remove('hidden');
  toggleNewDestination();
@@ -2758,9 +2756,7 @@ async function addRide(){
  const pickupAddress=[pickupStreet,pickupCity].filter(Boolean).join(', ')||'Ophaaladres onbekend';
  const pickupGeo=await geocodePickupAddress(pickupAddress+', Nederland');
  const destination=document.getElementById('newDestination')?.value||'Nieuwe bestemming';
- const destinationCity=document.getElementById('newDestinationCity')?.value.trim()||'Emmen';
- const rawAddress=document.getElementById('newAddress')?.value.trim()||destination;
- const address=[rawAddress,destinationCity].filter(Boolean).join(', ');
+ const address=document.getElementById('newAddress')?.value.trim()||destination;
  const school=schools.includes(destination)?destination:'Nieuwe bestemming';
  const newId='k'+demoCounter++;
  const newKid={
@@ -2895,7 +2891,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=777").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=776").catch(()=>{}));}
 </script>
 
 </body>
