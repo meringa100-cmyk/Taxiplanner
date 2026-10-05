@@ -1760,7 +1760,7 @@ function buildDemoGeographicGroups(demoKids){
           return (a.timeMin||0)-(b.timeMin||0);
         });
 
-        const chosen=candidates[0];
+        const chosen=pool[0];
         group.push(chosen);
         remaining.splice(remaining.indexOf(chosen),1);
       }
