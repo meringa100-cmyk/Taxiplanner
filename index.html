@@ -1857,19 +1857,15 @@ function runAI(silent=false){
     // Zodra de demo één keer geografisch goed verdeeld is, mag een
     // volgende AI-run die verdeling NIET opnieuw groeperen.
     // Ook na een reload herkennen we een al verspreide verdeling.
-    const demoStreetKey=k=>String(k?.demoTown||'')+'|'+String(k?.demoStreet||'');
     const currentDemoGroups=new Map();
     demoKids.forEach(k=>{
       if(!k.driver)return;
       if(!currentDemoGroups.has(k.driver))currentDemoGroups.set(k.driver,[]);
       currentDemoGroups.get(k.driver).push(k);
     });
-    const alreadySpread=[...currentDemoGroups.values()].filter(q=>q.length>=4).length>0 &&
-      [...currentDemoGroups.values()].filter(q=>q.length>=4).every(q=>new Set(q.map(demoStreetKey)).size>=2);
 
     let groups;
-    if(demoPlanningSpreadLocked || alreadySpread){
-      demoPlanningSpreadLocked=true;
+    if(demoPlanningSpreadLocked){
       groups=currentDemoGroups;
     }else{
       const demoGroups=buildDemoGeographicGroups(demoKids)
