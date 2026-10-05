@@ -1894,8 +1894,10 @@ function runAI(silent=false){
     });
     saveState();
 
-    // Alleen de ingebouwde demo gebruikt deze geografische koppeling.
-    // De normale route- en schoolcontroles blijven daarna actief.
+    // De ingebouwde demo gebruikt een vaste chauffeurstoewijzing.
+    // AI mag de kinderen NIET van chauffeur laten wisselen.
+    // Alleen tijden, routevolgorde en conflicten worden daarna gecontroleerd.
+    // De normale route- en schoolcontroles blijven actief.
 
     // V744: stabiele route-tijd optimalisatie.
     let demoAdjusted=0;
