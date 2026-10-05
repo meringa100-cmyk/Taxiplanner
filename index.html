@@ -568,7 +568,7 @@ function pickupToSchoolMinutes(k){
   const km=geoDistanceKm({lat:k.lat,lon:k.lon},s);
   if(!Number.isFinite(km)) return 20;
   // Conservatieve inschatting zodat de planner niet te krap plant.
-  return Math.max(5,Math.ceil((km/30)*60));
+  return Math.max(5,Math.ceil((km/45)*60));
 }
 function schoolArrivalMinutes(k){
   return (k?.timeMin||0)+pickupToSchoolMinutes(k);
