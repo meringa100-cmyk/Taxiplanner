@@ -1616,7 +1616,7 @@ function renderRealMapMarkers(){
             const color=assigned.status==='picked'?'#d97706':'#1769aa';
       const icon=L.divIcon({
         className:'',
-        html:'<div title="'+assigned.name+' • '+assigned.time+'" style="width:36px;height:36px;border-radius:50%;background:'+color+';color:#fff;border:3px solid #fff;box-shadow:0 2px 7px #0006;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:bold">'+(i+1)+'</div>',
+        html:'<div title="'+assigned.name+' • '+assigned.time+'" style="width:40px;height:40px;border-radius:50%;background:'+color+';color:#fff;border:3px solid #fff;box-shadow:0 2px 7px #0006;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:bold">'+(assigned.demoGroup||assigned.id.replace(/^k/i,'' )|| (i+1))+'</div>',
         iconSize:[36,36],iconAnchor:[18,18]
       });
       const m=L.marker(latlon,{icon}).addTo(realMap);
