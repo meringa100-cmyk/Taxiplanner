@@ -1864,25 +1864,34 @@ function runAI(silent=false){
       currentDemoGroups.get(k.driver).push(k);
     });
 
-    let groups;
-    if(demoPlanningSpreadLocked){
-      groups=currentDemoGroups;
-    }else{
-      const demoGroups=buildDemoGeographicGroups(demoKids)
-        .sort((a,b)=>b.length-a.length);
-      groups=new Map();
-      demoGroups.forEach((q,i)=>{
-        const d=driverNames[i];
-        if(!d)return;
-        q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
-        q.forEach((k,j)=>{
+    // V778: de stabiele demo-verdeling blijft leidend.
+    // De oorspronkelijke groepen 1-8, 9-16, enz. zijn bewust over
+    // verschillende woonplaatsen/straten verspreid. AI mag deze verdeling
+    // NOOIT opnieuw clusteren.
+    if(!demoPlanningSpreadLocked){
+      demoKids.forEach(k=>{
+        const n=parseInt(String(k.id).slice(1),10);
+        const group=Math.floor((n-1)/8);
+        const pos=(n-1)%8;
+        const d=driverNames[group];
+        if(d){
           k.driver=d;
-          k.routeOrder=j+1;
-        });
-        groups.set(d,q);
+          k.routeOrder=pos+1;
+        }
       });
       demoPlanningSpreadLocked=true;
     }
+
+    const groups=new Map();
+    demoKids.forEach(k=>{
+      if(!k.driver)return;
+      if(!groups.has(k.driver))groups.set(k.driver,[]);
+      groups.get(k.driver).push(k);
+    });
+    groups.forEach(q=>{
+      q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+      q.forEach((k,i)=>k.routeOrder=i+1);
+    });
     saveState();
 
     // Alleen de ingebouwde demo gebruikt deze geografische koppeling.
