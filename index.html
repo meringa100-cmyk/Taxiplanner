@@ -2673,6 +2673,18 @@ function toggleChildCard(id){
  const el=document.getElementById('childcard-'+id);
  if(el) el.classList.toggle('open');
 }
+function displayPickupAddress(k){
+  const raw=String(k?.pickupAddress||k?.address||'Onbekend').trim();
+  if(raw==='Onbekend')return raw;
+  if(/^k\d+$/.test(String(k?.id||'')) && !/\b\d+[a-zA-Z]?\b/.test(raw)){
+    const n=Number(String(k.id).slice(1));
+    const nr=2+((n*2)%58);
+    const parts=raw.split(',').map(x=>x.trim()).filter(Boolean);
+    if(parts.length>=2)return parts[0]+' '+nr+', '+parts.slice(1).join(', ');
+    return raw+' '+nr;
+  }
+  return raw;
+}
 function childCardHtml(k){
  return `<div class="child-card-v70" id="childcard-${k.id}">
    <button class="child-head-v70" type="button" onclick="toggleChildCard('${k.id}')">
@@ -2680,7 +2692,7 @@ function childCardHtml(k){
      <span class="arrow">▼</span>
    </button>
    <div class="child-details-v70">
-     <div class="child-meta-v70"><span>🚕 ${k.driver}</span><span>🧭 Route ${Number.isFinite(k.routeOrder)?k.routeOrder:'—'}</span><span>📍 Ophalen: ${k.pickupAddress||k.address||'Onbekend'}</span><span>🏫 Bestemming: ${k.address||k.destination||'Onbekend'}</span><span>➡️ ${k.destination||k.school||'Bestemming onbekend'}</span><span>${k.fixed?'🔒 Vast':'🔄 Vrij planbaar'}</span></div>
+     <div class="child-meta-v70"><span>🚕 ${k.driver}</span><span>🧭 Route ${Number.isFinite(k.routeOrder)?k.routeOrder:'—'}</span><span>📍 Ophalen: ${displayPickupAddress(k)}</span><span>🏫 Bestemming: ${k.address||k.destination||'Onbekend'}</span><span>➡️ ${k.destination||k.school||'Bestemming onbekend'}</span><span>${k.fixed?'🔒 Vast':'🔄 Vrij planbaar'}</span></div>
      <div class="child-info-v70"><b>Benadering:</b> ${k.approach}</div>
      <div class="child-info-v70"><b>Veiligheid:</b> ${k.safety}</div>
      <div class="child-info-v70"><b>Belangrijk:</b> ${k.important}</div>
