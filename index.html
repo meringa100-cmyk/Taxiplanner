@@ -1620,7 +1620,7 @@ function renderRealMapMarkers(){
         iconSize:[36,36],iconAnchor:[18,18]
       });
       const m=L.marker(latlon,{icon}).addTo(realMap);
-      const pickupLabel=assigned.pickupAddress||assigned.address||'Ophaaladres onbekend';
+      const pickupLabel=displayPickupAddress(assigned);
       const school=schoolPoint(assigned);
       const destinationLabel=assigned.destinationAddress||school?.address||assigned.destination||'Bestemming onbekend';
       m.bindTooltip('👦 <b>'+assigned.name+'</b><br>📍 '+pickupLabel+'<br>🏁 '+destinationLabel,{direction:'top',sticky:true,className:'taxi-map-label'});
