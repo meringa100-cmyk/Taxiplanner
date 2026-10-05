@@ -1746,7 +1746,14 @@ function buildDemoGeographicGroups(demoKids){
         });
         if(!candidates.length)break;
 
-        candidates.sort((a,b)=>{
+        // Verdeel kinderen bij voorkeur over verschillende straten.
+        // Binnen die keuze blijven we zo geografisch compact mogelijk.
+        const streetKey=k=>String(k?.demoTown||'')+'|'+String(k?.demoStreet||'');
+        const usedStreets=new Set(group.map(streetKey));
+        const differentStreetCandidates=candidates.filter(k=>!usedStreets.has(streetKey(k)));
+        const pool=differentStreetCandidates.length?differentStreetCandidates:candidates;
+
+        pool.sort((a,b)=>{
           const da=Math.min(...group.map(x=>geoDistanceKm(a,x)));
           const db=Math.min(...group.map(x=>geoDistanceKm(b,x)));
           if(da!==db)return da-db;
