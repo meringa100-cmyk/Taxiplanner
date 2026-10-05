@@ -434,10 +434,10 @@ function applyGuaranteedDemoHomeSpread(){
   });
 
   addressesReady=true;
-  demoAddressSpreadVersion='v73';
+  demoAddressSpreadVersion='v74';
   saveState();
   renderAll();
-  console.log('V776: gegarandeerde spreiding toegepast op 100 demo-kinderen.');
+  console.log('V777 stable: gegarandeerde Drenthe-spreiding toegepast op 100 demo-kinderen.');
   return true;
 }
 
@@ -2804,7 +2804,7 @@ startPlannerAutomation();
 // V62: éénmalige echte straatspreiding voor de ingebouwde 100-kind-demo.
 setTimeout(async()=>{
   // V769: oude demo-coordinaten mogen nooit blijven hangen.
-  if(demoAddressSpreadVersion!=='v73'){
+  if(demoAddressSpreadVersion!=='v74'){
     demoAddressSpreadVersion='pending';
     kids.filter(k=>/^k[0-9]+$/.test(String(k.id))).forEach(k=>{
       delete k.lat; delete k.lon; delete k.demoTown; delete k.demoStreet;
