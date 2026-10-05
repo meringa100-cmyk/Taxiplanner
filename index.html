@@ -585,6 +585,7 @@ let kids=[];
 let previousPlan=null;
 let demoCounter=101;
 let demoAddressSpreadVersion='';
+let demoPlanningSpreadLocked=false;
 
 const busNumbers=Array.from({length:50},(_,i)=>'Bus '+String(i+1).padStart(2,'0'));
 let busIssues={};
@@ -829,7 +830,7 @@ const STORAGE_KEY='taxiPlannerStateV749';
 function saveState(){
  try{
   localStorage.setItem(STORAGE_KEY,JSON.stringify({
-   kids,driverUnavailable,busIssues,replacementAssignments,replacementSeq,demoCounter,parentDriverChanges,demoAddressSpreadVersion
+   kids,driverUnavailable,busIssues,replacementAssignments,replacementSeq,demoCounter,parentDriverChanges,demoAddressSpreadVersion,demoPlanningSpreadLocked
   }));
  }catch(e){}
 }
@@ -875,6 +876,7 @@ function loadState(){
   replacementSeq=Number(state.replacementSeq)||1;
   demoCounter=Number(state.demoCounter)||101;
   demoAddressSpreadVersion=state.demoAddressSpreadVersion||'';
+  demoPlanningSpreadLocked=Boolean(state.demoPlanningSpreadLocked);
   normalizeBuiltInDemo();
   addressesReady=kids.length>0 && kids.every(k=>Number.isFinite(k.lat)&&Number.isFinite(k.lon));
   return true;
@@ -1852,20 +1854,40 @@ function runAI(silent=false){
     // routes van >90 minuten en reistijdconflicten veroorzaakte.
     // De huiscoördinaten zelf blijven volledig ongemoeid: alleen de
     // chauffeurstoewijzing verandert.
-    const demoGroups=buildDemoGeographicGroups(demoKids)
-      .sort((a,b)=>b.length-a.length);
-
-    const groups=new Map();
-    demoGroups.forEach((q,i)=>{
-      const d=driverNames[i];
-      if(!d)return;
-      q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
-      q.forEach((k,j)=>{
-        k.driver=d;
-        k.routeOrder=j+1;
-      });
-      groups.set(d,q);
+    // Zodra de demo één keer geografisch goed verdeeld is, mag een
+    // volgende AI-run die verdeling NIET opnieuw groeperen.
+    // Ook na een reload herkennen we een al verspreide verdeling.
+    const demoStreetKey=k=>String(k?.demoTown||'')+'|'+String(k?.demoStreet||'');
+    const currentDemoGroups=new Map();
+    demoKids.forEach(k=>{
+      if(!k.driver)return;
+      if(!currentDemoGroups.has(k.driver))currentDemoGroups.set(k.driver,[]);
+      currentDemoGroups.get(k.driver).push(k);
     });
+    const alreadySpread=[...currentDemoGroups.values()].filter(q=>q.length>=4).length>0 &&
+      [...currentDemoGroups.values()].filter(q=>q.length>=4).every(q=>new Set(q.map(demoStreetKey)).size>=2);
+
+    let groups;
+    if(demoPlanningSpreadLocked || alreadySpread){
+      demoPlanningSpreadLocked=true;
+      groups=currentDemoGroups;
+    }else{
+      const demoGroups=buildDemoGeographicGroups(demoKids)
+        .sort((a,b)=>b.length-a.length);
+      groups=new Map();
+      demoGroups.forEach((q,i)=>{
+        const d=driverNames[i];
+        if(!d)return;
+        q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+        q.forEach((k,j)=>{
+          k.driver=d;
+          k.routeOrder=j+1;
+        });
+        groups.set(d,q);
+      });
+      demoPlanningSpreadLocked=true;
+    }
+    saveState();
 
     // Alleen de ingebouwde demo gebruikt deze geografische koppeling.
     // De normale route- en schoolcontroles blijven daarna actief.
