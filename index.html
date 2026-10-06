@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V799</h1>
+<h1>🚕 Taxi Planner V800</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1904,6 +1904,48 @@ function packDemoRoutesForCapacityAnd90(demoKids){
       remaining.splice(remaining.indexOf(chosen),1);
     }
     groups.push(group);
+  }
+
+  // V800: pak-pass om kleinere groepen waar mogelijk samen te voegen.
+  let packed=true, packPass=0;
+  while(packed && packPass++<8){
+    packed=false;
+    groups.sort((a,b)=>b.length-a.length);
+    for(let ti=0;ti<groups.length;ti++){
+      const target=groups[ti];
+      if(target.length>=MAX)continue;
+      const school=target[0]?.school||target[0]?.destination||'';
+      for(let si=groups.length-1;si>ti;si--){
+        const source=groups[si];
+        if(source.length<=1)continue;
+        if((source[0]?.school||source[0]?.destination||'')!==school)continue;
+        const candidates=[...source].sort((a,b)=>{
+          const da=Math.min(...target.map(x=>geoDistanceKm(a,x)).filter(Number.isFinite));
+          const db=Math.min(...target.map(x=>geoDistanceKm(b,x)).filter(Number.isFinite));
+          return da-db;
+        });
+        for(const k of candidates){
+          if(target.length>=MAX)break;
+          if(target.some(x=>(x.timeMin||0)===(k.timeMin||0)))continue;
+          const trial=[...target,k].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+          if(new Set(trial.map(x=>Number(x.timeMin)||0)).size!==trial.length)continue;
+          if(routeDurationEstimate(trial,0)>MAX90)continue;
+          let valid=true;
+          for(let i=1;i<trial.length;i++){
+            const gap=(trial[i].timeMin||0)-(trial[i-1].timeMin||0);
+            const travel=routeMinutesBetween(trial[i-1],trial[i],0);
+            if(gap<0 || travel>gap+15){valid=false;break;}
+          }
+          if(!valid)continue;
+          target.push(k);
+          source.splice(source.indexOf(k),1);
+          packed=true;
+          break;
+        }
+        if(source.length===0)groups.splice(si,1);
+        if(target.length>=MAX)break;
+      }
+    }
   }
 
   groups.sort((a,b)=>b.length-a.length);
