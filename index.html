@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V800</h1>
+<h1>🚕 Taxi Planner V801</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -734,7 +734,24 @@ async function validateRouteMinutes(driver, rides){
 }
 
 // Harde maximale routelengte per chauffeur.
+// Normale route: 90 min. Bij een route met meerdere scholen mag de totale
+// route maximaal 99 min zijn, mits beide schoolbestemmingen worden meegenomen.
 const MAX_ROUTE_MINUTES=90;
+const MAX_MIXED_SCHOOL_ROUTE_MINUTES=99;
+
+function routeSchools(rides){
+  const map=new Map();
+  (rides||[]).forEach(k=>{
+    const key=k.school||k.destination||'';
+    if(!key || map.has(key))return;
+    const s=schoolPoint(k);
+    if(s && Number.isFinite(s.lat)&&Number.isFinite(s.lon))map.set(key,s);
+  });
+  return [...map.values()];
+}
+function routeLimitForRides(rides){
+  return routeSchools(rides).length>1 ? MAX_MIXED_SCHOOL_ROUTE_MINUTES : MAX_ROUTE_MINUTES;
+}
 function routeDurationEstimate(rides,driverIndex){
   if(!rides || !rides.length)return 0;
   const ordered=[...rides].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
@@ -749,9 +766,26 @@ function routeDurationEstimate(rides,driverIndex){
   // De rit eindigt op de school. Deze laatste etappe telt dus ook mee
   // voor de harde maximale routetijd van 90 minuten.
   const last=ordered[ordered.length-1];
-  const school=schoolPoint(last);
-  if(school && Number.isFinite(school.lat)&&Number.isFinite(school.lon)){
-    total+=routeMinutesBetween(last,{lat:school.lat,lon:school.lon},driverIndex);
+  const schoolsForRoute=routeSchools(ordered);
+  if(schoolsForRoute.length<=1){
+    const school=schoolsForRoute[0];
+    if(school) total+=routeMinutesBetween(last,{lat:school.lat,lon:school.lon},driverIndex);
+    return total;
+  }
+
+  // Bij meerdere scholen: vanaf de laatste ophaalstop naar de dichtstbijzijnde
+  // school en daarna naar de volgende school. Zo telt de rit naar beide scholen.
+  let current={lat:last.lat,lon:last.lon};
+  const remainingSchools=schoolsForRoute.slice();
+  while(remainingSchools.length){
+    let bestIndex=0,bestKm=Infinity;
+    remainingSchools.forEach((s,i)=>{
+      const km=geoDistanceKm(current,s);
+      if(km<bestKm){bestKm=km;bestIndex=i;}
+    });
+    const next=remainingSchools.splice(bestIndex,1)[0];
+    total+=Number.isFinite(bestKm)?Math.max(1,Math.ceil(bestKm/35*60)):15;
+    current={lat:next.lat,lon:next.lon};
   }
   return total;
 }
@@ -1842,14 +1876,11 @@ function buildDemoGeographicGroups(demoKids){
 }
 
 function packDemoRoutesForCapacityAnd90(demoKids){
-  const MAX90=90;
   const availableDrivers=driverNames.filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d));
   const remaining=demoKids.slice();
   const groups=[];
   let guard=0;
 
-  // V799: slimme groepsvorming: dezelfde school, geografisch compact,
-  // passende ophaaltijden, maximaal 8 en nooit boven 90 minuten.
   const candidateScore=(group,k)=>{
     const trial=[...group,k].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
     const distances=group.map(x=>geoDistanceKm(k,x)).filter(Number.isFinite);
@@ -1864,8 +1895,8 @@ function packDemoRoutesForCapacityAnd90(demoKids){
       else timePenalty+=Math.max(0,travel-gap)*0.25;
     }
     const minutes=routeDurationEstimate(trial,0);
-    const capacityBonus=trial.length===MAX? -220 : -trial.length*18;
-    return capacityBonus + minutes*1.8 + avg*10 + nearest*6 + timePenalty;
+    const capacityBonus=trial.length===MAX ? -260 : -trial.length*20;
+    return capacityBonus+minutes*1.7+avg*10+nearest*6+timePenalty;
   };
 
   while(remaining.length && guard++<300){
@@ -1874,29 +1905,29 @@ function packDemoRoutesForCapacityAnd90(demoKids){
       const school=k.school||k.destination||'Onbekend';
       schoolCounts.set(school,(schoolCounts.get(school)||0)+1);
     });
-    const school=[...schoolCounts.entries()].sort((a,b)=>b[1]-a[1])[0][0];
-    const pool=remaining.filter(k=>(k.school||k.destination||'Onbekend')===school)
+    const seedSchool=[...schoolCounts.entries()].sort((a,b)=>b[1]-a[1])[0][0];
+    const pool=remaining.filter(k=>(k.school||k.destination||'Onbekend')===seedSchool)
       .sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
-
     const seed=pool[0];
     const group=[seed];
     remaining.splice(remaining.indexOf(seed),1);
 
     while(group.length<MAX){
-      const options=remaining
-        .filter(k=>(k.school||k.destination||'Onbekend')===school)
-        .map(k=>{
-          const trial=[...group,k].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
-          if(new Set(trial.map(x=>Number(x.timeMin)||0)).size!==trial.length)return null;
-          if(routeDurationEstimate(trial,0)>MAX90)return null;
-          for(let i=1;i<trial.length;i++){
-            const gap=(trial[i].timeMin||0)-(trial[i-1].timeMin||0);
-            const travel=routeMinutesBetween(trial[i-1],trial[i],0);
-            if(gap<0 || travel>gap+15)return null;
-          }
-          return {k,score:candidateScore(group,k)};
-        }).filter(Boolean)
-        .sort((a,b)=>a.score-b.score);
+      const options=remaining.map(k=>{
+        const trial=[...group,k].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+        if(new Set(trial.map(x=>Number(x.timeMin)||0)).size!==trial.length)return null;
+
+        const limit=routeLimitForRides(trial);
+        if(routeDurationEstimate(trial,0)>limit)return null;
+
+        for(let i=1;i<trial.length;i++){
+          const gap=(trial[i].timeMin||0)-(trial[i-1].timeMin||0);
+          const travel=routeMinutesBetween(trial[i-1],trial[i],0);
+          if(gap<0 || travel>gap+15)return null;
+        }
+
+        return {k,score:candidateScore(group,k)};
+      }).filter(Boolean).sort((a,b)=>a.score-b.score);
 
       if(!options.length)break;
       const chosen=options[0].k;
@@ -1906,30 +1937,37 @@ function packDemoRoutesForCapacityAnd90(demoKids){
     groups.push(group);
   }
 
-  // V800: pak-pass om kleinere groepen waar mogelijk samen te voegen.
-  let packed=true, packPass=0;
-  while(packed && packPass++<8){
+  // Pak kleinere groepen ook samen, inclusief kinderen van een andere school,
+  // wanneer de gecombineerde route naar beide scholen binnen 99 minuten blijft.
+  let packed=true,pass=0;
+  while(packed && pass++<10){
     packed=false;
     groups.sort((a,b)=>b.length-a.length);
+
     for(let ti=0;ti<groups.length;ti++){
       const target=groups[ti];
       if(target.length>=MAX)continue;
-      const school=target[0]?.school||target[0]?.destination||'';
+
       for(let si=groups.length-1;si>ti;si--){
         const source=groups[si];
         if(source.length<=1)continue;
-        if((source[0]?.school||source[0]?.destination||'')!==school)continue;
+
         const candidates=[...source].sort((a,b)=>{
           const da=Math.min(...target.map(x=>geoDistanceKm(a,x)).filter(Number.isFinite));
           const db=Math.min(...target.map(x=>geoDistanceKm(b,x)).filter(Number.isFinite));
           return da-db;
         });
+
         for(const k of candidates){
           if(target.length>=MAX)break;
           if(target.some(x=>(x.timeMin||0)===(k.timeMin||0)))continue;
+
           const trial=[...target,k].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
           if(new Set(trial.map(x=>Number(x.timeMin)||0)).size!==trial.length)continue;
-          if(routeDurationEstimate(trial,0)>MAX90)continue;
+
+          const limit=routeLimitForRides(trial);
+          if(routeDurationEstimate(trial,0)>limit)continue;
+
           let valid=true;
           for(let i=1;i<trial.length;i++){
             const gap=(trial[i].timeMin||0)-(trial[i-1].timeMin||0);
@@ -1937,11 +1975,13 @@ function packDemoRoutesForCapacityAnd90(demoKids){
             if(gap<0 || travel>gap+15){valid=false;break;}
           }
           if(!valid)continue;
+
           target.push(k);
           source.splice(source.indexOf(k),1);
           packed=true;
           break;
         }
+
         if(source.length===0)groups.splice(si,1);
         if(target.length>=MAX)break;
       }
@@ -1956,40 +1996,63 @@ function packDemoRoutesForCapacityAnd90(demoKids){
       .map(d=>{
         const current=assigned.filter(x=>x.driver===d).map(x=>x.k);
         const trial=[...current,...group];
-        return {d,load:current.length,minutes:routeDurationEstimate(trial,driverNames.indexOf(d))};
+        return {
+          d,load:current.length,
+          minutes:routeDurationEstimate(trial,driverNames.indexOf(d))
+        };
       })
-      .filter(x=>x.load===0 || x.minutes<=MAX90)
+      .filter(x=>x.load===0 || x.minutes<=routeLimitForRides(x.current||[]))
       .sort((a,b)=>a.load-b.load || a.minutes-b.minutes);
-    const chosen=ranked[0]?.d;
+
+    // Bovenstaande filter kan current niet gebruiken in het object; herbereken
+    // daarom expliciet met de daadwerkelijke kandidaatgroep.
+    const ranked2=availableDrivers
+      .filter(d=>assigned.filter(x=>x.driver===d).length+group.length<=MAX)
+      .map(d=>{
+        const current=assigned.filter(x=>x.driver===d).map(x=>x.k);
+        const trial=[...current,...group];
+        return {d,load:current.length,minutes:routeDurationEstimate(trial,driverNames.indexOf(d)),limit:routeLimitForRides(trial)};
+      })
+      .filter(x=>x.load===0 || x.minutes<=x.limit)
+      .sort((a,b)=>a.load-b.load || a.minutes-b.minutes);
+
+    const chosen=ranked2[0]?.d;
     if(chosen)group.forEach(k=>assigned.push({k,driver:chosen}));
   });
 
-  // Laatste chauffeur-specifieke controle: verplaats zo nodig één kind
-  // naar de best passende vrije route, zonder capaciteit/90-minutenregel te breken.
-  let changed=true,pass=0;
-  while(changed && pass++<50){
+  // Chauffeur-specifieke eindcontrole.
+  let changed=true,movePass=0;
+  while(changed && movePass++<50){
     changed=false;
     const byDriver=new Map();
     demoKids.forEach(k=>{
-      if(k.driver){
-        if(!byDriver.has(k.driver))byDriver.set(k.driver,[]);
-        byDriver.get(k.driver).push(k);
-      }
+      if(!k.driver)return;
+      if(!byDriver.has(k.driver))byDriver.set(k.driver,[]);
+      byDriver.get(k.driver).push(k);
     });
 
     for(const [d,group] of byDriver){
-      if(routeDurationEstimate(group,driverNames.indexOf(d))<=MAX90)continue;
+      const limit=routeLimitForRides(group);
+      if(routeDurationEstimate(group,driverNames.indexOf(d))<=limit)continue;
+
       for(const movable of [...group].sort((a,b)=>(b.timeMin||0)-(a.timeMin||0))){
-        const targets=availableDrivers.filter(x=>x!==d).map(x=>{
+        const targets=availableDrivers.map(x=>{
+          if(x===d)return null;
           const target=byDriver.get(x)||[];
           if(target.length>=MAX)return null;
           if(target.some(k=>(k.timeMin||0)===(movable.timeMin||0)))return null;
-          if(target.length && target.some(k=>(k.school||k.destination)!==(movable.school||movable.destination)))return null;
+
           const trial=[...target,movable].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
-          const minutes=routeDurationEstimate(trial,driverNames.indexOf(x));
-          if(minutes>MAX90)return null;
-          return {x,load:target.length,distance:target.length?Math.min(...target.map(k=>geoDistanceKm(k,movable))):0,minutes};
-        }).filter(Boolean).sort((a,b)=>a.load-b.load || a.distance-b.distance || a.minutes-b.minutes);
+          const targetLimit=routeLimitForRides(trial);
+          if(routeDurationEstimate(trial,driverNames.indexOf(x))>targetLimit)return null;
+
+          return {
+            x,load:target.length,
+            distance:target.length?Math.min(...target.map(k=>geoDistanceKm(k,movable))):0,
+            minutes:routeDurationEstimate(trial,driverNames.indexOf(x))
+          };
+        }).filter(Boolean).sort((a,b)=>a.load-b.load||a.distance-b.distance||a.minutes-b.minutes);
+
         if(targets.length){
           movable.driver=targets[0].x;
           changed=true;
@@ -2539,10 +2602,8 @@ function runAI(silent=false){
         if(!schoolDeadlineOk(k))return false;
         const q=kids.filter(x=>x.driver===d&&active(x));
         if(q.some(x=>(x.timeMin||0)===(k.timeMin||0)))return false;
-        const sameSchool=q.length===0 || q.every(x=>(x.school||x.destination||'')===(k.school||k.destination||''));
-        if(!sameSchool)return false;
         const trial=[...q,k].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
-        if(routeDurationEstimate(trial,driverNames.indexOf(d))>MAX_ROUTE_MINUTES)return false;
+        if(routeDurationEstimate(trial,driverNames.indexOf(d))>routeLimitForRides(trial))return false;
         for(let i=1;i<trial.length;i++){
           const gap=(trial[i].timeMin||0)-(trial[i-1].timeMin||0);
           const travel=routeMinutesBetween(trial[i-1],trial[i],driverNames.indexOf(d));
@@ -2612,8 +2673,9 @@ function runAI(silent=false){
 
     if(q.length>MAX)conflicts.push(d+' • meer dan '+MAX+' kinderen');
 
-    if(routeDurationEstimate(q,driverNames.indexOf(d))>MAX_ROUTE_MINUTES)
-      conflicts.push(d+' • route langer dan '+MAX_ROUTE_MINUTES+' minuten');
+    const routeLimit=routeLimitForRides(q);
+    if(routeDurationEstimate(q,driverNames.indexOf(d))>routeLimit)
+      conflicts.push(d+' • route langer dan '+routeLimit+' minuten');
 
     for(let i=0;i<q.length;i++){
       if(!schoolDeadlineOk(q[i]))
@@ -2625,8 +2687,8 @@ function runAI(silent=false){
         if(gap===0)conflicts.push(d+' • dubbele ophaaltijd '+q[i].time);
         if(travel>gap+15)
           conflicts.push(d+' • '+q[i-1].name+' → '+q[i].name+' onvoldoende reistijd');
-        if((q[i].school||q[i].destination||'')!==(q[0].school||q[0].destination||''))
-          conflicts.push(d+' • meerdere scholen in één route');
+        // Meerdere scholen zijn toegestaan wanneer de totale route binnen
+        // de speciale 99-minutengrens voor gecombineerde scholen blijft.
       }
     }
   });
@@ -2650,9 +2712,9 @@ function runAI(silent=false){
   message+=changes+' ritten opnieuw verdeeld.\\n';
   message+='• groepen eerst zo vol mogelijk opgebouwd\\n';
   message+='• maximaal 8 kinderen per bus — harde grens\\n';
-  message+='• kinderen per route zoveel mogelijk naar dezelfde school\\n';
+  message+='• kinderen van meerdere scholen toegestaan als beide bestemmingen binnen de route passen\\n';
   message+='• geen dubbele ophaaltijden\\n';
-  message+='• maximale route: 90 minuten\\n';
+  message+='• maximale route: 90 minuten; maximaal 99 minuten bij gecombineerde scholen\\n';
   message+='• voldoende reistijd met ±15 min tolerantie\\n';
   message+='• schooldeadline: 08:30\\n';
   message+='\\n🚌 '+fullBuses+' volledig gevulde bus(sen), '+partialBuses+' gedeeltelijk gevulde bus(sen).';
@@ -2672,7 +2734,7 @@ function runAI(silent=false){
 function runAIAndCheck(){
   const box=document.getElementById('dayStartCheck');
   if(box){
-    box.innerHTML='<div class="daystart-result daystart-warn"><b>🤖 AI bouwt de ochtendplanning opnieuw op…</b><div class="small muted">Alle wachtende ritten worden opnieuw verdeeld volgens capaciteit, school, reistijd en de 90-minutenregel.</div></div>';
+    box.innerHTML='<div class="daystart-result daystart-warn"><b>🤖 AI bouwt de ochtendplanning opnieuw op…</b><div class="small muted">Alle wachtende ritten worden opnieuw verdeeld volgens capaciteit, scholen, reistijd en de 90/99-minutenregel.</div></div>';
   }
 
   const result=runAI(true);
