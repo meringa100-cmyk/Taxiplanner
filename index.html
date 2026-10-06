@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V786</h1>
+<h1>🚕 Taxi Planner V787</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -584,6 +584,15 @@ function demoLocationForKid(k){
 }
 
 function schoolPoint(k){
+  // Nieuwe ritten kunnen een eigen bestemmingsadres hebben. Als dat adres
+  // geocodeerd is, gebruik altijd dat exacte eindpunt.
+  if(k && Number.isFinite(k.destinationLat) && Number.isFinite(k.destinationLon)){
+    return {
+      lat:k.destinationLat,
+      lon:k.destinationLon,
+      address:k.destinationAddress||k.address||k.destination||'Bestemming'
+    };
+  }
   return schoolLocations[k?.school] || schoolLocations[k?.destination] || null;
 }
 function pickupToSchoolMinutes(k){
@@ -2834,6 +2843,16 @@ async function saveChild(id){
  const pickupQuery=[k.pickupAddress,k.pickupCity].filter(Boolean).join(', ');
  const geo=await geocodePickupAddress(pickupQuery+', Nederland');
  if(geo){k.lat=geo.lat;k.lon=geo.lon;}
+
+ const destinationQuery=[k.address,k.destinationCity].filter(Boolean).join(', ');
+ const destinationGeo=await geocodeAddress(destinationQuery+', Nederland');
+ if(destinationGeo){
+   k.destinationLat=destinationGeo.lat;
+   k.destinationLon=destinationGeo.lon;
+ }else if(schoolLocations[k.school]){
+   k.destinationLat=schoolLocations[k.school].lat;
+   k.destinationLon=schoolLocations[k.school].lon;
+ }
  k.newlyAdded=k.newlyAdded!==false;
  closeModal();
  renderAll();
@@ -2885,6 +2904,24 @@ async function geocodePickupAddress(address){
     return {lat,lon,display_name:data[0].display_name||query};
   }catch(e){
     console.warn('Ophaaladres kon niet op de kaart worden gevonden:',e);
+    return null;
+  }
+}
+
+async function geocodeAddress(address){
+  const query=String(address||'').trim();
+  if(!query)return null;
+  try{
+    const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=nl&q='+encodeURIComponent(query);
+    const res=await fetch(url,{headers:{'Accept':'application/json'}});
+    if(!res.ok)throw new Error('Geocoding mislukt');
+    const data=await res.json();
+    if(!Array.isArray(data)||!data.length)return null;
+    const lat=Number(data[0].lat), lon=Number(data[0].lon);
+    if(!Number.isFinite(lat)||!Number.isFinite(lon))return null;
+    return {lat,lon,display_name:data[0].display_name||query};
+  }catch(e){
+    console.warn('Adres kon niet op de kaart worden gevonden:',e);
     return null;
   }
 }
@@ -2956,7 +2993,10 @@ async function addRide(){
  const pickupGeo=await geocodePickupAddress(pickupAddress+', Nederland');
  const destination=document.getElementById('newDestination')?.value||'Nieuwe bestemming';
  const address=document.getElementById('newAddress')?.value.trim()||destination;
+ const destinationCity=document.getElementById('newDestinationCity')?.value.trim()||'';
  const school=schools.includes(destination)?destination:'Nieuwe bestemming';
+ const destinationQuery=[address,destinationCity].filter(Boolean).join(', ');
+ const destinationGeo=await geocodeAddress(destinationQuery+', Nederland');
  const newId='k'+demoCounter++;
  const newKid={
    id:newId,
@@ -2966,7 +3006,9 @@ async function addRide(){
    pickupCity,
    address,
    destinationAddress:address,
-   destinationCity:document.getElementById('newDestinationCity')?.value.trim()||'',
+   destinationCity,
+   destinationLat:destinationGeo?.lat ?? (schoolLocations[school]?.lat),
+   destinationLon:destinationGeo?.lon ?? (schoolLocations[school]?.lon),
    school,destination,
    lat:pickupGeo?.lat ?? 52.7860+(kids.length%13)*0.0012,
    lon:pickupGeo?.lon ?? 6.8980+(kids.length%13)*0.0014,
