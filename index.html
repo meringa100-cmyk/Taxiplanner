@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V798</h1>
+<h1>🚕 Taxi Planner V799</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1848,32 +1848,55 @@ function packDemoRoutesForCapacityAnd90(demoKids){
   const groups=[];
   let guard=0;
 
-  while(remaining.length && guard++<200){
-    // Kies een school met nog de meeste kinderen, zodat we zo weinig mogelijk
-    // halfvolle bussen krijgen.
+  // V799: slimme groepsvorming: dezelfde school, geografisch compact,
+  // passende ophaaltijden, maximaal 8 en nooit boven 90 minuten.
+  const candidateScore=(group,k)=>{
+    const trial=[...group,k].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+    const distances=group.map(x=>geoDistanceKm(k,x)).filter(Number.isFinite);
+    const nearest=distances.length?Math.min(...distances):0;
+    const avg=distances.length?distances.reduce((a,b)=>a+b,0)/distances.length:0;
+    let timePenalty=0;
+    for(let i=1;i<trial.length;i++){
+      const gap=(trial[i].timeMin||0)-(trial[i-1].timeMin||0);
+      const travel=routeMinutesBetween(trial[i-1],trial[i],0);
+      if(gap===0)timePenalty+=1000;
+      else if(travel>gap+15)timePenalty+=(travel-gap-15)*20;
+      else timePenalty+=Math.max(0,travel-gap)*0.25;
+    }
+    const minutes=routeDurationEstimate(trial,0);
+    const capacityBonus=trial.length===MAX? -220 : -trial.length*18;
+    return capacityBonus + minutes*1.8 + avg*10 + nearest*6 + timePenalty;
+  };
+
+  while(remaining.length && guard++<300){
     const schoolCounts=new Map();
     remaining.forEach(k=>{
       const school=k.school||k.destination||'Onbekend';
       schoolCounts.set(school,(schoolCounts.get(school)||0)+1);
     });
     const school=[...schoolCounts.entries()].sort((a,b)=>b[1]-a[1])[0][0];
-    const pool=remaining.filter(k=>(k.school||k.destination||'Onbekend')===school);
-    pool.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+    const pool=remaining.filter(k=>(k.school||k.destination||'Onbekend')===school)
+      .sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
 
-    const group=[pool[0]];
-    remaining.splice(remaining.indexOf(pool[0]),1);
+    const seed=pool[0];
+    const group=[seed];
+    remaining.splice(remaining.indexOf(seed),1);
 
     while(group.length<MAX){
-      const options=remaining.filter(k=>
-        (k.school||k.destination||'Onbekend')===school &&
-        !group.some(x=>(x.timeMin||0)===(k.timeMin||0))
-      ).map(k=>{
-        const trial=[...group,k];
-        const minutes=routeDurationEstimate(trial,0);
-        const nearest=Math.min(...group.map(x=>geoDistanceKm(k,x)));
-        return {k,minutes,nearest};
-      }).filter(o=>o.minutes<=MAX90)
-        .sort((x,y)=>(x.minutes-y.minutes)||(x.nearest-y.nearest));
+      const options=remaining
+        .filter(k=>(k.school||k.destination||'Onbekend')===school)
+        .map(k=>{
+          const trial=[...group,k].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+          if(new Set(trial.map(x=>Number(x.timeMin)||0)).size!==trial.length)return null;
+          if(routeDurationEstimate(trial,0)>MAX90)return null;
+          for(let i=1;i<trial.length;i++){
+            const gap=(trial[i].timeMin||0)-(trial[i-1].timeMin||0);
+            const travel=routeMinutesBetween(trial[i-1],trial[i],0);
+            if(gap<0 || travel>gap+15)return null;
+          }
+          return {k,score:candidateScore(group,k)};
+        }).filter(Boolean)
+        .sort((a,b)=>a.score-b.score);
 
       if(!options.length)break;
       const chosen=options[0].k;
@@ -1883,44 +1906,60 @@ function packDemoRoutesForCapacityAnd90(demoKids){
     groups.push(group);
   }
 
-  // Wijs de volle groepen toe aan beschikbare chauffeurs. Eerst de grootste.
   groups.sort((a,b)=>b.length-a.length);
-  groups.forEach((group,i)=>{
-    const d=availableDrivers[i%availableDrivers.length];
-    if(!d)return;
-    group.forEach(k=>k.driver=d);
-    group.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
-    group.forEach((k,n)=>k.routeOrder=n+1);
+  const assigned=[];
+  groups.forEach(group=>{
+    const ranked=availableDrivers
+      .filter(d=>assigned.filter(x=>x.driver===d).length+group.length<=MAX)
+      .map(d=>{
+        const current=assigned.filter(x=>x.driver===d).map(x=>x.k);
+        const trial=[...current,...group];
+        return {d,load:current.length,minutes:routeDurationEstimate(trial,driverNames.indexOf(d))};
+      })
+      .filter(x=>x.load===0 || x.minutes<=MAX90)
+      .sort((a,b)=>a.load-b.load || a.minutes-b.minutes);
+    const chosen=ranked[0]?.d;
+    if(chosen)group.forEach(k=>assigned.push({k,driver:chosen}));
   });
 
-  // Als een groep toch door de chauffeur-specifieke berekening boven 90 uitkomt,
-  // haal het laatste kind eraf en laat dat kind opnieuw als nieuwe groep plaatsen.
-  let changed=true, pass=0;
+  // Laatste chauffeur-specifieke controle: verplaats zo nodig één kind
+  // naar de best passende vrije route, zonder capaciteit/90-minutenregel te breken.
+  let changed=true,pass=0;
   while(changed && pass++<50){
     changed=false;
     const byDriver=new Map();
     demoKids.forEach(k=>{
-      if(!byDriver.has(k.driver))byDriver.set(k.driver,[]);
-      byDriver.get(k.driver).push(k);
+      if(k.driver){
+        if(!byDriver.has(k.driver))byDriver.set(k.driver,[]);
+        byDriver.get(k.driver).push(k);
+      }
     });
+
     for(const [d,group] of byDriver){
       if(routeDurationEstimate(group,driverNames.indexOf(d))<=MAX90)continue;
-      const movable=[...group].sort((a,b)=>(b.timeMin||0)-(a.timeMin||0))[0];
-      const target=availableDrivers.filter(x=>x!==d&&(byDriver.get(x)||[]).length<MAX)
-        .map(x=>{
-          const trial=[...(byDriver.get(x)||[]),movable];
-          return {x,trial,minutes:routeDurationEstimate(trial,driverNames.indexOf(x))};
-        }).filter(o=>o.minutes<=MAX90)
-        .sort((x,y)=>x.trial.length-y.trial.length||x.minutes-y.minutes)[0];
-      if(target){
-        movable.driver=target.x;
-        changed=true;
+      for(const movable of [...group].sort((a,b)=>(b.timeMin||0)-(a.timeMin||0))){
+        const targets=availableDrivers.filter(x=>x!==d).map(x=>{
+          const target=byDriver.get(x)||[];
+          if(target.length>=MAX)return null;
+          if(target.some(k=>(k.timeMin||0)===(movable.timeMin||0)))return null;
+          if(target.length && target.some(k=>(k.school||k.destination)!==(movable.school||movable.destination)))return null;
+          const trial=[...target,movable].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+          const minutes=routeDurationEstimate(trial,driverNames.indexOf(x));
+          if(minutes>MAX90)return null;
+          return {x,load:target.length,distance:target.length?Math.min(...target.map(k=>geoDistanceKm(k,movable))):0,minutes};
+        }).filter(Boolean).sort((a,b)=>a.load-b.load || a.distance-b.distance || a.minutes-b.minutes);
+        if(targets.length){
+          movable.driver=targets[0].x;
+          changed=true;
+          break;
+        }
       }
     }
   }
 
   const final=new Map();
   demoKids.forEach(k=>{
+    if(!k.driver)return;
     if(!final.has(k.driver))final.set(k.driver,[]);
     final.get(k.driver).push(k);
   });
@@ -1930,7 +1969,6 @@ function packDemoRoutesForCapacityAnd90(demoKids){
   });
   return final;
 }
-
 
 function runAI(silent=false){
   previousPlan=kids.map(k=>({id:k.id,driver:k.driver,fixed:k.fixed,status:k.status}));
