@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V789</h1>
+<h1>🚕 Taxi Planner V790</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1031,11 +1031,15 @@ function renderRouteControl(){
    const hh=n=>String(Math.floor(n/60)%24).padStart(2,'0'), mm=n=>String(n%60).padStart(2,'0');
    const endText=hh(end)+':'+mm(end);
    const status=end<=510?'✅ Op tijd':(end<=540?'⚠️ Krap':'🔴 Te laat');
-   return '<div class="row"><b>🚕 '+d+'</b> — '+rides.length+'/8 kinderen <span class="badge">'+status+'</span><br><small>Start eerste rit: '+hh(start)+':'+mm(start)+' • geschatte route: '+duration+' min • school rond '+endText+' • laatste stop: '+(last.name||'Kind')+'</small></div>';
+   const stops=rides.map((k,i)=>{
+     const tm=Number(k.timeMin)||0;
+     const t=hh(tm)+':'+mm(tm);
+     return '<div style="padding:5px 0;border-top:1px solid #eee"><b>'+(i+1)+'.</b> '+(k.name||'Kind')+' <span class="muted">('+t+')</span><br><small>📍 '+(k.address||k.pickupAddress||'Adres onbekend')+' • '+(k.pickupCity||k.demoTown||'')+'</small></div>';
+   }).join('');
+   return '<div class="row" style="margin-bottom:8px"><b>🚕 '+d+'</b> — '+rides.length+'/8 kinderen <span class="badge">'+status+'</span><br><small>Start: '+hh(start)+':'+mm(start)+' • geschatte route: '+duration+' min • school rond '+endText+'</small><details style="margin-top:6px"><summary>Routevolgorde bekijken</summary><div style="margin-top:6px">'+stops+'</div></details></div>';
  }).join('');
  box.innerHTML=rows||'<p class="muted">Nog geen actieve routes.</p>';
 }
-
 function renderAll(){saveState();renderDashboard();renderPlanning();renderDriver();renderParent();renderLive();renderDelayAlerts();updateParentDelayNotice();renderAttention();renderFleet();renderRouteControl();if(realMap)renderRealMapMarkers();}
 
 
