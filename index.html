@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V792</h1>
+<h1>🚕 Taxi Planner V793</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1830,7 +1830,7 @@ function buildDemoGeographicGroups(demoKids){
   return groups;
 }
 
-function rebalanceDemoRoutesTo90(){
+function rebalanceDemoRoutesTo90(demoKids){
   const MAX90=90;
   let moved=0, guard=0, changed=true;
   while(changed && guard++<200){
@@ -2019,7 +2019,7 @@ function runAI(silent=false){
     });
     saveState();
 
-    const redistributed90=rebalanceDemoRoutesTo90();
+    const redistributed90=rebalanceDemoRoutesTo90(demoKids);
     if(redistributed90) saveState();
 
     // De ingebouwde demo mag kinderen verdelen over meerdere beschikbare chauffeurs
