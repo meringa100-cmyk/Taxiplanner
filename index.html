@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V804</h1>
+<h1>🚕 Taxi Planner V805</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -435,7 +435,7 @@ function applyGuaranteedDemoHomeSpread(){
   });
 
   addressesReady=true;
-  demoAddressSpreadVersion='v74';
+  demoAddressSpreadVersion='v805-fallback';
   saveState();
   renderAll();
   console.log('V777 stable: gegarandeerde Drenthe-spreiding toegepast op 100 demo-kinderen.');
@@ -572,7 +572,7 @@ async function geocodeExactDemoAddresses(){
   });
 
   addressesReady=true;
-  demoAddressSpreadVersion='v784';
+  demoAddressSpreadVersion='v805';
   saveState();
   renderAll();
   console.log('V776: 100 echte adressen over '+new Set(selected.map(a=>a.town)).size+' plaatsen en '+new Set(selected.map(a=>a.street+'|'+a.town)).size+' straten.');
@@ -2820,10 +2820,12 @@ function resetDemo(){
  demoAddressSpreadVersion='';
  demoPlanningSpreadLocked=false;
  seed();
- // Reset moet dezelfde geografisch verspreide demo terugzetten als de actuele planner.
- // Dus nooit meer de oude compacte groepjes per chauffeur op het scherm.
+ // Reset zet eerst een veilige fallback neer en haalt daarna echte BAG/PDOK-adressen op.
  applyGuaranteedDemoHomeSpread();
  renderAll();
+ setTimeout(async()=>{
+   await geocodeExactDemoAddresses();
+ },200);
 }
 function pickup(id){const k=find(id);if(k){k.status='picked';renderAll()}}
 
