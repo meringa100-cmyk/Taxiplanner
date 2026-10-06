@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V803</h1>
+<h1>🚕 Taxi Planner V804</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1876,7 +1876,7 @@ function buildDemoGeographicGroups(demoKids){
 }
 
 function packDemoRoutesForCapacityAnd90(demoKids){
-  // V803: echte globale geografische packing.
+  // V804: globale geografische packing met straatspreiding.
   // Niet meer per school seeden: de woonlocaties bepalen de groepen.
   // Daardoor kunnen kinderen uit verschillende scholen samen rijden als
   // de totale route binnen 90/99 minuten blijft.
@@ -1907,8 +1907,23 @@ function packDemoRoutesForCapacityAnd90(demoKids){
     const avg=distances.length?distances.reduce((a,b)=>a+b,0)/distances.length:999;
     const minutes=routeDurationEstimate(trial,0);
     const schools=new Set(trial.map(x=>x.school||x.destination||''));
-    // Volle bussen krijgen een sterke bonus; geografische compactheid blijft leidend.
-    return nearest*14 + avg*4 + minutes*1.2 + schools.size*2 - trial.length*55;
+
+    // V804: verdeel kinderen bewust over verschillende straten.
+    // Alleen een ander huisnummer op dezelfde straat telt dus NIET als spreiding.
+    const streetKey=x=>String(x.demoTown||'').trim().toLowerCase()+'|'+String(x.demoStreet||((x.address||'').split(/\\s+\\d/)[0]||'')).trim().toLowerCase();
+    const townKey=x=>String(x.demoTown||'').trim().toLowerCase();
+    const sameStreet=group.filter(x=>streetKey(x)===streetKey(k)).length;
+    const sameTown=group.filter(x=>townKey(x)===townKey(k)).length;
+
+    // Sterke straf voor dezelfde straat, lichtere straf voor dezelfde plaats.
+    // Zo blijft de route geografisch logisch maar worden kinderen niet allemaal
+    // op één straat uit dezelfde bus gezet.
+    const streetPenalty=sameStreet*180;
+    const townPenalty=Math.max(0,sameTown-1)*12;
+
+    // Volle bussen blijven aantrekkelijk, maar spreiding heeft voorrang.
+    return nearest*10 + avg*3 + minutes*1.2
+      + schools.size*2 + streetPenalty + townPenalty - trial.length*55;
   };
 
   // Bouw eerst geografisch compacte groepen. Kies telkens het kind dat
@@ -2370,7 +2385,7 @@ function runAI(silent=false){
       q.forEach((k,i)=>k.routeOrder=i+1);
     });
 
-    // V803: laatste globale controle na geografische packing.
+    // V804: laatste controle na geografische packing.
     for(let pass=0;pass<20;pass++){
       let changed=false;
       for(const d of driverNames){
@@ -2408,7 +2423,7 @@ function runAI(silent=false){
       if(!changed)break;
     }
 
-    // V803: controleer kleine routes na de globale packing.
+    // V804: controleer kleine routes na de globale packing.
     let merged=true, mergePass=0;
     while(merged && mergePass++<20){
       merged=false;
