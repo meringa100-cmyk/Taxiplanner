@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V788</title>
+<title>Taxi Planner V784</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -232,14 +232,6 @@ button[onclick^="chauffeurDelay"]:active{
 <main>
 <section id="planner" class="page active"><div id="plannerDelayAlerts"></div>
 <div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Planner Dashboard</h2><button class="primary" onclick="runAIAndCheck()">🤖 AI plannen & controleren</button></div><div id="dashboard" class="grid" style="margin-top:12px"></div><div id="dayStartCheck"></div></div>
-<div class="card">
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-    <h3 style="margin:0">🧭 Routecontrole & vertrekadvies</h3>
-    <button type="button" onclick="renderRouteControl()">🔄 Controleren</button>
-  </div>
-  <p class="muted" style="margin:6px 0 10px">Per chauffeur zie je de routebelasting, geschatte rijtijd, schooldeadline en een automatisch vertrekadvies. De bestaande chauffeurgroepen blijven intact.</p>
-  <div id="routeControl"></div>
-</div>
 
 <div class="card">
   <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
@@ -1024,7 +1016,7 @@ function delayForKid(k){
   return Number(k && k.delay) > 0 ? Number(k.delay) : 0;
 }
 
-function renderAll(){saveState();renderDashboard();renderPlanning();renderDriver();renderParent();renderLive();renderDelayAlerts();updateParentDelayNotice();renderAttention();renderFleet();renderRouteControl();if(realMap)renderRealMapMarkers();}
+function renderAll(){saveState();renderDashboard();renderPlanning();renderDriver();renderParent();renderLive();renderDelayAlerts();updateParentDelayNotice();renderAttention();renderFleet();if(realMap)renderRealMapMarkers();}
 
 
 function renderFleet(){
@@ -1194,49 +1186,6 @@ async function runDayStartCheck(){
   '</div>';
 }
 
-function recommendedDeparture(d){
-  const rides=getDriverQueue(d);
-  if(!rides.length)return null;
-  const first=rides[0];
-  const di=driverNames.indexOf(d);
-  const center={lat:52.7858,lon:6.8976};
-  const toFirst=geoDistanceKm(center,{lat:first.lat,lon:first.lon});
-  const drive=Math.max(5,Math.ceil((Number.isFinite(toFirst)?toFirst:3)/35*60));
-  const buffer=10;
-  const departure=(first.timeMin||0)-drive-buffer;
-  return {first,drive,buffer,departure};
-}
-function renderRouteControl(){
-  const box=document.getElementById('routeControl');
-  if(!box)return;
-  const rows=driverNames.map(d=>{
-    const q=getDriverQueue(d);
-    if(!q.length)return '';
-    const minutes=routeDurationEstimate(q,driverNames.indexOf(d));
-    const long=Number.isFinite(minutes)&&minutes>MAX_ROUTE_MINUTES;
-    const conflicts=[];
-    for(let i=1;i<q.length;i++){
-      const gap=(q[i].timeMin||0)-(q[i-1].timeMin||0);
-      const travel=routeMinutesBetween(q[i-1],q[i],driverNames.indexOf(d));
-      if(gap===0 || (gap>=0&&travel>gap+15)) conflicts.push(q[i-1].name+' → '+q[i].name+' ('+gap+' min ruimte / '+travel+' min reistijd)');
-    }
-    const last=q[q.length-1];
-    const deadline=schoolArrivalMinutes(last);
-    const dep=recommendedDeparture(d);
-    const depText=dep?fmtTime(Math.max(0,dep.departure)):'—';
-    const tone=(long||conflicts.length||!schoolDeadlineOk(last))?'attention-danger': 'attention-info';
-    return '<div class="attention-item '+tone+'">'+
-      '<b>🚕 '+d+'</b> · 🚌 '+busForDriver(d)+' · 👦 '+q.length+'/'+MAX+
-      '<div class="small" style="margin-top:5px">🛣️ Route: '+(Number.isFinite(minutes)?minutes+' min':'onbekend')+
-      ' · 🏫 schoolaankomst: '+fmtTime(deadline)+
-      ' · 🚦 vertrekadvies: <b>'+depText+'</b></div>'+
-      (long?'<div class="small">⚠️ Route langer dan 90 minuten.</div>':'')+
-      (conflicts.length?'<div class="small">⚠️ '+conflicts.length+' routeconflict'+(conflicts.length===1?'':'en')+': '+conflicts.join(' • ')+'</div>':'')+
-      '<div class="actions"><button onclick="document.getElementById(\'driverSelect\').value='+JSON.stringify(d)+';showPage(\'driver\');">🚕 Chauffeurmodus</button></div>'+
-      '</div>';
-  }).join('');
-  box.innerHTML=rows||'<div class="row">Geen actieve routes.</div>';
-}
 function renderDashboard(){
  const activeDrivers=driverNames.filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d)).length;
  const waiting=kids.filter(k=>k.status==='waiting').length;
@@ -2849,3 +2798,344 @@ function childCardHtml(k){
 }
 function editChild(id){
  const k=find(id);if(!k)return;
+ const destinationOptions=schools.map(x=>`<option value="${x}" ${(k.destination||k.school)===x?'selected':''}>${x}</option>`).join('')+
+   `<option value="Anders" ${!schools.includes(k.destination||k.school)?'selected':''}>Anders / eigen bestemming</option>`;
+ document.getElementById('modalBox').innerHTML=`<h2>✏️ Kindprofiel bewerken</h2>
+ <p>👦 Naam kind</p><input id="eName" style="width:100%" value="${k.name||''}">
+ <p>🕐 Ophaaltijd</p><input id="eTime" type="time" style="width:100%" value="${k.time||'08:30'}">
+ <p>📍 Ophaaladres</p><input id="ePickup" style="width:100%" value="${k.pickupAddress||k.address||''}">
+ <p>🏘️ Plaats ophalen</p><input id="ePickupCity" style="width:100%" value="${k.pickupCity||''}">
+ <p>🏫 Bestemming</p><select id="eDestination" style="width:100%" onchange="toggleEditDestination()">${destinationOptions}</select>
+ <p>📍 Bestemmingsadres</p><input id="eAddress" style="width:100%" value="${k.address||k.destinationAddress||''}">
+ <p>🏘️ Plaats bestemming</p><input id="eDestinationCity" style="width:100%" value="${k.destinationCity||'Emmen'}">
+ <p>Hoe benaderen</p><input id="e1" style="width:100%" value="${k.approach||''}">
+ <p>Veiligheid/begeleiding</p><input id="e2" style="width:100%" value="${k.safety||''}">
+ <p>Belangrijk voor chauffeur</p><input id="e3" style="width:100%" value="${k.important||''}">
+ <p><button class="primary" onclick="saveChild('${id}')">💾 Opslaan</button> <button onclick="closeModal()">Annuleren</button></p>`;
+ toggleEditDestination();
+}
+function toggleEditDestination(){
+ const sel=document.getElementById('eDestination'), address=document.getElementById('eAddress');
+ if(!sel||!address)return;
+ const isSchool=schools.includes(sel.value);
+ address.placeholder=isSchool?'Bestemmingsadres van de school':'Bestemmingsadres';
+ if(isSchool && !address.value) address.value=schoolLocations[sel.value]?.address||sel.value;
+}
+async function saveChild(id){
+ const k=find(id);if(!k)return;
+ const t=document.getElementById('eTime')?.value||k.time||'08:30';
+ const parts=t.split(':').map(Number);
+ k.name=document.getElementById('eName')?.value.trim()||k.name;
+ k.time=t;
+ k.timeMin=(Number(parts[0])||0)*60+(Number(parts[1])||0);
+ k.pickupAddress=document.getElementById('ePickup')?.value.trim()||k.pickupAddress||'';
+ k.pickupCity=document.getElementById('ePickupCity')?.value.trim()||'';
+ const destination=document.getElementById('eDestination')?.value||k.destination||k.school||'Nieuwe bestemming';
+ k.destination=destination;
+ k.school=schools.includes(destination)?destination:'Nieuwe bestemming';
+ k.address=document.getElementById('eAddress')?.value.trim()||destination;
+ k.destinationAddress=k.address;
+ k.destinationCity=document.getElementById('eDestinationCity')?.value.trim()||'';
+ k.approach=document.getElementById('e1')?.value||'';
+ k.safety=document.getElementById('e2')?.value||'';
+ k.important=document.getElementById('e3')?.value||'';
+
+ const pickupQuery=[k.pickupAddress,k.pickupCity].filter(Boolean).join(', ');
+ const geo=await geocodePickupAddress(pickupQuery+', Nederland');
+ if(geo){k.lat=geo.lat;k.lon=geo.lon;}
+
+ const destinationQuery=[k.address,k.destinationCity].filter(Boolean).join(', ');
+ const destinationGeo=await geocodeAddress(destinationQuery+', Nederland');
+ if(destinationGeo){
+   k.destinationLat=destinationGeo.lat;
+   k.destinationLon=destinationGeo.lon;
+ }else if(schoolLocations[k.school]){
+   k.destinationLat=schoolLocations[k.school].lat;
+   k.destinationLon=schoolLocations[k.school].lon;
+ }
+ k.newlyAdded=k.newlyAdded!==false;
+ closeModal();
+ renderAll();
+}
+function openAdd(){
+ const destinationOptions=schools.map(s=>`<option value="${s}">${s}</option>`).join('')+`<option value="Anders">Anders / eigen bestemming</option>`;
+ document.getElementById('modalBox').innerHTML=`
+ <h2>➕ Rit toevoegen</h2>
+ <p>Naam kind</p>
+ <input id="newName" style="width:100%" value="Nieuw kind">
+ <p>🕐 Ophaaltijd</p>
+ <input id="newTime" type="time" style="width:100%" value="08:30">
+ <p>📍 <b>Ophaaladres</b></p>
+ <input id="newPickupAddress" style="width:100%" value="" placeholder="Bijv. Laan van de Marel 12">
+ <p>🏘️ <b>Plaats</b></p>
+ <input id="newPickupCity" style="width:100%" value="Emmen" placeholder="Bijv. Hoogeveen">
+ <p>🏫 Waarheen?</p>
+ <select id="newDestination" style="width:100%" onchange="toggleNewDestination()">
+   ${destinationOptions}
+ </select>
+ <p>📍 <b>Bestemmingsadres</b></p>
+ <input id="newAddress" style="width:100%" value="" placeholder="Bijv. Ullevi 26">
+ <p>🏘️ <b>Plaats bestemming</b></p>
+ <input id="newDestinationCity" style="width:100%" value="Emmen" placeholder="Bijv. Emmen of Hoogeveen">
+ <p class="muted small">De planner gebruikt het ophaaladres én het bestemmingsadres voor de nieuwe rit.</p>
+ <p><button class="primary" onclick="addRide()">Toevoegen</button> <button onclick="closeModal()">Annuleren</button></p>`;
+ document.getElementById('modal').classList.remove('hidden');
+ toggleNewDestination();
+}
+function toggleNewDestination(){
+ const select=document.getElementById('newDestination');
+ const address=document.getElementById('newAddress');
+ if(!select||!address)return;
+ const isSchool=schools.includes(select.value);
+ if(isSchool && !address.value) address.value=select.value;
+ address.placeholder=isSchool?'Bestemmingsadres (optioneel)':'Vul de bestemming / het adres in';
+}
+async function geocodePickupAddress(address){
+  const query=String(address||'').trim();
+  if(!query)return null;
+  try{
+    const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=nl&q='+encodeURIComponent(query);
+    const res=await fetch(url,{headers:{'Accept':'application/json'}});
+    if(!res.ok)throw new Error('Geocoding mislukt');
+    const data=await res.json();
+    if(!Array.isArray(data)||!data.length)return null;
+    const lat=Number(data[0].lat), lon=Number(data[0].lon);
+    if(!Number.isFinite(lat)||!Number.isFinite(lon))return null;
+    return {lat,lon,display_name:data[0].display_name||query};
+  }catch(e){
+    console.warn('Ophaaladres kon niet op de kaart worden gevonden:',e);
+    return null;
+  }
+}
+
+async function geocodeAddress(address){
+  const query=String(address||'').trim();
+  if(!query)return null;
+  try{
+    const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=nl&q='+encodeURIComponent(query);
+    const res=await fetch(url,{headers:{'Accept':'application/json'}});
+    if(!res.ok)throw new Error('Geocoding mislukt');
+    const data=await res.json();
+    if(!Array.isArray(data)||!data.length)return null;
+    const lat=Number(data[0].lat), lon=Number(data[0].lon);
+    if(!Number.isFinite(lat)||!Number.isFinite(lon))return null;
+    return {lat,lon,display_name:data[0].display_name||query};
+  }catch(e){
+    console.warn('Adres kon niet op de kaart worden gevonden:',e);
+    return null;
+  }
+}
+
+function assignNewRidesToAvailableDrivers(rides){
+  const list=(Array.isArray(rides)?rides:[rides]).filter(k=>k && k.status==='waiting' && !k.driver);
+  if(!list.length)return [];
+
+  const assigned=[];
+  const available=()=>driverNames.filter(d=>
+    !isDriverUnavailable(d) &&
+    !isBusUnavailable(d) &&
+    load(d)<MAX
+  );
+
+  // Als er genoeg ruimte is, blijft een nieuw groepje zoveel mogelijk bij
+  // dezelfde chauffeur. Anders verdelen we de kinderen over de minst belaste
+  // beschikbare chauffeurs.
+  let remaining=[...list];
+  while(remaining.length){
+    const choices=available().sort((a,b)=>{
+      const la=load(a),lb=load(b);
+      if(la!==lb)return la-lb;
+      return driverNames.indexOf(a)-driverNames.indexOf(b);
+    });
+    if(!choices.length)break;
+
+    const groupSize=remaining.length;
+    const wholeGroupDriver=choices.find(d=>MAX-load(d)>=groupSize);
+    if(wholeGroupDriver){
+      remaining.forEach(k=>{
+        k.driver=wholeGroupDriver;
+        k.routeOrder=load(wholeGroupDriver);
+        assigned.push({kid:k,driver:wholeGroupDriver});
+      });
+      remaining=[];
+      break;
+    }
+
+    const d=choices[0];
+    const capacity=MAX-load(d);
+    const moving=remaining.splice(0,Math.max(1,capacity));
+    moving.forEach(k=>{
+      k.driver=d;
+      k.routeOrder=load(d);
+      assigned.push({kid:k,driver:d});
+    });
+  }
+
+  // Routevolgorde van de betrokken chauffeurs opnieuw nummeren.
+  [...new Set(assigned.map(x=>x.driver))].forEach(d=>{
+    kids.filter(k=>k.driver===d&&active(k))
+      .sort((a,b)=>(a.timeMin||0)-(b.timeMin||0))
+      .forEach((k,i)=>k.routeOrder=i+1);
+  });
+
+  if(assigned.length)saveState();
+  return assigned;
+}
+
+async function addRide(){
+ const t=document.getElementById('newTime').value||'08:30';
+ const parts=t.split(':').map(Number);
+ const h=Number.isFinite(parts[0])?parts[0]:8;
+ const m=Number.isFinite(parts[1])?parts[1]:30;
+ const pickupStreet=document.getElementById('newPickupAddress')?.value.trim()||'';
+ const pickupCity=document.getElementById('newPickupCity')?.value.trim()||'';
+ const pickupAddress=[pickupStreet,pickupCity].filter(Boolean).join(', ')||'Ophaaladres onbekend';
+ const pickupGeo=await geocodePickupAddress(pickupAddress+', Nederland');
+ const destination=document.getElementById('newDestination')?.value||'Nieuwe bestemming';
+ const address=document.getElementById('newAddress')?.value.trim()||destination;
+ const destinationCity=document.getElementById('newDestinationCity')?.value.trim()||'';
+ const school=schools.includes(destination)?destination:'Nieuwe bestemming';
+ const destinationQuery=[address,destinationCity].filter(Boolean).join(', ');
+ const destinationGeo=await geocodeAddress(destinationQuery+', Nederland');
+ const newId='k'+demoCounter++;
+ const newKid={
+   id:newId,
+   name:document.getElementById('newName').value||'Nieuw kind',
+   time:t,timeMin:h*60+m,
+   pickupAddress,
+   pickupCity,
+   address,
+   destinationAddress:address,
+   destinationCity,
+   destinationLat:destinationGeo?.lat ?? (schoolLocations[school]?.lat),
+   destinationLon:destinationGeo?.lon ?? (schoolLocations[school]?.lon),
+   school,destination,
+   lat:pickupGeo?.lat ?? 52.7860+(kids.length%13)*0.0012,
+   lon:pickupGeo?.lon ?? 6.8980+(kids.length%13)*0.0014,
+   driver:'',fixed:false,status:'waiting',
+   approach:'Rustig en duidelijk aanspreken.',
+   safety:'Veilig instappen en gordel.',
+   important:'Nieuw profiel.',
+   newlyAdded:true
+ };
+ kids.push(newKid);
+
+ // Nieuwe ritten worden direct aan een werkelijk beschikbare chauffeur
+ // met de minste bezetting gekoppeld. Bestaande demo-groepen blijven volledig
+ // ongemoeid; alleen de nieuw toegevoegde rit(ten) worden geplaatst.
+ const assignment=assignNewRidesToAvailableDrivers([newKid]);
+ closeModal();
+ renderAll();
+
+ setTimeout(()=>{
+   const card=document.getElementById('childcard-'+newId);
+   const rides=document.getElementById('collapsibleRittenVandaag');
+   if(rides && !rides.classList.contains('open')) rides.classList.add('open');
+   if(card){
+     card.classList.add('open');
+     card.scrollIntoView({behavior:'smooth',block:'center'});
+   }
+ },100);
+
+ alert('✅ Rit toegevoegd: '+newKid.name+' → '+(newKid.destination||newKid.address)+'\n📍 Ophalen: '+newKid.pickupAddress+' om '+newKid.time+'.'+(pickupGeo?'\n🗺️ Ophaaladres op de kaart geplaatst.':'\n⚠️ Adres niet exact gevonden; controleer het adres.') );
+}
+function find(id){return kids.find(k=>k.id===id)}
+function closeModal(){document.getElementById('modal').classList.add('hidden')}
+document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
+if(!loadState())seed();
+
+// Demo-locaties blijven volledig deterministisch.
+// Geen achtergrond-geocoding: daardoor kunnen opgeslagen kaartpunten nooit
+// meer verwisselen met een ander adres of een andere plaats.
+renderAll();
+startPlannerAutomation();
+
+// V783: éénmalig echte BAG/PDOK-adressen koppelen aan alle 100 demo-kinderen.
+// Daarna blijven de echte huisadressen en coördinaten vast staan.
+setTimeout(async()=>{
+  if(demoAddressSpreadVersion!=='v784'){
+    await geocodeExactDemoAddresses();
+  }
+},500);</script>
+
+
+
+
+<div id="delayModal">
+  <div class="delay-box" role="dialog" aria-modal="true">
+    <h3>⏱️ Vertraging</h3>
+    <div id="delayModalText">Hoeveel minuten vertraging?</div>
+    <input id="delayMinutes" type="number" min="1" max="180" value="10" />
+    <div class="delay-actions">
+      <button type="button" onclick="closeDelayModal()">Annuleren</button>
+      <button type="button" class="delay-ok" onclick="confirmDelay()">Opslaan</button>
+    </div>
+  </div>
+</div>
+
+<script id="map-recovery">
+(function(){
+  function bootMapSafely(){
+    try{
+      if(typeof initMap === 'function'){
+        initMap();
+      } else if(typeof initRealMap === 'function'){
+        initRealMap();
+      }
+      if(typeof renderRealMapMarkers === 'function'){
+        renderRealMapMarkers();
+      }
+    }catch(e){
+      console.warn('Kaartinitialisatie:', e);
+    }
+  }
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', function(){
+      setTimeout(bootMapSafely, 150);
+    }, {once:true});
+  }else{
+    setTimeout(bootMapSafely, 150);
+  }
+})();
+</script>
+
+<script id="stable-map-runtime">
+(function(){
+  function refreshMapSize(){
+    try{
+      if(typeof realMap !== 'undefined' && realMap && typeof realMap.invalidateSize === 'function'){
+        setTimeout(function(){ realMap.invalidateSize(true); }, 100);
+        setTimeout(function(){ realMap.invalidateSize(true); }, 500);
+      }
+    }catch(e){ console.warn('map resize',e); }
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    setTimeout(refreshMapSize,300);
+    setTimeout(refreshMapSize,1000);
+  });
+
+  document.addEventListener('click', function(e){
+    const b=e.target.closest && e.target.closest('button,[role="button"]');
+    if(b && /live|kaart|map/i.test(b.textContent||'')){
+      setTimeout(refreshMapSize,150);
+    }
+  });
+})();
+</script>
+
+<script id="collapsible-lists-js">
+function toggleCollapsible(id){
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.classList.toggle('open');
+}
+
+
+</script>
+<script>
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=776").catch(()=>{}));}
+</script>
+
+</body>
+</html>
