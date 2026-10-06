@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V781</title>
+<title>Taxi Planner V782</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V781</h1>
+<h1>🚕 Taxi Planner V782</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -838,7 +838,7 @@ function saveState(){
 function normalizeBuiltInDemo(){
   // V757: als de 60-straatspreiding al is opgeslagen, mag de oude
   // 13-groepen-normalisatie de woonadressen NOOIT meer overschrijven.
-  if(demoAddressSpreadVersion==='v61'||demoAddressSpreadVersion==='v62'||demoAddressSpreadVersion==='v63'||demoAddressSpreadVersion==='v64'||demoAddressSpreadVersion==='v65'||demoAddressSpreadVersion==='v66'||demoAddressSpreadVersion==='v68'||demoAddressSpreadVersion==='v69'||demoAddressSpreadVersion==='v70'||demoAddressSpreadVersion==='v71'||demoAddressSpreadVersion==='v72'||demoAddressSpreadVersion==='v73')return false;
+  // V782: zodra de echte demo-spreiding v74 of nieuwer is opgeslagen, mag de oude normalisatie niets meer overschrijven.\n  const spreadVersion=Number(String(demoAddressSpreadVersion||'').replace(/^v/i,''));\n  if(Number.isFinite(spreadVersion) && spreadVersion>=74)return false;\n  if(demoAddressSpreadVersion==='v61'||demoAddressSpreadVersion==='v62'||demoAddressSpreadVersion==='v63'||demoAddressSpreadVersion==='v64'||demoAddressSpreadVersion==='v65'||demoAddressSpreadVersion==='v66'||demoAddressSpreadVersion==='v68'||demoAddressSpreadVersion==='v69'||demoAddressSpreadVersion==='v70'||demoAddressSpreadVersion==='v71'||demoAddressSpreadVersion==='v72'||demoAddressSpreadVersion==='v73')return false;
   // V73: elke demo-groep wordt eerst hard teruggezet naar zijn eigen plaats.
   // Daarna mag alleen een verse BAG-hit binnen diezelfde straat + plaats volgen.
   const demoKids=kids.filter(k=>/^k[0-9]+$/.test(String(k.id)));
@@ -2876,17 +2876,13 @@ if(!loadState())seed();
 renderAll();
 startPlannerAutomation();
 
-// V62: éénmalige echte straatspreiding voor de ingebouwde 100-kind-demo.
+// V782: éénmalige, deterministische spreiding voor de ingebouwde 100-kind-demo.
 setTimeout(async()=>{
-  // V769: oude demo-coordinaten mogen nooit blijven hangen.
+  // De 100 demo-kinderen worden per chauffeur over verschillende
+  // plaatsen/straten verdeeld. Daarna blijven de coördinaten stabiel.
+  // Geen achtergrond-geocoding meer die de kaart later opnieuw kan clusteren.
   if(demoAddressSpreadVersion!=='v74'){
-    demoAddressSpreadVersion='pending';
-    kids.filter(k=>/^k[0-9]+$/.test(String(k.id))).forEach(k=>{
-      delete k.lat; delete k.lon; delete k.demoTown; delete k.demoStreet;
-    });
-    addressesReady=false;
-    saveState();
-    await geocodeExactDemoAddresses();
+    applyGuaranteedDemoHomeSpread();
   }
 },500);</script>
 
