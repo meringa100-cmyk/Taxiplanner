@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V793</h1>
+<h1>🚕 Taxi Planner V794</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1878,7 +1878,13 @@ function rebalanceDemoRoutesTo90(demoKids){
       if(movedOne)break;
     }
   }
-  groups.forEach((group,d)=>{
+  const finalGroups=new Map();
+  demoKids.forEach(k=>{
+    if(!k.driver)return;
+    if(!finalGroups.has(k.driver))finalGroups.set(k.driver,[]);
+    finalGroups.get(k.driver).push(k);
+  });
+  finalGroups.forEach(group=>{
     group.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
     group.forEach((k,i)=>k.routeOrder=i+1);
   });
