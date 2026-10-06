@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V795</h1>
+<h1>🚕 Taxi Planner V796</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -2594,7 +2594,22 @@ function runAIAndCheck(){
     }
   },120);
 }
-function resetDemo(){if(confirm('Demo terugzetten?')){localStorage.removeItem(STORAGE_KEY);driverUnavailable={};busIssues={};replacementAssignments={};replacementSeq=1;demoCounter=101;seed();renderAll()}}
+function resetDemo(){
+ if(!confirm('Demo terugzetten?'))return;
+ localStorage.removeItem(STORAGE_KEY);
+ driverUnavailable={};
+ busIssues={};
+ replacementAssignments={};
+ replacementSeq=1;
+ demoCounter=101;
+ demoAddressSpreadVersion='';
+ demoPlanningSpreadLocked=false;
+ seed();
+ // Reset moet dezelfde geografisch verspreide demo terugzetten als de actuele planner.
+ // Dus nooit meer de oude compacte groepjes per chauffeur op het scherm.
+ applyGuaranteedDemoHomeSpread();
+ renderAll();
+}
 function pickup(id){const k=find(id);if(k){k.status='picked';renderAll()}}
 
 function absent(id){const k=find(id);if(k){k.status='absent';autoReplan();renderAll()}}
