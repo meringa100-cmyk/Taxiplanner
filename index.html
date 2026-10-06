@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V74</title>
+<title>Taxi Planner V781</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V74</h1>
+<h1>🚕 Taxi Planner V781</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -825,7 +825,7 @@ function startPlannerAutomation(){
 
 
 
-const STORAGE_KEY='taxiPlannerStateV749';
+const STORAGE_KEY='taxiPlannerStateV781';
 
 function saveState(){
  try{
@@ -1786,6 +1786,9 @@ function runAI(silent=false){
   });
   const isBuiltInDemo=demoKids.length===100 &&
     demoKids.every(k=>k.status==='waiting' && Number.isFinite(Number(k.timeMin)));
+  // V781: bewaar de huidige chauffeurverdeling vóór AI. Een AI-run mag
+  // bij de ingebouwde demo NOOIT kinderen naar andere chauffeurs verplaatsen.
+  const demoDriverSnapshot=isBuiltInDemo ? new Map(demoKids.map(k=>[k.id,k.driver])) : null;
 
   // V739: als een route qua ophaaltijden nét niet haalbaar is, mag de AI
   // de ophaaltijd van wachtende kinderen maximaal 15 minuten verschuiven.
@@ -2110,9 +2113,23 @@ function runAI(silent=false){
     const fullBuses=[...groups.values()].filter(q=>q.length===MAX).length;
     const partialBuses=[...groups.values()].filter(q=>q.length<MAX).length;
 
+    // V781: herstel de exacte verdeling die vóór de AI-knop op het scherm stond.
+    // Routecontrole mag volgorde/tijden aanpassen, maar niet de chauffeur.
+    if(demoDriverSnapshot){
+      demoKids.forEach(k=>{
+        const originalDriver=demoDriverSnapshot.get(k.id);
+        if(originalDriver!==undefined) k.driver=originalDriver;
+      });
+      demoKids.forEach(k=>{
+        const q=demoKids.filter(x=>x.driver===k.driver).sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+        k.routeOrder=q.indexOf(k)+1;
+      });
+      saveState();
+    }
+
     renderAll();
     const message='🤖 AI-planning klaar!\\n\\n'+
-      '100 demo-ritten verdeeld over '+groups.size+' bussen.\\n'+
+      '100 demo-ritten gecontroleerd zonder chauffeurwissels.\\n'+
       '• maximaal 8 kinderen per bus — harde grens\\n'+
       '• vaste demo-groepen behouden\\n'+
       '• geen ritten onnodig zonder chauffeur\\n'+
