@@ -1869,14 +1869,24 @@ function runAI(silent=false){
     // verschillende woonplaatsen/straten verspreid. AI mag deze verdeling
     // NOOIT opnieuw clusteren.
     if(!demoPlanningSpreadLocked){
+      // V780: de verdeling die nu op het scherm staat is leidend.
+      // Een eerste AI-run mag NOOIT de kinderen opnieuw groeperen of
+      // alle bolletjes naar dezelfde chauffeur/locatie trekken.
+      // Alleen kinderen zonder chauffeur krijgen een vrije beschikbare bus.
+      const unassigned=demoKids.filter(k=>!k.driver);
+      for(const k of unassigned){
+        const choices=driverNames.filter(d=>
+          !isDriverUnavailable(d) &&
+          !isBusUnavailable(d) &&
+          load(d)<MAX
+        ).sort((a,b)=>load(a)-load(b));
+        if(choices.length) k.driver=choices[0];
+      }
       demoKids.forEach(k=>{
-        const n=parseInt(String(k.id).slice(1),10);
-        const group=Math.floor((n-1)/8);
-        const pos=(n-1)%8;
-        const d=driverNames[group];
-        if(d){
-          k.driver=d;
-          k.routeOrder=pos+1;
+        if(k.driver){
+          const q=demoKids.filter(x=>x.driver===k.driver)
+            .sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+          k.routeOrder=q.indexOf(k)+1;
         }
       });
       demoPlanningSpreadLocked=true;
