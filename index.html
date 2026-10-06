@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V796</h1>
+<h1>🚕 Taxi Planner V797</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -736,11 +736,22 @@ async function validateRouteMinutes(driver, rides){
 // Harde maximale routelengte per chauffeur.
 const MAX_ROUTE_MINUTES=90;
 function routeDurationEstimate(rides,driverIndex){
-  if(!rides || rides.length<2)return 0;
+  if(!rides || !rides.length)return 0;
   const ordered=[...rides].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+  if(ordered.length===1){
+    const school=schoolPoint(ordered[0]);
+    return school ? routeMinutesBetween(ordered[0],{lat:school.lat,lon:school.lon},driverIndex) : 0;
+  }
   let total=0;
   for(let i=1;i<ordered.length;i++){
     total+=routeMinutesBetween(ordered[i-1],ordered[i],driverIndex);
+  }
+  // De rit eindigt op de school. Deze laatste etappe telt dus ook mee
+  // voor de harde maximale routetijd van 90 minuten.
+  const last=ordered[ordered.length-1];
+  const school=schoolPoint(last);
+  if(school && Number.isFinite(school.lat)&&Number.isFinite(school.lon)){
+    total+=routeMinutesBetween(last,{lat:school.lat,lon:school.lon},driverIndex);
   }
   return total;
 }
@@ -1543,7 +1554,7 @@ async function optimizeDriverRoute(d){
   return {count:ordered.length,conflicts,minutes:total};
 }
 
-async function optimizeAllRoutes(){
+async async function optimizeAllRoutes(){
   const box=document.getElementById('routeInfo');
   if(box)box.textContent='🧭 Routes worden geografisch geoptimaliseerd…';
 
@@ -1565,7 +1576,7 @@ async function optimizeAllRoutes(){
   msg+='Na de eerste rit wordt steeds de dichtstbijzijnde haalbare volgende rit gekozen.\\n';
   msg+='Daarbij wordt eerst de echte weg-reistijd gebruikt als de route-server beschikbaar is; anders wordt de afstand geschat.\\n';
   if(conflicts)msg+='\\n⚠️ '+conflicts+' keer was de dichtstbijzijnde rit qua tijd niet haalbaar; daar is de eerstvolgende haalbare rit gekozen.';
-  if(longRoutes)msg+='\\n⚠️ '+longRoutes+' route(s) komen na optimalisatie boven 60 minuten uit en blijven zichtbaar voor controle.';
+  if(longRoutes)msg+='\\n⚠️ '+longRoutes+' route(s) komen na optimalisatie boven 90 minuten uit en blijven zichtbaar voor controle.';
   alert(msg);
 }
 
