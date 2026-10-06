@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V788</h1>
+<h1>🚕 Taxi Planner V789</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -268,6 +268,7 @@ button[onclick^="chauffeurDelay"]:active{
 </div>
 <div id="alerts"></div>
 </div>
+<div class="card"><h3>🧭 Routecontrole</h3><p class="muted">Controle zonder de bestaande chauffeurindeling of kinderen te verplaatsen.</p><div id="routeControl"></div></div>
 <div id="collapsibleRittenVandaag" class="collapsible-section open"><button type="button" class="collapsible-header" onclick="toggleCollapsible('collapsibleRittenVandaag')"><span>📋 Ritten vandaag</span><span class="collapsible-arrow">▼</span></button><div class="collapsible-content"><div class="card">
 <h3>🗺️ Ritten vandaag</h3>
 <div class="actions">
@@ -1016,7 +1017,26 @@ function delayForKid(k){
   return Number(k && k.delay) > 0 ? Number(k.delay) : 0;
 }
 
-function renderAll(){saveState();renderDashboard();renderPlanning();renderDriver();renderParent();renderLive();renderDelayAlerts();updateParentDelayNotice();renderAttention();renderFleet();if(realMap)renderRealMapMarkers();}
+
+function renderRouteControl(){
+ const box=document.getElementById('routeControl');
+ if(!box)return;
+ const rows=driverNames.map(d=>{
+   const rides=kids.filter(k=>k.driver===d&&active(k)).sort((a,b)=>((a.routeOrder||9999)-(b.routeOrder||9999))||((a.timeMin||0)-(b.timeMin||0)));
+   if(!rides.length)return '';
+   const first=rides[0], last=rides[rides.length-1];
+   const duration=Math.max(0,Math.round(routeDurationEstimate(rides)));
+   const start=Number(first.timeMin)||0;
+   const end=start+duration;
+   const hh=n=>String(Math.floor(n/60)%24).padStart(2,'0'), mm=n=>String(n%60).padStart(2,'0');
+   const endText=hh(end)+':'+mm(end);
+   const status=end<=510?'✅ Op tijd':(end<=540?'⚠️ Krap':'🔴 Te laat');
+   return '<div class="row"><b>🚕 '+d+'</b> — '+rides.length+'/8 kinderen <span class="badge">'+status+'</span><br><small>Start eerste rit: '+hh(start)+':'+mm(start)+' • geschatte route: '+duration+' min • school rond '+endText+' • laatste stop: '+(last.name||'Kind')+'</small></div>';
+ }).join('');
+ box.innerHTML=rows||'<p class="muted">Nog geen actieve routes.</p>';
+}
+
+function renderAll(){saveState();renderDashboard();renderPlanning();renderDriver();renderParent();renderLive();renderDelayAlerts();updateParentDelayNotice();renderAttention();renderFleet();renderRouteControl();if(realMap)renderRealMapMarkers();}
 
 
 function renderFleet(){
