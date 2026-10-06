@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V790</h1>
+<h1>🚕 Taxi Planner V791</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1021,24 +1021,24 @@ function delayForKid(k){
 function renderRouteControl(){
  const box=document.getElementById('routeControl');
  if(!box)return;
+ const MAX_ROUTE=90;
  const rows=driverNames.map(d=>{
    const rides=kids.filter(k=>k.driver===d&&active(k)).sort((a,b)=>((a.routeOrder||9999)-(b.routeOrder||9999))||((a.timeMin||0)-(b.timeMin||0)));
    if(!rides.length)return '';
    const first=rides[0], last=rides[rides.length-1];
    const duration=Math.max(0,Math.round(routeDurationEstimate(rides)));
+   const over=duration>MAX_ROUTE;
    const start=Number(first.timeMin)||0;
    const end=start+duration;
    const hh=n=>String(Math.floor(n/60)%24).padStart(2,'0'), mm=n=>String(n%60).padStart(2,'0');
-   const endText=hh(end)+':'+mm(end);
-   const status=end<=510?'✅ Op tijd':(end<=540?'⚠️ Krap':'🔴 Te laat');
    const stops=rides.map((k,i)=>{
      const tm=Number(k.timeMin)||0;
-     const t=hh(tm)+':'+mm(tm);
-     return '<div style="padding:5px 0;border-top:1px solid #eee"><b>'+(i+1)+'.</b> '+(k.name||'Kind')+' <span class="muted">('+t+')</span><br><small>📍 '+(k.address||k.pickupAddress||'Adres onbekend')+' • '+(k.pickupCity||k.demoTown||'')+'</small></div>';
+     return '<div style="padding:5px 0;border-top:1px solid #eee"><b>'+(i+1)+'.</b> '+(k.name||'Kind')+' <span class="muted">('+hh(tm)+':'+mm(tm)+')</span><br><small>📍 '+(k.address||k.pickupAddress||'Adres onbekend')+' • '+(k.pickupCity||k.demoTown||'')+'</small></div>';
    }).join('');
-   return '<div class="row" style="margin-bottom:8px"><b>🚕 '+d+'</b> — '+rides.length+'/8 kinderen <span class="badge">'+status+'</span><br><small>Start: '+hh(start)+':'+mm(start)+' • geschatte route: '+duration+' min • school rond '+endText+'</small><details style="margin-top:6px"><summary>Routevolgorde bekijken</summary><div style="margin-top:6px">'+stops+'</div></details></div>';
+   const status=over?'🔴 Boven 90 min':'✅ Binnen 90 min';
+   return '<div class="row" style="margin-bottom:8px;border-left:4px solid '+(over?'#c62828':'#2e7d32')+'"><b>🚕 '+d+'</b> — '+rides.length+'/8 kinderen <span class="badge">'+status+'</span><br><small>Start: '+hh(start)+':'+mm(start)+' • route: <b>'+duration+' min</b> • '+(over?'MAXIMUM OVERSCHREDEN':'maximaal 90 min')+'</small>'+(over?'<div style="margin-top:6px"><b>⚠️ Deze chauffeur heeft een routeconflict.</b> De kinderen blijven bij deze chauffeur.</div>':'')+'<details style="margin-top:6px"><summary>Routevolgorde bekijken</summary><div style="margin-top:6px">'+stops+'</div></details></div>';
  }).join('');
- box.innerHTML=rows||'<p class="muted">Nog geen actieve routes.</p>';
+ box.innerHTML='<div class="small muted" style="margin-bottom:8px">⏱️ Route-limiet: maximaal <b>90 minuten per chauffeur</b>. AI mag alleen binnen de bestaande chauffeurgroep optimaliseren.</div>'+(rows||'<p class="muted">Nog geen actieve routes.</p>');
 }
 function renderAll(){saveState();renderDashboard();renderPlanning();renderDriver();renderParent();renderLive();renderDelayAlerts();updateParentDelayNotice();renderAttention();renderFleet();renderRouteControl();if(realMap)renderRealMapMarkers();}
 
