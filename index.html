@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V794</h1>
+<h1>🚕 Taxi Planner V795</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1830,66 +1830,96 @@ function buildDemoGeographicGroups(demoKids){
   return groups;
 }
 
-function rebalanceDemoRoutesTo90(demoKids){
+function packDemoRoutesForCapacityAnd90(demoKids){
   const MAX90=90;
-  let moved=0, guard=0, changed=true;
-  while(changed && guard++<200){
-    changed=false;
-    const groups=new Map();
-    demoKids.forEach(k=>{
-      if(k.driver){
-        if(!groups.has(k.driver))groups.set(k.driver,[]);
-        groups.get(k.driver).push(k);
-      }
+  const availableDrivers=driverNames.filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d));
+  const remaining=demoKids.slice();
+  const groups=[];
+  let guard=0;
+
+  while(remaining.length && guard++<200){
+    // Kies een school met nog de meeste kinderen, zodat we zo weinig mogelijk
+    // halfvolle bussen krijgen.
+    const schoolCounts=new Map();
+    remaining.forEach(k=>{
+      const school=k.school||k.destination||'Onbekend';
+      schoolCounts.set(school,(schoolCounts.get(school)||0)+1);
     });
-    for(const [d,group] of groups){
-      const minutes=routeDurationEstimate(group,driverNames.indexOf(d));
-      if(minutes<=MAX90)continue;
-      const ordered=[...group].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
-      const candidates=ordered.map(k=>{
-        const remaining=group.filter(x=>x.id!==k.id);
-        const remainMinutes=routeDurationEstimate(remaining,driverNames.indexOf(d));
-        return {k,remaining,remainMinutes};
-      }).sort((a,b)=>b.remainMinutes-a.remainMinutes);
-      let movedOne=false;
-      for(const c of candidates){
-        const choices=driverNames.filter(x=>
-          x!==d && !isDriverUnavailable(x) && !isBusUnavailable(x) &&
-          (groups.get(x)||[]).length<MAX
-        ).map(x=>{
-          const target=[...(groups.get(x)||[]),c.k];
-          const targetMinutes=routeDurationEstimate(target,driverNames.indexOf(x));
-          const geoBase=(groups.get(x)||[]);
-          const nearest=geoBase.length?Math.min(...geoBase.map(y=>geoDistanceKm(c.k,y))):0;
-          return {x,target,targetMinutes,score:targetMinutes+nearest*2};
-        }).filter(o=>o.targetMinutes<=MAX90)
-          .sort((a,b)=>a.score-b.score);
-        if(choices.length){
-          const choice=choices[0];
-          c.k.driver=choice.x;
-          groups.set(d,c.remaining);
-          groups.set(choice.x,choice.target);
-          moved++;
-          changed=true;
-          movedOne=true;
-          break;
-        }
+    const school=[...schoolCounts.entries()].sort((a,b)=>b[1]-a[1])[0][0];
+    const pool=remaining.filter(k=>(k.school||k.destination||'Onbekend')===school);
+    pool.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+
+    const group=[pool[0]];
+    remaining.splice(remaining.indexOf(pool[0]),1);
+
+    while(group.length<MAX){
+      const options=remaining.filter(k=>
+        (k.school||k.destination||'Onbekend')===school &&
+        !group.some(x=>(x.timeMin||0)===(k.timeMin||0))
+      ).map(k=>{
+        const trial=[...group,k];
+        const minutes=routeDurationEstimate(trial,0);
+        const nearest=Math.min(...group.map(x=>geoDistanceKm(k,x)));
+        return {k,minutes,nearest};
+      }).filter(o=>o.minutes<=MAX90)
+        .sort((x,y)=>(x.minutes-y.minutes)||(x.nearest-y.nearest));
+
+      if(!options.length)break;
+      const chosen=options[0].k;
+      group.push(chosen);
+      remaining.splice(remaining.indexOf(chosen),1);
+    }
+    groups.push(group);
+  }
+
+  // Wijs de volle groepen toe aan beschikbare chauffeurs. Eerst de grootste.
+  groups.sort((a,b)=>b.length-a.length);
+  groups.forEach((group,i)=>{
+    const d=availableDrivers[i%availableDrivers.length];
+    if(!d)return;
+    group.forEach(k=>k.driver=d);
+    group.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+    group.forEach((k,n)=>k.routeOrder=n+1);
+  });
+
+  // Als een groep toch door de chauffeur-specifieke berekening boven 90 uitkomt,
+  // haal het laatste kind eraf en laat dat kind opnieuw als nieuwe groep plaatsen.
+  let changed=true, pass=0;
+  while(changed && pass++<50){
+    changed=false;
+    const byDriver=new Map();
+    demoKids.forEach(k=>{
+      if(!byDriver.has(k.driver))byDriver.set(k.driver,[]);
+      byDriver.get(k.driver).push(k);
+    });
+    for(const [d,group] of byDriver){
+      if(routeDurationEstimate(group,driverNames.indexOf(d))<=MAX90)continue;
+      const movable=[...group].sort((a,b)=>(b.timeMin||0)-(a.timeMin||0))[0];
+      const target=availableDrivers.filter(x=>x!==d&&(byDriver.get(x)||[]).length<MAX)
+        .map(x=>{
+          const trial=[...(byDriver.get(x)||[]),movable];
+          return {x,trial,minutes:routeDurationEstimate(trial,driverNames.indexOf(x))};
+        }).filter(o=>o.minutes<=MAX90)
+        .sort((x,y)=>x.trial.length-y.trial.length||x.minutes-y.minutes)[0];
+      if(target){
+        movable.driver=target.x;
+        changed=true;
       }
-      if(movedOne)break;
     }
   }
-  const finalGroups=new Map();
+
+  const final=new Map();
   demoKids.forEach(k=>{
-    if(!k.driver)return;
-    if(!finalGroups.has(k.driver))finalGroups.set(k.driver,[]);
-    finalGroups.get(k.driver).push(k);
+    if(!final.has(k.driver))final.set(k.driver,[]);
+    final.get(k.driver).push(k);
   });
-  finalGroups.forEach(group=>{
+  final.forEach(group=>{
     group.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
     group.forEach((k,i)=>k.routeOrder=i+1);
   });
-  return moved;
+  return final;
 }
+
 
 function runAI(silent=false){
   previousPlan=kids.map(k=>({id:k.id,driver:k.driver,fixed:k.fixed,status:k.status}));
@@ -2013,26 +2043,13 @@ function runAI(silent=false){
       demoPlanningSpreadLocked=true;
     }
 
-    const groups=new Map();
-    demoKids.forEach(k=>{
-      if(!k.driver)return;
-      if(!groups.has(k.driver))groups.set(k.driver,[]);
-      groups.get(k.driver).push(k);
-    });
-    groups.forEach(q=>{
-      q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
-      q.forEach((k,i)=>k.routeOrder=i+1);
-    });
+    // V795: bouw de demo opnieuw op als zo weinig mogelijk, zo vol mogelijke
+    // bussen. Een bus mag maximaal 8 kinderen hebben en maximaal 90 minuten rijden.
+    const groups=packDemoRoutesForCapacityAnd90(demoKids);
     saveState();
 
-    const redistributed90=rebalanceDemoRoutesTo90(demoKids);
-    if(redistributed90) saveState();
-
-    // De ingebouwde demo mag kinderen verdelen over meerdere beschikbare chauffeurs
-    // wanneer een route anders langer dan 90 minuten wordt. De geografische adressen
-    // blijven gelijk; alleen de chauffeurstoewijzing wordt aangepast.
-
-    // AI mag de kinderen NIET van chauffeur laten wisselen.
+    // Kinderen mogen tussen chauffeurs worden verdeeld om de 90-minutenregel
+    // én de capaciteit van 8 per bus te halen. Adressen blijven ongewijzigd.
     // Alleen tijden, routevolgorde en conflicten worden daarna gecontroleerd.
     // De normale route- en schoolcontroles blijven actief.
 
