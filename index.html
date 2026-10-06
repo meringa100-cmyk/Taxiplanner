@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V783</title>
+<title>Taxi Planner V784</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V783</h1>
+<h1>🚕 Taxi Planner V784</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -511,30 +511,54 @@ async function geocodeExactDemoAddresses(){
     return;
   }
 
+  // V784: koppel adressen per bestaande chauffeur-groep.
+  // Zo blijven de kinderen bij dezelfde chauffeur, maar krijgt iedere
+  // chauffeur een geografisch compacte set echte BAG-adressen.
   const selected=[],used=new Set();
-  let round=0;
-  // Gegarandeerd rond alle plaatsen lopen.
-  while(selected.length<100 && round<100){
-    for(const pool of pools){
-      const a=pool.addresses[round];
-      if(!a)continue;
+  const driverGroups=[...new Map(
+    demoKids.filter(k=>k.driver).map(k=>[k.driver,null])
+  ).keys()];
+  driverGroups.forEach((d,idx)=>{
+    const group=demoKids.filter(k=>k.driver===d);
+    const pool=pools[idx % pools.length];
+    if(!pool)return;
+    let picked=0;
+    for(const a of pool.addresses){
       const key=(a.town+'|'+a.street+'|'+a.number).toLowerCase();
       if(used.has(key))continue;
       used.add(key);
-      selected.push(a);
-      if(selected.length>=100)break;
+      selected.push({kid:group[picked],address:a});
+      picked++;
+      if(picked>=group.length)break;
     }
-    round++;
-  }
+  });
 
+  if(selected.length<demoKids.length){
+    console.warn('V784: niet genoeg unieke adressen per chauffeur-groep; fallback naar algemene spreiding.');
+    selected.length=0;
+    used.clear();
+    let idx=0;
+    for(const pool of pools){
+      for(const a of pool.addresses){
+        const key=(a.town+'|'+a.street+'|'+a.number).toLowerCase();
+        if(used.has(key))continue;
+        used.add(key);
+        selected.push({kid:demoKids[idx++],address:a});
+        if(selected.length>=demoKids.length)break;
+      }
+      if(selected.length>=demoKids.length)break;
+    }
+  }
   if(selected.length<100){
     console.warn('V776: slechts '+selected.length+' unieke adressen gevonden; gebruik gegarandeerde demo-spreiding.');
     applyGuaranteedDemoHomeSpread();
     return;
   }
 
-  demoKids.forEach((k,i)=>{
-    const a=selected[i];
+  selected.forEach((item,i)=>{
+    const k=item.kid||demoKids[i];
+    const a=item.address||item;
+    if(!k||!a)return;
     k.demoTown=a.town;
     k.demoStreet=a.street;
     k.demoGroup=i+1;
@@ -547,7 +571,7 @@ async function geocodeExactDemoAddresses(){
   });
 
   addressesReady=true;
-  demoAddressSpreadVersion='v783';
+  demoAddressSpreadVersion='v784';
   saveState();
   renderAll();
   console.log('V776: 100 echte adressen over '+new Set(selected.map(a=>a.town)).size+' plaatsen en '+new Set(selected.map(a=>a.street+'|'+a.town)).size+' straten.');
@@ -2879,7 +2903,7 @@ startPlannerAutomation();
 // V783: éénmalig echte BAG/PDOK-adressen koppelen aan alle 100 demo-kinderen.
 // Daarna blijven de echte huisadressen en coördinaten vast staan.
 setTimeout(async()=>{
-  if(demoAddressSpreadVersion!=='v783'){
+  if(demoAddressSpreadVersion!=='v784'){
     await geocodeExactDemoAddresses();
   }
 },500);</script>
