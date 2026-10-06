@@ -1991,21 +1991,6 @@ function packDemoRoutesForCapacityAnd90(demoKids){
   groups.sort((a,b)=>b.length-a.length);
   const assigned=[];
   groups.forEach(group=>{
-    const ranked=availableDrivers
-      .filter(d=>assigned.filter(x=>x.driver===d).length+group.length<=MAX)
-      .map(d=>{
-        const current=assigned.filter(x=>x.driver===d).map(x=>x.k);
-        const trial=[...current,...group];
-        return {
-          d,load:current.length,
-          minutes:routeDurationEstimate(trial,driverNames.indexOf(d))
-        };
-      })
-      .filter(x=>x.load===0 || x.minutes<=routeLimitForRides(x.current||[]))
-      .sort((a,b)=>a.load-b.load || a.minutes-b.minutes);
-
-    // Bovenstaande filter kan current niet gebruiken in het object; herbereken
-    // daarom expliciet met de daadwerkelijke kandidaatgroep.
     const ranked2=availableDrivers
       .filter(d=>assigned.filter(x=>x.driver===d).length+group.length<=MAX)
       .map(d=>{
