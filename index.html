@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V785</h1>
+<h1>🚕 Taxi Planner V786</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -2750,7 +2750,7 @@ function openDriverDetails(d){
 function openChild(id){
  const k=find(id);if(!k)return;
  document.getElementById('modalBox').innerHTML=`<h2>👦 ${k.name}</h2>
- <p><b>Ophaaltijd:</b> ${k.time}</p><p><b>Ophaaladres:</b> ${k.pickupAddress||k.address||'Onbekend'}</p><p><b>Chauffeur:</b> ${k.driver}</p><p><b>Bestemmingsadres:</b> ${k.address}</p><p><b>School:</b> ${k.school}</p>
+ <p><b>Ophaaltijd:</b> ${k.time}</p><p><b>Ophaaladres:</b> ${k.pickupAddress||k.address||'Onbekend'}</p><p><b>Chauffeur:</b> ${k.driver}</p><p><b>Bestemmingsadres:</b> ${k.address||k.destinationAddress||k.destination||'Onbekend'}${k.destinationCity?', '+k.destinationCity:''}</p><p><b>School/bestemming:</b> ${k.destination||k.school||'Onbekend'}</p>
  <p><b>Status:</b> ${statusText(k.status)}</p><p><b>Vaste relatie:</b> ${k.fixed?'Ja':'Nee'}</p>
  <h3>Chauffeurinformatie</h3><p><b>Hoe benaderen:</b> ${k.approach}</p><p><b>Veiligheid:</b> ${k.safety}</p><p><b>Belangrijk:</b> ${k.important}</p>
  <button onclick="editChild('${id}')">✏️ Profiel bewerken</button> <button onclick="closeModal()">Sluiten</button>`;
@@ -2789,13 +2789,55 @@ function childCardHtml(k){
 }
 function editChild(id){
  const k=find(id);if(!k)return;
- document.getElementById('modalBox').innerHTML=`<h2>✏️ Profiel ${k.name}</h2>
- <p>Hoe benaderen</p><input id="e1" style="width:100%" value="${k.approach}">
- <p>Veiligheid/begeleiding</p><input id="e2" style="width:100%" value="${k.safety}">
- <p>Belangrijk voor chauffeur</p><input id="e3" style="width:100%" value="${k.important}">
- <p><button class="primary" onclick="saveChild('${id}')">Opslaan</button> <button onclick="closeModal()">Annuleren</button></p>`;
+ const destinationOptions=schools.map(x=>`<option value="${x}" ${(k.destination||k.school)===x?'selected':''}>${x}</option>`).join('')+
+   `<option value="Anders" ${!schools.includes(k.destination||k.school)?'selected':''}>Anders / eigen bestemming</option>`;
+ document.getElementById('modalBox').innerHTML=`<h2>✏️ Kindprofiel bewerken</h2>
+ <p>👦 Naam kind</p><input id="eName" style="width:100%" value="${k.name||''}">
+ <p>🕐 Ophaaltijd</p><input id="eTime" type="time" style="width:100%" value="${k.time||'08:30'}">
+ <p>📍 Ophaaladres</p><input id="ePickup" style="width:100%" value="${k.pickupAddress||k.address||''}">
+ <p>🏘️ Plaats ophalen</p><input id="ePickupCity" style="width:100%" value="${k.pickupCity||''}">
+ <p>🏫 Bestemming</p><select id="eDestination" style="width:100%" onchange="toggleEditDestination()">${destinationOptions}</select>
+ <p>📍 Bestemmingsadres</p><input id="eAddress" style="width:100%" value="${k.address||k.destinationAddress||''}">
+ <p>🏘️ Plaats bestemming</p><input id="eDestinationCity" style="width:100%" value="${k.destinationCity||'Emmen'}">
+ <p>Hoe benaderen</p><input id="e1" style="width:100%" value="${k.approach||''}">
+ <p>Veiligheid/begeleiding</p><input id="e2" style="width:100%" value="${k.safety||''}">
+ <p>Belangrijk voor chauffeur</p><input id="e3" style="width:100%" value="${k.important||''}">
+ <p><button class="primary" onclick="saveChild('${id}')">💾 Opslaan</button> <button onclick="closeModal()">Annuleren</button></p>`;
+ toggleEditDestination();
 }
-function saveChild(id){const k=find(id);if(k){k.approach=document.getElementById('e1').value;k.safety=document.getElementById('e2').value;k.important=document.getElementById('e3').value;closeModal();renderAll()}}
+function toggleEditDestination(){
+ const sel=document.getElementById('eDestination'), address=document.getElementById('eAddress');
+ if(!sel||!address)return;
+ const isSchool=schools.includes(sel.value);
+ address.placeholder=isSchool?'Bestemmingsadres van de school':'Bestemmingsadres';
+ if(isSchool && !address.value) address.value=schoolLocations[sel.value]?.address||sel.value;
+}
+async function saveChild(id){
+ const k=find(id);if(!k)return;
+ const t=document.getElementById('eTime')?.value||k.time||'08:30';
+ const parts=t.split(':').map(Number);
+ k.name=document.getElementById('eName')?.value.trim()||k.name;
+ k.time=t;
+ k.timeMin=(Number(parts[0])||0)*60+(Number(parts[1])||0);
+ k.pickupAddress=document.getElementById('ePickup')?.value.trim()||k.pickupAddress||'';
+ k.pickupCity=document.getElementById('ePickupCity')?.value.trim()||'';
+ const destination=document.getElementById('eDestination')?.value||k.destination||k.school||'Nieuwe bestemming';
+ k.destination=destination;
+ k.school=schools.includes(destination)?destination:'Nieuwe bestemming';
+ k.address=document.getElementById('eAddress')?.value.trim()||destination;
+ k.destinationAddress=k.address;
+ k.destinationCity=document.getElementById('eDestinationCity')?.value.trim()||'';
+ k.approach=document.getElementById('e1')?.value||'';
+ k.safety=document.getElementById('e2')?.value||'';
+ k.important=document.getElementById('e3')?.value||'';
+
+ const pickupQuery=[k.pickupAddress,k.pickupCity].filter(Boolean).join(', ');
+ const geo=await geocodePickupAddress(pickupQuery+', Nederland');
+ if(geo){k.lat=geo.lat;k.lon=geo.lon;}
+ k.newlyAdded=k.newlyAdded!==false;
+ closeModal();
+ renderAll();
+}
 function openAdd(){
  const destinationOptions=schools.map(s=>`<option value="${s}">${s}</option>`).join('')+`<option value="Anders">Anders / eigen bestemming</option>`;
  document.getElementById('modalBox').innerHTML=`
@@ -2812,8 +2854,10 @@ function openAdd(){
  <select id="newDestination" style="width:100%" onchange="toggleNewDestination()">
    ${destinationOptions}
  </select>
- <p>📍 Bestemmingsadres</p>
- <input id="newAddress" style="width:100%" value="" placeholder="Bijv. school of huisadres">
+ <p>📍 <b>Bestemmingsadres</b></p>
+ <input id="newAddress" style="width:100%" value="" placeholder="Bijv. Ullevi 26">
+ <p>🏘️ <b>Plaats bestemming</b></p>
+ <input id="newDestinationCity" style="width:100%" value="Emmen" placeholder="Bijv. Emmen of Hoogeveen">
  <p class="muted small">De planner gebruikt het ophaaladres én het bestemmingsadres voor de nieuwe rit.</p>
  <p><button class="primary" onclick="addRide()">Toevoegen</button> <button onclick="closeModal()">Annuleren</button></p>`;
  document.getElementById('modal').classList.remove('hidden');
@@ -2919,7 +2963,10 @@ async function addRide(){
    name:document.getElementById('newName').value||'Nieuw kind',
    time:t,timeMin:h*60+m,
    pickupAddress,
+   pickupCity,
    address,
+   destinationAddress:address,
+   destinationCity:document.getElementById('newDestinationCity')?.value.trim()||'',
    school,destination,
    lat:pickupGeo?.lat ?? 52.7860+(kids.length%13)*0.0012,
    lon:pickupGeo?.lon ?? 6.8980+(kids.length%13)*0.0014,
