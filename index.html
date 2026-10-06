@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V801</h1>
+<h1>🚕 Taxi Planner V802</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -2371,6 +2371,71 @@ function runAI(silent=false){
 
       q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
       q.forEach((k,i)=>k.routeOrder=i+1);
+    });
+
+    // V802 global rebalance: move children from long routes to feasible fuller routes.
+    for(let pass=0;pass<20;pass++){
+      let changed=false;
+      for(const d of driverNames){
+        const source=demoKids.filter(k=>k.driver===d);
+        if(!source.length) continue;
+        const sourceLimit=routeLimitForRides(source);
+        if(routeDurationEstimate(source,driverNames.indexOf(d))<=sourceLimit) continue;
+
+        const candidates=[...source].sort((a,b)=>(b.timeMin||0)-(a.timeMin||0));
+        for(const k of candidates){
+          const after=source.filter(x=>x!==k);
+          const options=driverNames.map(x=>{
+            if(x===d||isDriverUnavailable(x)||isBusUnavailable(x))return null;
+            const target=demoKids.filter(y=>y.driver===x);
+            if(target.length>=MAX)return null;
+            if(target.some(y=>(y.timeMin||0)===(k.timeMin||0)))return null;
+            const trial=[...target,k].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+            return {
+              x,target,trial,
+              targetOk:routeDurationEstimate(trial,driverNames.indexOf(x))<=routeLimitForRides(trial),
+              sourceOk:routeDurationEstimate(after,driverNames.indexOf(d))<=routeLimitForRides(after)
+            };
+          }).filter(Boolean)
+            .filter(o=>o.targetOk&&o.sourceOk)
+            .sort((a,b)=>a.target.length-b.target.length);
+
+          if(options.length){
+            k.driver=options[0].x;
+            changed=true;
+            break;
+          }
+        }
+        if(changed)break;
+      }
+      if(!changed)break;
+    }
+
+    // V802: probeer kleine routes volledig samen te voegen, ook bij verschillende scholen.
+    let merged=true, mergePass=0;
+    while(merged && mergePass++<20){
+      merged=false;
+      const ds=driverNames.filter(d=>demoKids.some(k=>k.driver===d));
+      outer:
+      for(let i=0;i<ds.length;i++){
+        const a=ds[i], ar=demoKids.filter(k=>k.driver===a);
+        for(let j=i+1;j<ds.length;j++){
+          const b=ds[j], br=demoKids.filter(k=>k.driver===b);
+          if(ar.length+br.length>MAX)continue;
+          const combined=[...ar,...br].sort((x,y)=>(x.timeMin||0)-(y.timeMin||0));
+          if(new Set(combined.map(k=>Number(k.timeMin)||0)).size!==combined.length)continue;
+          if(routeDurationEstimate(combined,driverNames.indexOf(a))>routeLimitForRides(combined))continue;
+          br.forEach(k=>k.driver=a);
+          merged=true;
+          break outer;
+        }
+      }
+    }
+
+    driverNames.forEach(d=>{
+      demoKids.filter(k=>k.driver===d)
+        .sort((a,b)=>(a.timeMin||0)-(b.timeMin||0))
+        .forEach((k,i)=>k.routeOrder=i+1);
     });
 
     // V751: laatste synchronisatie. Na toevoegen/herplannen mag geen actieve
