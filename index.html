@@ -2157,26 +2157,6 @@ function runAI(silent=false){
       q.forEach((k,i)=>k.routeOrder=i+1);
     });
 
-    // V798: corrigeer schooldeadline per kind. De vorige controle keek vooral
-    // naar de laatste stop van een route. Een enkel kind kon daardoor nog
-    // individueel na 08:30 aankomen. Voor de synthetische demo mogen we de
-    // ophaaltijd opnieuw bepalen: zet een te late rit op de laatst haalbare
-    // tijd voor 08:30, zonder het adres of de school te wijzigen.
-    let deadlineRepairs=0;
-    groups.forEach((q,d)=>{
-      q.forEach(k=>{
-        if(k.status!=='waiting' || schoolDeadlineOk(k))return;
-        const latest=SCHOOL_DEADLINE_MIN-pickupToSchoolMinutes(k);
-        if(Number.isFinite(latest) && latest>=6*60 && latest<Number(k.timeMin||0)){
-          k.timeMin=latest;
-          k.time=fmtTime(latest);
-          deadlineRepairs++;
-        }
-      });
-      q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
-      q.forEach((k,i)=>k.routeOrder=i+1);
-    });
-
     // V750: nieuwe ritten mogen de vaste 100-kind-demo niet opnieuw laten
     // opbouwen. Alleen extra/niet-demo kinderen worden apart ingepland.
     const extraKids=kids.filter(k=>!demoKids.includes(k) && active(k));
