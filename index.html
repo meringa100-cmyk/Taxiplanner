@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V805</h1>
+<h1>🚕 Taxi Planner V806</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1518,6 +1518,12 @@ async function osrmTable(coords){
   return data.durations;
 }
 
+function distanceFromEmmen(k){
+  const emmen={lat:52.7858,lon:6.8976};
+  if(!k||!Number.isFinite(k.lat)||!Number.isFinite(k.lon))return 0;
+  return geoDistanceKm({lat:k.lat,lon:k.lon},emmen);
+}
+
 function routeMinutesBetween(a,b,driverIndex){
   const pa=coordForKid(a,driverIndex,0);
   const pb=coordForKid(b,driverIndex,0);
@@ -1545,10 +1551,12 @@ async function optimizeDriverRoute(d){
     return routeMinutesBetween(from,to,driverIndex);
   };
 
-  // De eerste rit blijft de vroegste geplande rit. Als de chauffeur al
-  // onderweg is, blijft de vroegste opgehaalde rit vooraan staan.
+  // V806: buiten-naar-binnen.
+  // Voor de ochtendrit kiezen we het verst van Emmen gelegen kind als eerste
+  // haalbare stop. Daarna werken we geografisch terug richting Emmen/school.
+  // Geplande tijden en de ±15 min tolerantie blijven harde voorwaarden.
   const picked=rides.filter(k=>k.status==='picked').sort((a,b)=>a.timeMin-b.timeMin);
-  let current=picked[0]||rides[0];
+  let current=picked[0]||[...rides].sort((a,b)=>distanceFromEmmen(b)-distanceFromEmmen(a))[0];
   const remaining=rides.filter(k=>k!==current);
   const ordered=[current];
   let conflicts=0;
@@ -1569,6 +1577,9 @@ async function optimizeDriverRoute(d){
     if(!feasible.length)conflicts++;
 
     pool.sort((a,b)=>{
+      // Eerst het verste punt vanaf Emmen, daarna de kortste reistijd.
+      const ea=distanceFromEmmen(a), eb=distanceFromEmmen(b);
+      if(ea!==eb)return eb-ea;
       const da=travel(current,a), db=travel(current,b);
       if(da!==db)return da-db;
       return (a.timeMin||0)-(b.timeMin||0);
