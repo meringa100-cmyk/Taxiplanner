@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V811</h1>
+<h1>🚕 Taxi Planner V812</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -652,18 +652,39 @@ function logPlannerAutomation(message){
 }
 function repairPlannerAssignments(){
  let changed=0;
- kids.filter(k=>k.status==='waiting'&&!k.fixed).forEach(k=>{
-   const current=k.driver;
-   const invalid=!current||isDriverUnavailable(current)||isBusUnavailable(current);
-   if(!invalid)return;
-   const choices=driverNames
-     .filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d)&&load(d)<MAX)
-     .sort((a,b)=>load(a)-load(b));
-   if(choices.length){
-     k.driver=choices[0];
-     changed++;
-   }
- });
+ const available=driverNames.filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d));
+
+ // V812: een actieve rit mag nooit zonder chauffeur blijven als er nog
+ // capaciteit beschikbaar is. Probeer eerst een volledig haalbare route;
+ // als dat niet lukt, wijs hem toch toe aan de minst belaste chauffeur.
+ // Eventuele route-/tijdproblemen blijven daarna zichtbaar in de dagstartcontrole.
+ kids.filter(k=>k.status==='waiting'&&!k.fixed&&(!k.driver||isDriverUnavailable(k.driver)||isBusUnavailable(k.driver)))
+   .forEach(k=>{
+     const candidates=available.map(d=>{
+       const q=kids.filter(x=>x.driver===d&&active(x)&&x.id!==k.id);
+       if(q.length>=MAX)return null;
+       const sameTime=q.some(x=>Number(x.timeMin)===Number(k.timeMin));
+       const trial=[...q,k].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+       const minutes=routeDurationEstimate(trial,driverNames.indexOf(d));
+       const limit=routeLimitForRides(trial);
+       return {d,q,sameTime,minutes,limit};
+     }).filter(Boolean);
+
+     const feasible=candidates
+       .filter(x=>!x.sameTime&&Number.isFinite(x.minutes)&&x.minutes<=x.limit)
+       .sort((a,b)=>a.q.length-b.q.length||a.minutes-b.minutes);
+
+     const fallback=candidates
+       .filter(x=>!x.sameTime)
+       .sort((a,b)=>a.q.length-b.q.length||a.minutes-b.minutes);
+
+     const pick=feasible[0]||fallback[0];
+     if(pick){
+       k.driver=pick.d;
+       changed++;
+     }
+   });
+
  return changed;
 }
 
