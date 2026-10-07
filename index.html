@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V813</title>
+<title>Taxi Planner V814</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V813</h1>
+<h1>🚕 Taxi Planner V814</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -650,6 +650,28 @@ function logPlannerAutomation(message){
   setTimeout(()=>{const n=box.querySelector('.notice');if(n)n.remove()},6000);
  }
 }
+function repairAllUnassignedHard(){
+  // V814: harde capaciteitsgarantie. Een actieve rit mag nooit zonder
+  // chauffeur blijven zolang er een beschikbare bus met vrije capaciteit is.
+  let changed=0;
+  const available=driverNames.filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d));
+  const orphaned=kids.filter(k=>active(k)&&!k.driver);
+  for(const k of orphaned){
+    const choices=available
+      .map(d=>({d,load:load(d),conflict:driverTimeConflict(k,d)}))
+      .filter(x=>x.load<MAX)
+      .sort((a,b)=>a.load-b.load);
+    const noConflict=choices.filter(x=>!x.conflict);
+    const pick=(noConflict[0]||choices[0]);
+    if(pick){
+      k.driver=pick.d;
+      k.routeOrder=kids.filter(x=>x.driver===pick.d&&active(x)).length;
+      changed++;
+    }
+  }
+  return changed;
+}
+
 function repairPlannerAssignments(){
  let changed=0;
  const available=driverNames.filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d));
@@ -3704,7 +3726,8 @@ if(!loadState())seed();
 // Geen achtergrond-geocoding: daardoor kunnen opgeslagen kaartpunten nooit
 // meer verwisselen met een ander adres of een andere plaats.
 const repairedAtStartup=repairPlannerAssignments();
-if(repairedAtStartup)saveState();
+const hardRepairedAtStartup=repairAllUnassignedHard();
+if(repairedAtStartup||hardRepairedAtStartup)saveState();
 renderAll();
 startPlannerAutomation();
 
