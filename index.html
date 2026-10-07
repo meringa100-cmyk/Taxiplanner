@@ -1642,30 +1642,121 @@ async function runBestPlanning(){
 
 async function optimizeAllRoutes(){
   const box=document.getElementById('routeInfo');
-  if(box)box.textContent='🧭 Routes worden geografisch geoptimaliseerd…';
+  if(box)box.textContent='🧭 Routes worden geografisch geoptimaliseerd en overvolle/te lange routes worden automatisch gesplitst…';
 
-  let total=0, conflicts=0, drivers=0, longRoutes=0;
+  // Eerst de gewenste buiten-naar-binnen volgorde bepalen.
+  for(const d of driverNames) await optimizeDriverRoute(d);
+
+  // V807.1: de oude optimizer kon wel een routevolgorde maken, maar liet
+  // een te lange route vervolgens staan. Nu repareren we dat echt:
+  // kinderen worden één voor één naar een vrije/geschikte bus verplaatst.
+  // Daarbij mag een bus maximaal 8 kinderen hebben en blijft de 90/99-min
+  // limiet leidend. We gebruiken bewust extra chauffeurs als dat nodig is.
+  const routeMinutes=(d)=>{
+    const q=kids.filter(k=>k.driver===d&&active(k))
+      .sort((a,b)=>(Number(a.routeOrder)||9999)-(Number(b.routeOrder)||9999));
+    if(!q.length)return 0;
+    let total=0;
+    for(let i=1;i<q.length;i++){
+      total+=routeMinutesBetween(q[i-1],q[i],driverNames.indexOf(d));
+    }
+    const last=q[q.length-1], school=schoolPoint(last);
+    if(school)total+=routeMinutesBetween(last,{lat:school.lat,lon:school.lon},driverNames.indexOf(d));
+    return total;
+  };
+
+  const routeQueue=d=>kids.filter(k=>k.driver===d&&active(k))
+    .sort((a,b)=>(Number(a.routeOrder)||9999)-(Number(b.routeOrder)||9999));
+
+  let moved=0;
+  for(let pass=0;pass<40;pass++){
+    let changed=false;
+
+    // Zoek de slechtste route opnieuw na iedere wijziging.
+    const states=driverNames.map(d=>{
+      const q=routeQueue(d);
+      return {d,q,minutes:routeMinutes(d),limit:routeLimitForRides(q)};
+    }).filter(x=>x.q.length);
+    const bad=states
+      .filter(x=>x.minutes>x.limit)
+      .sort((a,b)=>(b.minutes-b.limit)-(a.minutes-a.limit))[0];
+
+    if(!bad)break;
+
+    // Kandidaten: kinderen die het meeste helpen om de lange route korter te
+    // maken. We proberen eerst de kinderen die ver van de rest van de route
+    // liggen; de eerste (verste) stop blijft daardoor zo veel mogelijk intact.
+    const candidates=bad.q.slice(1).map(k=>{
+      const rest=bad.q.filter(x=>x!==k);
+      const restMin=(()=>{
+        if(!rest.length)return 0;
+        let n=0;
+        for(let i=1;i<rest.length;i++)n+=routeMinutesBetween(rest[i-1],rest[i],driverNames.indexOf(bad.d));
+        const s=schoolPoint(rest[rest.length-1]);
+        if(s)n+=routeMinutesBetween(rest[rest.length-1],{lat:s.lat,lon:s.lon},driverNames.indexOf(bad.d));
+        return n;
+      })();
+      return {k,restMin,reduction:bad.minutes-restMin};
+    }).sort((a,b)=>b.reduction-a.reduction);
+
+    let best=null;
+    for(const cand of candidates){
+      for(const target of driverNames){
+        if(target===bad.d || isDriverUnavailable(target) || isBusUnavailable(target))continue;
+        const tq=routeQueue(target);
+        if(tq.length>=MAX)continue;
+        if(tq.some(x=>(x.timeMin||0)===(cand.k.timeMin||0)))continue;
+
+        const trial=[...tq,cand.k].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+        if(routeDurationEstimate(trial,driverNames.indexOf(target))>routeLimitForRides(trial))continue;
+
+        // De kandidaat moet de bronroute daadwerkelijk verbeteren.
+        if(cand.restMin>=bad.minutes)continue;
+        const gain=cand.reduction*3
+          - geoDistanceKm(cand.k,tq[0]||cand.k)*0.5
+          + (MAX-tq.length)*2;
+        if(!best||gain>best.gain)best={k:cand.k,target, gain};
+      }
+    }
+
+    if(!best)break;
+    best.k.driver=best.target;
+    moved++;
+    changed=true;
+
+    // Meteen opnieuw ordenen zodat de volgende keuze met de echte
+    // buiten-naar-binnen route werkt.
+    await optimizeDriverRoute(bad.d);
+    await optimizeDriverRoute(best.target);
+    if(!changed)break;
+  }
+
+  // Definitieve controle.
+  let total=0,conflicts=0,drivers=0,longRoutes=0;
   for(const d of driverNames){
     const result=await optimizeDriverRoute(d);
     if(result.count){
       total+=result.count;
       conflicts+=result.conflicts;
       drivers++;
-      if(result.minutes>90)longRoutes++;
+      const q=routeQueue(d);
+      const minutes=routeMinutes(d);
+      if(minutes>routeLimitForRides(q))longRoutes++;
     }
   }
 
   renderAll();
 
   let msg='🧭 Route-optimalisatie klaar!\\n\\n';
-  msg+=total+' actieve ritten zijn per chauffeur opnieuw geordend.\\n';
+  msg+=total+' actieve ritten zijn opnieuw geordend.\\n';
   msg+='De eerste stop ligt zo ver mogelijk van Emmen; daarna werkt de route waar mogelijk geografisch terug richting Emmen.\\n';
-  msg+='Daarbij wordt eerst de echte weg-reistijd gebruikt als de route-server beschikbaar is; anders wordt de afstand geschat.\\n';
-  if(conflicts)msg+='\\n⚠️ '+conflicts+' keer was de dichtstbijzijnde rit qua tijd niet haalbaar; daar is de eerstvolgende haalbare rit gekozen.';
-  if(longRoutes)msg+='\\n⚠️ '+longRoutes+' route(s) komen na optimalisatie boven 90 minuten uit en blijven zichtbaar voor controle.';
+  if(moved)msg+='\\n🔄 '+moved+' kind(eren) zijn automatisch naar een andere bus verplaatst om te lange routes te breken.';
+  if(conflicts)msg+='\\n⚠️ '+conflicts+' tijdconflict(en) blijven over.';
+  if(longRoutes)msg+='\\n⚠️ '+longRoutes+' route(s) blijven boven hun toegestane limiet.';
+  else msg+='\\n✅ Alle routes blijven binnen de toegestane 90/99 minuten.';
+
   alert(msg);
 }
-
 async function calculateRealRoutes(){
   if(!realMap || realRouteLoading)return;
   realRouteLoading=true;
