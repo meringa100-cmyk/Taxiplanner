@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V810</h1>
+<h1>🚕 Taxi Planner V811</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1351,10 +1351,17 @@ function stopDriverGPS(){
   const box=document.getElementById('driverGpsStatus');
   if(box)box.innerHTML='⏸️ GPS gestopt';
 }
-function driverNavigation(k){
+function driverNavigation(id){
+  const k=typeof id==='string' ? find(id) : id;
   if(!k)return;
-  const destination=encodeURIComponent(k.address||'');
-  if(destination)window.open('https://www.google.com/maps/dir/?api=1&destination='+destination,'_blank');
+  const destination=String(k.address||'').trim();
+  if(!destination){
+    alert('Voor dit kind is geen adres beschikbaar.');
+    return;
+  }
+  const url='https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(destination);
+  const win=window.open(url,'_blank');
+  if(!win) window.location.href=url;
 }
 function renderDriver(){
  const s=document.getElementById('driverSelect');
@@ -1393,7 +1400,7 @@ function renderDriver(){
      <div class="big-time">${selected.time}</div>
      <div class="kid-name">${selected.name}</div>
      <div class="info-line">📍 <b>${selected.address}</b></div>
-     <button class="primary" onclick="driverNavigation(selected)">🧭 Navigeer naar dit kind</button>
+     <button class="primary" onclick="driverNavigation('${selected.id}')">🧭 Navigeer naar dit kind</button>
      <div class="info-line">🏫 ${selected.school}</div>
      <div class="info-line">🧒 ${selected.approach}</div>
      <div class="info-line">🛡️ ${selected.safety}</div>
