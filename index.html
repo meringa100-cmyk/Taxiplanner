@@ -4004,7 +4004,7 @@ startPlannerAutomation();
 // V783: éénmalig echte BAG/PDOK-adressen koppelen aan alle 100 demo-kinderen.
 // Daarna blijven de echte huisadressen en coördinaten vast staan.
 setTimeout(async()=>{
-  if(demoAddressSpreadVersion!=='v784'){
+  if(demoAddressSpreadVersion!=='v805'){
     await geocodeExactDemoAddresses();
     demoHardPlanVersion='';
     const rebuiltAfterGeocode=repairBuiltInDemoPlanningHard();
