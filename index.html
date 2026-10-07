@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V816</title>
+<title>Taxi Planner V817</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V816</h1>
+<h1>🚕 Taxi Planner V817</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -3750,6 +3750,67 @@ async function addRide(){
 function find(id){return kids.find(k=>k.id===id)}
 function closeModal(){document.getElementById('modal').classList.add('hidden')}
 document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
+function repairDemoRouteConflictsHard(){
+  // V817: echte conflictvrije verdeling. Niet alleen de routevolgorde wijzigen:
+  // als twee opeenvolgende ophaalmomenten fysiek niet haalbaar zijn, verplaatsen
+  // we het kind naar een andere beschikbare bus. Met 50 bussen voor 100 demo-
+  // kinderen is daar bewust voldoende capaciteit voor.
+  const demoKids=kids.filter(k=>/^k[0-9]+$/.test(String(k.id))&&active(k));
+  if(demoKids.length!==100)return 0;
+
+  const routeOf=d=>demoKids.filter(k=>k.driver===d).sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+  const valid=(q,d)=>{
+    if(q.length>MAX)return false;
+    for(let i=1;i<q.length;i++){
+      const gap=(q[i].timeMin||0)-(q[i-1].timeMin||0);
+      const travel=routeMinutesBetween(q[i-1],q[i],driverNames.indexOf(d));
+      if(gap<=0||travel>gap+15)return false;
+    }
+    return routeDurationEstimate(q,driverNames.indexOf(d))<=routeLimitForRides(q);
+  };
+
+  let moved=0;
+  for(let pass=0;pass<200;pass++){
+    let conflict=null;
+    for(const d of driverNames){
+      const q=routeOf(d);
+      for(let i=1;i<q.length;i++){
+        const gap=(q[i].timeMin||0)-(q[i-1].timeMin||0);
+        const travel=routeMinutesBetween(q[i-1],q[i],driverNames.indexOf(d));
+        if(gap<=0||travel>gap+15){ conflict={d,q,index:i}; break; }
+      }
+      if(conflict)break;
+    }
+    if(!conflict)break;
+
+    // Verplaats bij voorkeur het latere kind; daardoor blijft de eerste,
+    // verste stop van de route zoveel mogelijk behouden.
+    const candidates=[conflict.q[conflict.index],conflict.q[conflict.index-1]];
+    let best=null;
+    for(const k of candidates){
+      const sourceAfter=conflict.q.filter(x=>x!==k);
+      if(!valid(sourceAfter,conflict.d))continue;
+      for(const target of driverNames){
+        if(target===conflict.d||isDriverUnavailable(target)||isBusUnavailable(target))continue;
+        const tq=routeOf(target);
+        if(tq.length>=MAX)continue;
+        const trial=[...tq,k].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+        if(!valid(trial,target))continue;
+        const nearest=tq.length?Math.min(...tq.map(x=>geoDistanceKm(k,x))):999;
+        const fillBonus=(MAX-tq.length)*3;
+        const score=tq.length*20-nearest+fillBonus;
+        if(!best||score>best.score)best={k,target,score};
+      }
+    }
+    if(!best)break;
+    best.k.driver=best.target;
+    moved++;
+  }
+
+  driverNames.forEach(d=>routeOf(d).forEach((k,i)=>k.routeOrder=i+1));
+  return moved;
+}
+
 if(!loadState())seed();
 
 // Demo-locaties blijven volledig deterministisch.
@@ -3757,7 +3818,8 @@ if(!loadState())seed();
 // meer verwisselen met een ander adres of een andere plaats.
 const repairedAtStartup=repairPlannerAssignments();
 const hardRepairedAtStartup=repairAllUnassignedHard();
-if(repairedAtStartup||hardRepairedAtStartup)saveState();
+const demoConflictRepairs=repairDemoRouteConflictsHard();
+if(repairedAtStartup||hardRepairedAtStartup||demoConflictRepairs)saveState();
 renderAll();
 startPlannerAutomation();
 
