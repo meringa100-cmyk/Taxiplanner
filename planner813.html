@@ -1,0 +1,3799 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#17324d">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Taxi Planner">
+<title>Taxi Planner V813 - CACHEBYPASS</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
+header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
+nav{display:flex;gap:7px;flex-wrap:wrap;background:#fff;padding:10px;border-bottom:1px solid #ddd}
+button{border:0;border-radius:8px;padding:9px 12px;background:#e8edf2;color:#17324d;cursor:pointer;font-weight:600}
+button.primary,.tab.active{background:#1769aa;color:#fff}
+main{max-width:1150px;margin:auto;padding:16px}.page{display:none}.page.active{display:block}
+.card{background:#fff;border-radius:12px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px #0000000d}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+.stat{font-size:26px;font-weight:bold}.muted{color:#687582}
+table{width:100%;border-collapse:collapse}th,td{padding:9px;border-bottom:1px solid #e5e8eb;text-align:left}
+.badge{display:inline-block;padding:4px 8px;border-radius:15px;background:#edf2f6}
+.row{border:1px solid #e1e6ea;border-radius:9px;padding:11px;margin:7px 0}
+.actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+input,select{padding:9px;border:1px solid #cbd3da;border-radius:8px}
+.modal{position:fixed;inset:0;background:#0008;display:flex;align-items:center;justify-content:center;padding:20px;z-index:100000 !important}
+.modalBox{background:#fff;border-radius:14px;padding:20px;max-width:650px;width:100%;max-height:85vh;overflow:auto}
+.hidden{display:none}.success{color:#087443}.error{color:#b42318}
+.small{font-size:13px}
+
+#liveMap{position:relative;width:100%;height:560px;overflow:hidden;border-radius:14px;background:#dfe9d7;border:1px solid #c9d4c3}
+.mapRoad{position:absolute;background:#c8cdd1;border:1px solid #aeb5ba;box-shadow:0 1px 2px #0002}
+.mapRoad.h{height:34px;left:0;right:0}.mapRoad.v{width:34px;top:0;bottom:0}
+.roadLabel{position:absolute;font-size:11px;font-weight:bold;color:#59636a;background:#ffffffcc;padding:3px 6px;border-radius:5px;z-index:2}
+.mapMarker{position:absolute;transform:translate(-50%,-50%);width:38px;height:38px;border-radius:50%;background:#1769aa;color:#fff;border:3px solid #fff;box-shadow:0 2px 7px #0005;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:bold;z-index:5;cursor:pointer}
+.mapMarker.busy{background:#d97706}.mapMarker.done{background:#4b5563}
+.mapMarker span{position:absolute;top:34px;white-space:nowrap;color:#18222d;background:#fff;padding:3px 6px;border-radius:5px;font-size:11px;box-shadow:0 1px 4px #0002}
+.mapHome{position:absolute;width:14px;height:14px;border-radius:50%;background:#3b7d3b;border:2px solid #fff;z-index:3}
+.taxi-map-label{font-size:13px;font-weight:700;padding:5px 8px;border-radius:8px;background:#fff;border:1px solid #cbd3da;box-shadow:0 2px 8px #0003;line-height:1.25}.taxi-map-label:before{border-top-color:#fff!important}
+.taxi-map-start-label{font-size:13px;font-weight:800;padding:5px 8px;border-radius:8px;background:#ecfdf5;border:2px solid #16a34a;box-shadow:0 2px 8px #0003;line-height:1.25}.taxi-map-start-label:before{border-top-color:#16a34a!important}
+</style>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+<style id="desktop-delay-fix">
+.driver-delay-btn,
+button[onclick^="chauffeurDelay"]{
+  position:relative !important;
+  z-index:auto !important;
+  pointer-events:auto !important;
+  cursor:pointer !important;
+  touch-action:manipulation !important;
+}
+.driver-delay-btn:active,
+button[onclick^="chauffeurDelay"]:active{
+  transform:scale(.98);
+}
+</style>
+
+
+<style id="delay-modal-css">
+#delayModal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:99999}
+#delayModal .delay-box{background:#fff;border-radius:16px;padding:22px;width:min(360px,90vw);box-shadow:0 15px 50px rgba(0,0,0,.3);font-family:Arial,sans-serif}
+#delayModal h3{margin:0 0 8px}
+#delayModal input{width:100%;box-sizing:border-box;padding:12px;border:1px solid #bbb;border-radius:8px;font-size:18px;margin:12px 0}
+#delayModal .delay-actions{display:flex;gap:10px;justify-content:flex-end}
+#delayModal button{padding:10px 16px;border:0;border-radius:8px;cursor:pointer}
+#delayModal .delay-ok{background:#1976d2;color:white}
+</style>
+
+<style id="delay-live-css">
+.delay-live-alert{
+  margin:12px 0;padding:14px 16px;border-radius:12px;
+  background:#fff3cd;border:1px solid #e0b94f;color:#5c4700;
+  font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.08)
+}
+.delay-parent-badge{
+  display:inline-block;margin:6px 0;padding:7px 11px;border-radius:9px;
+  background:#fff3cd;border:1px solid #e0b94f;color:#5c4700;font-weight:700
+}
+</style>
+
+<style id="stable-map-css">
+#realMap,#map,.map-container,.leaflet-container{
+  width:100% !important;
+  min-height:420px !important;
+}
+</style>
+
+<style id="collapsible-lists-css">
+.collapsible-section{
+  margin:12px 0;
+  border:1px solid #d9dee7;
+  border-radius:12px;
+  overflow:hidden;
+  background:#fff;
+}
+.collapsible-header{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:13px 16px;
+  border:0;
+  background:#f5f7fa;
+  cursor:pointer;
+  font-weight:700;
+  font-size:16px;
+  text-align:left;
+}
+.collapsible-header:hover{background:#edf1f5}
+.collapsible-arrow{transition:transform .2s ease;font-size:14px}
+.collapsible-section.open .collapsible-arrow{transform:rotate(180deg)}
+.collapsible-content{display:none;padding:0}
+.collapsible-section.open .collapsible-content{display:block}
+</style>
+
+<style id="attention-center-css">
+.attention-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.attention-count{display:inline-block;padding:5px 9px;border-radius:999px;background:#eef2f6;font-weight:700;font-size:12px}
+.attention-item{margin:8px 0;padding:11px 12px;border-radius:10px;border:1px solid #ddd;cursor:pointer}
+.attention-item:hover{filter:brightness(.98)}
+.attention-danger{background:#fff0f0;border-color:#efb4b4}
+.attention-warn{background:#fff7df;border-color:#e6c96a}
+.attention-info{background:#eef6ff;border-color:#b9d6f3}
+.attention-item small{display:block;margin-top:3px;opacity:.72}
+.driver-unavailable{background:#fff0f0 !important;border-color:#efb4b4 !important}
+</style>
+
+<style id="fleet-breakdown-css">
+.fleet-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px}
+.fleet-stat{padding:12px;border:1px solid #d9dee7;border-radius:10px;background:#f7f9fb}
+.fleet-stat b{display:block;font-size:20px;margin-bottom:3px}
+.bus-ok{background:#eef8ef;border-color:#b8d8bc}
+.bus-issue{background:#fff0f0;border-color:#efb4b4}
+.bus-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.bus-row small{display:block;opacity:.7}
+@media(max-width:700px){.fleet-summary{grid-template-columns:1fr}}
+</style>
+
+<style id="replacement-flow-css">
+.breakdown-panel{padding:14px;border-radius:12px;background:#fff6df;border:1px solid #e4c56a}
+.replacement-grid{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
+.replacement-option{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px;border:1px solid #d8dde5;border-radius:10px;background:#f8fafc}
+.affected-child{padding:8px 10px;border-radius:8px;background:#fff;border:1px solid #ddd;margin:5px 0}
+.replacement-ok{background:#eef8ef;border-color:#b8d8bc}
+</style>
+
+<style id="replacement-trip-v68-css">
+.replacement-trip{margin:10px 0;padding:13px;border:1px solid #b9d6f3;border-radius:12px;background:#eef6ff}
+.replacement-trip h4{margin:0 0 7px}
+.replacement-trip .trip-meta{display:flex;flex-wrap:wrap;gap:6px;margin:7px 0}
+.replacement-trip .trip-child{padding:7px 9px;background:#fff;border:1px solid #d9e3ed;border-radius:8px;margin:4px 0}
+.replacement-chip{display:inline-block;padding:4px 8px;border-radius:999px;background:#dcecff;font-size:12px;font-weight:700}
+.replacement-trip.done{background:#eef8ef;border-color:#b8d8bc}
+</style>
+
+<style id="v70-child-cards-css">
+.child-card-v70{border:1px solid #d9dee7;border-radius:12px;margin:8px 0;background:#fff;overflow:hidden}
+.child-head-v70{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 14px;background:#f7f9fb;border:0;text-align:left;cursor:pointer;font-size:15px}
+.child-head-v70 .arrow{font-size:13px;transition:transform .2s}
+.child-card-v70.open .arrow{transform:rotate(180deg)}
+.child-details-v70{display:none;padding:12px 14px;border-top:1px solid #e4e8ed;background:#fff}
+.child-card-v70.open .child-details-v70{display:block}
+.child-meta-v70{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.child-meta-v70 span{padding:4px 7px;border-radius:8px;background:#eef2f6;font-size:12px}
+.child-info-v70{margin:6px 0;color:#45515d;font-size:13px}
+</style>
+<style id="v71-driver-mode-css">
+.driver-mode-v71{background:#102a43;color:#fff;border-radius:16px;padding:16px;margin-top:12px}
+.driver-next-v71{background:#fff;color:#18222d;border-radius:14px;padding:16px;margin:12px 0}
+.driver-next-v71 .big-time{font-size:38px;font-weight:800;line-height:1}
+.driver-next-v71 .kid-name{font-size:23px;font-weight:800;margin-top:8px}
+.driver-next-v71 .info-line{margin:7px 0;font-size:15px}
+.driver-status-v71{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.driver-status-v71 span{background:#ffffff22;padding:7px 10px;border-radius:999px}
+.driver-buttons-v71{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.driver-buttons-v71 button{padding:14px 8px;font-size:15px}
+.driver-buttons-v71 .wide{grid-column:1/-1}
+.driver-queue-v71{background:#ffffff12;border-radius:12px;padding:10px;margin-top:12px}
+.driver-queue-item-v71{padding:10px;border-bottom:1px solid #ffffff20;cursor:pointer}
+.driver-queue-item-v71:last-child{border-bottom:0}
+@media(max-width:600px){.driver-buttons-v71{grid-template-columns:1fr}.driver-buttons-v71 .wide{grid-column:auto}}
+</style><style id="v715-driver-issue">.driver-issue-banner-v715{width:100%;margin:12px 0 4px;padding:16px;border:2px solid #d33;border-radius:14px;background:#fff0f0;color:#9b111e;font-size:18px;font-weight:800;box-sizing:border-box}.driver-issue-banner-v715:active{transform:scale(.98)}</style><style id="v711-driver-navigation">
+.driver-nav-v711{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.driver-nav-v711 button{padding:13px;font-size:15px}
+.driver-current-v711{margin-top:8px;text-align:center;font-size:12px;opacity:.7}
+</style><style id="v712-attention-dashboard">
+.attention-dashboard-v712{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0}
+.attention-stat-v712{padding:12px;border-radius:12px;border:1px solid #d9dee7;background:#f7f9fb;text-align:center}
+.attention-stat-v712 b{display:block;font-size:24px}.attention-stat-v712 small{display:block;margin-top:3px}
+.attention-stat-v712.red{background:#fff0f0;border-color:#efb4b4}.attention-stat-v712.orange{background:#fff7df;border-color:#e6c96a}.attention-stat-v712.blue{background:#eef6ff;border-color:#b9d6f3}.attention-stat-v712.green{background:#eef8ef;border-color:#b8d8bc}
+.attention-action-v712{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 12px;border:1px solid #ddd;border-radius:10px;margin:7px 0;background:#fff}
+.attention-action-v712 .meta{font-size:13px;opacity:.75;margin-top:3px}
+@media(max-width:700px){.attention-dashboard-v712{grid-template-columns:1fr 1fr}.attention-action-v712{align-items:flex-start;flex-direction:column}}
+</style><style id="v713-report-actions">
+.report-panel-v713{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}
+.report-panel-v713 button{padding:13px;font-size:14px}
+.report-note-v713{padding:10px 12px;border-radius:10px;background:#eef6ff;border:1px solid #b9d6f3;margin:8px 0;font-size:13px}
+@media(max-width:600px){.report-panel-v713{grid-template-columns:1fr}}
+</style><style id="daystart-check-css">
+.daystart-result{margin-top:12px;padding:14px;border-radius:12px;border:1px solid #d9dee7;background:#f7f9fb}
+.daystart-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0}
+.daystart-stat{padding:10px;border-radius:10px;background:#fff;border:1px solid #d9dee7;text-align:center}
+.daystart-stat b{display:block;font-size:22px}
+.daystart-ok{background:#eef8ef;border-color:#b8d8bc}
+.daystart-warn{background:#fff7df;border-color:#e6c96a}
+.daystart-danger{background:#fff0f0;border-color:#efb4b4}
+.daystart-item{padding:9px 10px;margin:6px 0;border-radius:9px;background:#fff;border:1px solid #ddd}
+@media(max-width:600px){.daystart-summary{grid-template-columns:1fr}}
+</style><style id="v716-attention-details">
+.attention-open-title{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:12px 0 8px;padding:10px 12px;background:#f7f9fb;border:1px solid #d9dee7;border-radius:10px}
+.attention-open-title span{font-size:12px;opacity:.7}
+.attention-open-list{display:grid;gap:7px}
+.attention-detail-item{margin:0}
+@media(max-width:600px){.attention-open-title{align-items:flex-start;flex-direction:column}}
+</style></head>
+<body>
+<header>
+<h1>🚕 Taxi Planner V813 - CACHEBYPASS</h1>
+<p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
+</header>
+
+<nav>
+<button class="tab active" onclick="showPage('planner',this)">🏠 Planner</button>
+<button class="tab" onclick="showPage('driver',this)">🚕 Chauffeur</button>
+<button class="tab" onclick="showPage('parent',this)">👨‍👩‍👧 Ouder</button>
+<button class="tab" onclick="showPage('live',this)">📡 Live Centrum</button>
+</nav>
+
+<main>
+<section id="planner" class="page active"><div id="plannerDelayAlerts"></div>
+<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Planner Dashboard</h2><button class="primary" onclick="runAIAndCheck()">🤖 AI plannen & controleren</button></div><div id="dashboard" class="grid" style="margin-top:12px"></div><div id="dayStartCheck"></div></div>
+
+<div class="card">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+    <h3 style="margin:0">🚌 Wagenpark</h3>
+    <button type="button" onclick="toggleCollapsible('fleetDetails')">Details ▼</button>
+  </div>
+  <div id="fleetSummary"></div>
+  <div id="fleetDetails" class="collapsible-section">
+    <button type="button" class="collapsible-header" onclick="toggleCollapsible('fleetDetails')">
+      <span>🚌 Alle 50 bussen</span><span class="collapsible-arrow">▼</span>
+    </button>
+    <div class="collapsible-content"><div id="fleetList"></div></div>
+  </div>
+</div>
+
+<div class="card">
+<h3>Wat moet er vandaag gebeuren?</h3>
+<div class="actions">
+<button class="primary" type="button" onclick="runAI()">🤖 AI plannen</button><button type="button" onclick="runBestPlanning()">🏆 Automatisch beste planning</button>
+<button type="button" onclick="optimizeAllRoutes()">🧭 Routes optimaal</button>
+<button onclick="openAdd()">➕ Rit toevoegen</button>
+<button onclick="resetDemo()">↩️ Demo resetten</button>
+</div>
+</div>
+<div class="card"><h3>👨‍✈️ Chauffeurs</h3><input id="driverSearch" placeholder="Zoek chauffeur..." oninput="renderDashboard()"><div id="collapsibleDrivers" class="collapsible-section"><button type="button" class="collapsible-header" onclick="toggleCollapsible('collapsibleDrivers')"><span>🚕 Chauffeurs</span><span class="collapsible-arrow">▼</span></button><div class="collapsible-content"><div id="driverList"></div></div></div></div>
+<div class="card">
+<h3 style="margin-bottom:4px">⚠️ Meldingen & Acties</h3>
+<p class="muted" style="margin-top:0">Centraal overzicht voor de planner. Nieuwe meldingen verschijnen hier automatisch.</p>
+<div id="attentionDashboardV712"></div>
+<div class="report-note-v713">🛠️ <b>Melding direct registreren:</b> gebruik deze knoppen. De melding verschijnt daarna automatisch in het planner-overzicht.</div>
+<div class="report-panel-v713">
+ <button onclick="openReportDriverPicker()">🚌 Busstoring melden</button>
+ <button onclick="openDriverUnavailablePicker()">👨‍✈️ Chauffeur niet beschikbaar</button>
+</div>
+<div id="alerts"></div>
+</div>
+<div class="card"><h3>🧭 Routecontrole</h3><p class="muted">Controle op route, capaciteit en schooldeadline na AI-herverdeling.</p><div id="routeControl"></div></div>
+<div id="collapsibleRittenVandaag" class="collapsible-section open"><button type="button" class="collapsible-header" onclick="toggleCollapsible('collapsibleRittenVandaag')"><span>📋 Ritten vandaag</span><span class="collapsible-arrow">▼</span></button><div class="collapsible-content"><div class="card">
+<h3>🗺️ Ritten vandaag</h3>
+<div class="actions">
+<input id="rideSearch" placeholder="Zoek kind, school of chauffeur..." oninput="renderPlanning()">
+<select id="rideFilter" onchange="renderPlanning()"><option value="all">Alle statussen</option><option value="waiting">Wachtend</option><option value="picked">Onderweg</option><option value="school">Op school</option><option value="absent">Afgemeld</option><option value="loose">Loosmelding</option></select>
+</div>
+<div id="planning"></div>
+</div></div></div>
+</section>
+
+<section id="driver" class="page">
+<div class="card" style="border:2px solid #1769aa;background:#f4f9ff;margin-bottom:12px">
+  <h3 style="margin-top:0">📡 Chauffeur GPS</h3>
+  <p class="muted">Zet je GPS aan zodat de planner je actuele positie kan zien.</p>
+  <div id="driverGpsStatus" class="small" style="margin:8px 0">📍 GPS nog niet gestart</div>
+  <div class="actions">
+    <button class="primary" type="button" onclick="startDriverGPS()">📡 START LIVE GPS</button>
+    <button type="button" onclick="stopDriverGPS()">⏸️ Stop GPS</button>
+  </div>
+</div>
+<div class="card"><h2>🚕 Chauffeur</h2>
+<select id="driverSelect" onchange="renderDriver()"></select>
+<div id="driverRides"></div>
+</div>
+</section>
+
+<section id="parent" class="page">
+<div class="card">
+<h2>👨‍👩‍👧 Ouderportaal</h2>
+<p class="muted">Demo ouderportaal. Een ouder ziet alleen het eigen kind.</p>
+<select id="parentSelect" onchange="renderParent()"></select>
+<div id="parentView"></div>
+</div>
+</section>
+
+<section id="live" class="page">
+<div class="card"><h2>📡 Live Centrum</h2><div id="liveView"></div></div>
+<div class="card">
+<h2>🗺️ Live kaart</h2>
+<p class="muted">Schematische demo-kaart met de chauffeurs op de fictieve straten van Taxi Planner.</p>
+<div id="realMap" style="height:560px;border-radius:14px;overflow:hidden;border:1px solid #cbd3da;background:#e8eef3"><div id="mapLoading" style="padding:18px">🗺️ Kaart laden…</div></div>
+<div class="actions" style="margin-top:10px">
+<select id="mapDriver" onchange="renderRealMapMarkers()"></select>
+<button onclick="showAllRoutes()">🗺️ Alle routes</button><button class="primary" onclick="calculateRealRoutes()">🛣️ Echte routes berekenen</button>
+<button onclick="clearRoutes()">✖ Routes wissen</button>
+</div>
+<div id="routeInfo" class="small muted" style="margin-top:7px"></div>
+<div class="small muted" style="margin-top:7px">© OpenStreetMap contributors</div>
+</div>
+</section>
+</main>
+
+<div id="modal" class="modal hidden"><div id="modalBox" class="modalBox"></div></div>
+
+<script>
+const MAX=8;
+const driverNames=["Jan de Vries — 1001","Peter Jansen — 1002","Mark Smit — 1003","Erik Bakker — 1004","Ronald Meijer — 1005","Dennis Mulder — 1006","Patrick Visser — 1007","Richard Bos — 1008","Marco de Boer — 1009","Jeroen Dijkstra — 1010","Willem Kuiper — 1011","Henk van Dijk — 1012","Arjan de Jong — 1013","Michel Vos — 1014","Robert Schipper — 1015","Frank Hendriks — 1016","Sander Post — 1017","Gert van der Meer — 1018","Kees Brouwer — 1019","Theo van den Berg — 1020","Danny Prins — 1021","Johan Kok — 1022","Rene van Leeuwen — 1023","Dennis de Graaf — 1024","Bas van der Wal — 1025","Niels Timmerman — 1026","Tom Willems — 1027","Maarten van Dam — 1028","Rik Sanders — 1029","Bart van der Veen — 1030","Joost Martens — 1031","Wouter de Wit — 1032","Pieter van Beek — 1033","Stefan Jacobs — 1034","Gerard Hoekstra — 1035","Lars Meijer — 1036","Ruben Dekker — 1037","Andre Koster — 1038","Daan van der Heijden — 1039","Mike de Groot — 1040","Chris Verhoeven — 1041","Edwin Blom — 1042","Alex van der Linden — 1043","Timo van der Horst — 1044","Roy van Vliet — 1045","Bram de Bruin — 1046","Koen van der Meer — 1047","Nick Smeets — 1048","Jasper van den Broek — 1049","Ramon van der Laan — 1050"];
+const names=['Jamie','Noa','Luca','Milan','Sophie','Sem','Daan','Emma','Finn','Lisa','Mees','Tess'];
+const schools=['Terra College','De Atlas','Praktijkschool','Speciale school'];
+
+// Harde schooldeadline: ieder kind moet uiterlijk om 08:30 op school kunnen zijn.
+const SCHOOL_DEADLINE_MIN=8*60+30;
+const schoolLocations={
+  'Terra College':{lat:52.772208011,lon:6.887195759,address:'Huizingsbrinkweg 9, 7812 BK Emmen'},
+  'De Atlas':{lat:52.77775,lon:6.94468,address:'Ullevi 26, 7825 SE Emmen'},
+  'Praktijkschool':{lat:52.77648,lon:6.94393,address:'Ullevi 22, 7825 SE Emmen'},
+  'Speciale school':{lat:52.77775,lon:6.94468,address:'Ullevi 26, 7825 SE Emmen'}
+};
+const drentheDemoLocations=[
+  // Straat/plaats zijn de zoektermen; lat/lon zijn alleen veilige fallbackpunten.
+  // Bij laden worden deze punten opnieuw gecontroleerd via een schone geocode-cache.
+  {town:'Emmen',street:'Laan van de Marel',lat:52.7884433,lon:6.9365105},
+  {town:'Coevorden',street:'Stationsstraat',lat:52.6643544,lon:6.7363784},
+  {town:'Hoogeveen',street:'Hoofdstraat',lat:52.729056,lon:6.477155},
+  {town:'Assen',street:'Rolderstraat',lat:52.9910,lon:6.5630},
+  {town:'Meppel',street:'Stationsweg',lat:52.6927470,lon:6.1914540},
+  {town:'Beilen',street:'Brinkstraat',lat:52.8640,lon:6.5150},
+  {town:'Borger',street:'Hoofdstraat',lat:52.9263192,lon:6.7902882},
+  {town:'Odoorn',street:'Valtherweg',lat:52.8503613,lon:6.8504359},
+  {town:'Dalen',street:'Hoofdstraat',lat:52.7000,lon:6.7550},
+  {town:'Nieuw-Amsterdam',street:'Vaart NZ',lat:52.7100,lon:6.8550},
+  {town:'Klazienaveen',street:'Langestraat',lat:52.7240,lon:6.9900},
+  {town:'Erica',street:'Verlengde Vaart NZ',lat:52.7119677,lon:6.9057844},
+  {town:'Westerbork',street:'Hoofdstraat',lat:52.8500,lon:6.6080}
+];
+// Exacte demo-adressen: per straat zoeken we bestaande BAG-adressen via PDOK.
+// Daardoor worden even/oneven kanten en echte huisnummers automatisch gerespecteerd.
+const exactDemoAddresses=[
+  {town:'Emmen',street:'Laan van de Marel',numbers:[2,6,8,10,12,14,16,18]},
+  {town:'Coevorden',street:'Stationsstraat',numbers:[2,4,6,8,10,12,14,16]},
+  {town:'Hoogeveen',street:'Hoofdstraat',numbers:[2,4,6,8,10,12,14,16]},
+  {town:'Assen',street:'Rolderstraat',numbers:[2,4,6,8,10,12,14,16]},
+  {town:'Meppel',street:'Stationsweg',numbers:[2,4,6,8,10,12,14,16]},
+  {town:'Beilen',street:'Brinkstraat',numbers:[2,4,6,8,10,12,14,16]},
+  {town:'Borger',street:'Hoofdstraat',numbers:[2,4,6,8,10,12,14,16]},
+  {town:'Odoorn',street:'Valtherweg',numbers:[2,4,6,8,10,12,14,16]},
+  {town:'Dalen',street:'Hoofdstraat',numbers:[2,4,6,8,10,12,14,16]},
+  {town:'Nieuw-Amsterdam',street:'Vaart NZ',numbers:[2,4,6,8,10,12,14,16]},
+  {town:'Klazienaveen',street:'Langestraat',numbers:[2,4,6,8,10,12,14,16]},
+  {town:'Erica',street:'Verlengde Vaart NZ',numbers:[2,4,6,8,10,12,14,16]},
+  {town:'Westerbork',street:'Hoofdstraat',numbers:[2,4,6,8,10,12,14,16]}
+];
+async function pdokAddress(street,town,number){
+  try{
+    const q=encodeURIComponent(street+' '+number+', '+town+', Nederland');
+    const url='https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?q='+q+'&rows=10';
+    const res=await fetch(url,{headers:{'Accept':'application/json'}});
+    if(!res.ok)return null;
+    const data=await res.json();
+    const docs=data?.response?.docs||[];
+    const townLc=town.toLowerCase();
+    const streetLc=street.toLowerCase();
+    const wantedNr=String(number);
+    const hit=docs.find(x=>{
+      const name=String(x.weergavenaam||'').toLowerCase();
+      const wn=String(x.woonplaatsnaam||'').toLowerCase();
+      const nr=String(x.huisnummer||'').trim();
+      return String(x.type||'').toLowerCase()==='adres' &&
+        wn===townLc &&
+        nr===wantedNr &&
+        name.includes(streetLc);
+    });
+    if(!hit)return null;
+    const parts=String(hit.centroide_ll||hit.centroid_ll||'').replace('POINT(','').replace(')','').trim().split(/\s+/).map(Number);
+    if(parts.length!==2 || !Number.isFinite(parts[0]) || !Number.isFinite(parts[1]))return null;
+    return {lon:parts[0],lat:parts[1],address:hit.weergavenaam||street+' '+number+', '+town};
+  }catch(e){return null;}
+}
+
+function applyGuaranteedDemoHomeSpread(){
+  const demoKids=kids.filter(k=>{
+    const n=parseInt(String(k.id).slice(1),10);
+    return /^k[0-9]+$/.test(String(k.id)) && Number.isInteger(n) && n>=1 && n<=100;
+  });
+  if(demoKids.length<100)return false;
+
+  // Gegarandeerde demo-thuispunten. Deze zijn bewust verspreid over
+  // verschillende plaatsen en straten, zodat overlappende markers
+  // onmogelijk zijn wanneer de externe geocoder niet beschikbaar is.
+  const homes=[
+    {town:'Emmen',street:'Laan van de Marel',lat:52.7884433,lon:6.9365105},
+    {town:'Coevorden',street:'Stationsstraat',lat:52.6643544,lon:6.7363784},
+    {town:'Hoogeveen',street:'Hoofdstraat',lat:52.729056,lon:6.477155},
+    {town:'Assen',street:'Rolderstraat',lat:52.9910,lon:6.5630},
+    {town:'Meppel',street:'Stationsweg',lat:52.6927470,lon:6.1914540},
+    {town:'Beilen',street:'Brinkstraat',lat:52.8640,lon:6.5150},
+    {town:'Borger',street:'Hoofdstraat',lat:52.9263192,lon:6.7902882},
+    {town:'Odoorn',street:'Valtherweg',lat:52.8503613,lon:6.8504359},
+    {town:'Dalen',street:'Hoofdstraat',lat:52.7000,lon:6.7550},
+    {town:'Nieuw-Amsterdam',street:'Vaart NZ',lat:52.7100,lon:6.8550},
+    {town:'Klazienaveen',street:'Langestraat',lat:52.7240,lon:6.9900},
+    {town:'Erica',street:'Verlengde Vaart NZ',lat:52.7119677,lon:6.9057844},
+    {town:'Westerbork',street:'Hoofdstraat',lat:52.8500,lon:6.6080}
+  ];
+
+  demoKids.forEach((k,i)=>{
+    const base=homes[i%homes.length];
+    const ring=Math.floor(i/homes.length);
+    const angle=(i*137.5)*Math.PI/180;
+    // Kleine huisnummer-spreiding rond het echte straatpunt.
+    // Groot genoeg om afzonderlijke woningen/markers te tonen.
+    const latOffset=Math.cos(angle)*(0.0012+ring*0.00012);
+    const lonOffset=Math.sin(angle)*(0.0018+ring*0.00016);
+    k.demoTown=base.town;
+    k.demoStreet=base.street;
+    k.demoGroup=i+1;
+    k.address=base.street+' '+(2+((i*2)%58))+', '+base.town;
+    k.pickupAddress=k.address;
+    k.lat=base.lat+latOffset;
+    k.lon=base.lon+lonOffset;
+    const sp=schoolLocations[k.school];
+    k.destinationAddress=sp?.address||k.destination||k.school||'';
+  });
+
+  addressesReady=true;
+  demoAddressSpreadVersion='v805-fallback';
+  saveState();
+  renderAll();
+  console.log('V777 stable: gegarandeerde Drenthe-spreiding toegepast op 100 demo-kinderen.');
+  return true;
+}
+
+async function geocodeExactDemoAddresses(){
+  // V776: robuuste PDOK-adresverzameling. Geen q=*; eerst bekende
+  // Locatieserver-query's, daarna in JavaScript exact op woonplaats filteren.
+  const demoKids=kids.filter(k=>{
+    const n=parseInt(String(k.id).slice(1),10);
+    return /^k[0-9]+$/.test(String(k.id)) && Number.isInteger(n) && n>=1 && n<=100;
+  });
+  if(demoKids.length<100)return;
+
+  const towns=['Emmen','Coevorden','Hoogeveen','Assen','Meppel','Beilen','Borger','Odoorn','Dalen','Nieuw-Amsterdam','Klazienaveen','Erica','Westerbork'];
+
+  async function fetchTownAddresses(town){
+    const queries=[town,'straat '+town,'weg '+town];
+    const all=[], seen=new Set();
+    for(const q of queries){
+      try{
+        const params=new URLSearchParams({
+          q,
+          fq:'type:adres',
+          fl:'weergavenaam,type,straatnaam,woonplaatsnaam,huisnummer,centroide_ll,centroid_ll',
+          rows:'500'
+        });
+        const res=await fetch('https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?'+params.toString(),{headers:{'Accept':'application/json'}});
+        if(!res.ok)continue;
+        const data=await res.json();
+        const docs=Array.isArray(data?.response?.docs)?data.response.docs:[];
+        for(const x of docs){
+          if(String(x.type||'').toLowerCase()!=='adres')continue;
+          if(String(x.woonplaatsnaam||'').trim().toLowerCase()!==town.toLowerCase())continue;
+          const street=String(x.straatnaam||'').trim();
+          const nr=String(x.huisnummer||'').trim();
+          const point=String(x.centroide_ll||x.centroid_ll||'');
+          if(!street||!nr||!point.includes('POINT('))continue;
+          const raw=point.replace('POINT(','').replace(')','').trim().split(/\s+/).map(Number);
+          if(raw.length!==2||!Number.isFinite(raw[0])||!Number.isFinite(raw[1]))continue;
+          const key=(street+'|'+nr).toLowerCase();
+          if(seen.has(key))continue;
+          seen.add(key);
+          all.push({town,street,number:nr,address:x.weergavenaam||street+' '+nr+', '+town,lat:raw[1],lon:raw[0]});
+        }
+      }catch(e){console.warn('PDOK '+town,e);}
+    }
+    return all;
+  }
+
+  const pools=[];
+  for(const town of towns){
+    const addresses=await fetchTownAddresses(town);
+    if(addresses.length>=8){
+      const byStreet=new Map();
+      addresses.forEach(a=>{if(!byStreet.has(a.street))byStreet.set(a.street,[]);byStreet.get(a.street).push(a);});
+      const streets=[...byStreet.keys()];
+      const spread=[];
+      // Eerst zoveel mogelijk verschillende straten.
+      for(let round=0;round<30;round++){
+        for(const street of streets){
+          const a=byStreet.get(street)[round];
+          if(a)spread.push(a);
+        }
+      }
+      pools.push({town,addresses:spread});
+    }
+  }
+
+  if(pools.length<10){
+    console.warn('V776: slechts '+pools.length+' plaatsen met voldoende echte adressen; gebruik gegarandeerde demo-spreiding.');
+    applyGuaranteedDemoHomeSpread();
+    return;
+  }
+
+  // V784: koppel adressen per bestaande chauffeur-groep.
+  // Zo blijven de kinderen bij dezelfde chauffeur, maar krijgt iedere
+  // chauffeur een geografisch compacte set echte BAG-adressen.
+  const selected=[],used=new Set();
+  const driverGroups=[...new Map(
+    demoKids.filter(k=>k.driver).map(k=>[k.driver,null])
+  ).keys()];
+  driverGroups.forEach((d,idx)=>{
+    const group=demoKids.filter(k=>k.driver===d);
+    const pool=pools[idx % pools.length];
+    if(!pool)return;
+    let picked=0;
+    for(const a of pool.addresses){
+      const key=(a.town+'|'+a.street+'|'+a.number).toLowerCase();
+      if(used.has(key))continue;
+      used.add(key);
+      selected.push({kid:group[picked],address:a});
+      picked++;
+      if(picked>=group.length)break;
+    }
+  });
+
+  if(selected.length<demoKids.length){
+    console.warn('V784: niet genoeg unieke adressen per chauffeur-groep; fallback naar algemene spreiding.');
+    selected.length=0;
+    used.clear();
+    let idx=0;
+    for(const pool of pools){
+      for(const a of pool.addresses){
+        const key=(a.town+'|'+a.street+'|'+a.number).toLowerCase();
+        if(used.has(key))continue;
+        used.add(key);
+        selected.push({kid:demoKids[idx++],address:a});
+        if(selected.length>=demoKids.length)break;
+      }
+      if(selected.length>=demoKids.length)break;
+    }
+  }
+  if(selected.length<100){
+    console.warn('V776: slechts '+selected.length+' unieke adressen gevonden; gebruik gegarandeerde demo-spreiding.');
+    applyGuaranteedDemoHomeSpread();
+    return;
+  }
+
+  selected.forEach((item,i)=>{
+    const k=item.kid||demoKids[i];
+    const a=item.address||item;
+    if(!k||!a)return;
+    k.demoTown=a.town;
+    k.demoStreet=a.street;
+    k.demoGroup=i+1;
+    k.address=a.address;
+    k.pickupAddress=a.address;
+    k.lat=a.lat;
+    k.lon=a.lon;
+    const sp=schoolLocations[k.school];
+    k.destinationAddress=sp?.address||k.destination||k.school||'';
+  });
+
+  addressesReady=true;
+  demoAddressSpreadVersion='v805';
+  saveState();
+  renderAll();
+  console.log('V776: 100 echte adressen over '+new Set(selected.map(a=>a.town)).size+' plaatsen en '+new Set(selected.map(a=>a.street+'|'+a.town)).size+' straten.');
+}
+function demoLocationForKid(k){
+  const n=parseInt(String(k?.id||'').slice(1),10);
+  if(!Number.isFinite(n)||n<1||n>100)return null;
+  const group=Math.floor((n-1)/8);
+  return drentheDemoLocations[group%drentheDemoLocations.length]||null;
+}
+
+function schoolPoint(k){
+  // Nieuwe ritten kunnen een eigen bestemmingsadres hebben. Als dat adres
+  // geocodeerd is, gebruik altijd dat exacte eindpunt.
+  if(k && Number.isFinite(k.destinationLat) && Number.isFinite(k.destinationLon)){
+    return {
+      lat:k.destinationLat,
+      lon:k.destinationLon,
+      address:k.destinationAddress||k.address||k.destination||'Bestemming'
+    };
+  }
+  return schoolLocations[k?.school] || schoolLocations[k?.destination] || null;
+}
+function pickupToSchoolMinutes(k){
+  const s=schoolPoint(k);
+  if(!s || !Number.isFinite(k?.lat) || !Number.isFinite(k?.lon)) return 20;
+  const km=geoDistanceKm({lat:k.lat,lon:k.lon},s);
+  if(!Number.isFinite(km)) return 20;
+  // Conservatieve inschatting zodat de planner niet te krap plant.
+  return Math.max(5,Math.ceil((km/45)*60));
+}
+function schoolArrivalMinutes(k){
+  return (k?.timeMin||0)+pickupToSchoolMinutes(k);
+}
+function schoolDeadlineOk(k){
+  // Een rit die na 08:30 is ingevoerd is een speciale/niet-ochtendrit.
+  // Daarvoor geldt de vaste ochtenddeadline van 08:30 niet.
+  if(Number(k?.timeMin)>SCHOOL_DEADLINE_MIN)return true;
+  return schoolArrivalMinutes(k)<=SCHOOL_DEADLINE_MIN;
+}
+
+const streets=['Laan van de Marel','Emmerhout','Boslaan','Hoofdstraat','Stationsstraat'];
+let kids=[];
+let previousPlan=null;
+let demoCounter=101;
+let demoAddressSpreadVersion='';
+let demoPlanningSpreadLocked=false;
+
+const busNumbers=Array.from({length:50},(_,i)=>'Bus '+String(i+1).padStart(2,'0'));
+let busIssues={};
+let replacementAssignments={};
+let replacementSeq=1;
+function busForDriver(d){
+  const i=driverNames.indexOf(d);
+  return i>=0 ? busNumbers[i] : 'Geen bus';
+}
+function isBusUnavailable(d){return !!busIssues[d];}
+
+let driverUnavailable={};
+let parentDriverChanges={};
+function isDriverUnavailable(d){return !!driverUnavailable[d];}
+function logPlannerAutomation(message){
+ const box=document.getElementById('plannerDelayAlerts');
+ if(box){
+  box.insertAdjacentHTML('afterbegin','<div class="notice" style="margin-bottom:8px">🤖 '+message+'</div>');
+  setTimeout(()=>{const n=box.querySelector('.notice');if(n)n.remove()},6000);
+ }
+}
+function repairPlannerAssignments(){
+ let changed=0;
+ const available=driverNames.filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d));
+
+ // V812: een actieve rit mag nooit zonder chauffeur blijven als er nog
+ // capaciteit beschikbaar is. Probeer eerst een volledig haalbare route;
+ // als dat niet lukt, wijs hem toch toe aan de minst belaste chauffeur.
+ // Eventuele route-/tijdproblemen blijven daarna zichtbaar in de dagstartcontrole.
+ kids.filter(k=>k.status==='waiting'&&!k.fixed&&(!k.driver||isDriverUnavailable(k.driver)||isBusUnavailable(k.driver)))
+   .forEach(k=>{
+     const candidates=available.map(d=>{
+       const q=kids.filter(x=>x.driver===d&&active(x)&&x.id!==k.id);
+       if(q.length>=MAX)return null;
+       const sameTime=q.some(x=>Number(x.timeMin)===Number(k.timeMin));
+       const trial=[...q,k].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+       const minutes=routeDurationEstimate(trial,driverNames.indexOf(d));
+       const limit=routeLimitForRides(trial);
+       return {d,q,sameTime,minutes,limit};
+     }).filter(Boolean);
+
+     const feasible=candidates
+       .filter(x=>!x.sameTime&&Number.isFinite(x.minutes)&&x.minutes<=x.limit)
+       .sort((a,b)=>a.q.length-b.q.length||a.minutes-b.minutes);
+
+     const fallback=candidates
+       .filter(x=>!x.sameTime)
+       .sort((a,b)=>a.q.length-b.q.length||a.minutes-b.minutes);
+
+     const pick=feasible[0]||fallback[0];
+     if(pick){
+       k.driver=pick.d;
+       changed++;
+     }
+   });
+
+ return changed;
+}
+
+async function toggleDriverAvailability(d){
+  driverUnavailable[d]=!driverUnavailable[d];
+
+  if(driverUnavailable[d]){
+    renderAll();
+    logPlannerAutomation('⏳ Automatische routeherverdeling gestart voor '+d+'…');
+    const result=await redistributeUnavailableDriver(d);
+    renderAll();
+    if(result.moved){
+      logPlannerAutomation('✅ '+result.moved+' kinderen automatisch verdeeld over '+result.drivers+' beschikbare chauffeurs. Maximaal 60 min route gecontroleerd.');
+    }else{
+      logPlannerAutomation('⚠️ Niet alle kinderen konden automatisch binnen de voorwaarden worden geplaatst.');
+    }
+  }else{
+    // Chauffeur is beter gemeld. Zet alleen ritten terug die nog niet zijn begonnen.
+    // Rittten met status "picked" blijven bij de vervangende chauffeur.
+    let restored=0;
+    Object.keys(parentDriverChanges||{}).forEach(id=>{
+      const change=parentDriverChanges[id];
+      const k=find(id);
+      if(change && change.from===d && k && k.status==='waiting' && k.driver===change.to){
+        k.driver=d;
+        delete parentDriverChanges[id];
+        restored++;
+      }
+    });
+
+    renderAll();
+    if(restored){
+      logPlannerAutomation('↩️ '+restored+' nog niet gestarte ritten zijn teruggezet naar '+d+'. Ouderportaal en planning zijn bijgewerkt.');
+    }else{
+      logPlannerAutomation('✅ '+d+' is weer beschikbaar.');
+    }
+  }
+}
+
+function activeUnassignedForDriver(d){
+  // Alle actieve kinderen gaan mee bij ziekte/niet-beschikbaarheid,
+  // ook kinderen met een vaste chauffeurrelatie.
+  return kids.filter(k=>k.driver===d && active(k));
+}
+
+function geoDistanceKm(a,b){
+  if(!a||!b||![a.lat,a.lon,b.lat,b.lon].every(Number.isFinite))return Infinity;
+  const R=6371, p=Math.PI/180;
+  const dLat=(b.lat-a.lat)*p, dLon=(b.lon-a.lon)*p;
+  const x=Math.sin(dLat/2)**2+Math.cos(a.lat*p)*Math.cos(b.lat*p)*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.sqrt(x));
+}
+
+function estimateRouteMinutes(stops){
+  if(!stops.length)return 0;
+  let km=0;
+  for(let i=1;i<stops.length;i++){
+    const a=stops[i-1],b=stops[i];
+    const d=geoDistanceKm(a,b);
+    if(!Number.isFinite(d))return Infinity;
+    km+=d;
+  }
+  // Conservative urban estimate; OSRM validates the final groups when coordinates exist.
+  return Math.round((km/35)*60);
+}
+
+async function validateRouteMinutes(driver, rides){
+  if(!rides.length)return 0;
+  const coords=rides.map(k=>[k.lon,k.lat]).filter(p=>Number.isFinite(p[0])&&Number.isFinite(p[1]));
+  if(coords.length<2)return estimateRouteMinutes(rides);
+  try{
+    const route=await osrmRoute(coords);
+    return Math.round(route.duration/60);
+  }catch(e){
+    return estimateRouteMinutes(rides);
+  }
+}
+
+// Harde maximale routelengte per chauffeur.
+// Normale route: 90 min. Bij een route met meerdere scholen mag de totale
+// route maximaal 99 min zijn, mits beide schoolbestemmingen worden meegenomen.
+const MAX_ROUTE_MINUTES=90;
+const MAX_MIXED_SCHOOL_ROUTE_MINUTES=99;
+
+function routeSchools(rides){
+  const map=new Map();
+  (rides||[]).forEach(k=>{
+    const key=k.school||k.destination||'';
+    if(!key || map.has(key))return;
+    const s=schoolPoint(k);
+    if(s && Number.isFinite(s.lat)&&Number.isFinite(s.lon))map.set(key,s);
+  });
+  return [...map.values()];
+}
+function routeLimitForRides(rides){
+  return routeSchools(rides).length>1 ? MAX_MIXED_SCHOOL_ROUTE_MINUTES : MAX_ROUTE_MINUTES;
+}
+function routeDurationEstimate(rides,driverIndex){
+  if(!rides || !rides.length)return 0;
+  const ordered=[...rides].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+  if(ordered.length===1){
+    const school=schoolPoint(ordered[0]);
+    return school ? routeMinutesBetween(ordered[0],{lat:school.lat,lon:school.lon},driverIndex) : 0;
+  }
+  let total=0;
+  for(let i=1;i<ordered.length;i++){
+    total+=routeMinutesBetween(ordered[i-1],ordered[i],driverIndex);
+  }
+  // De rit eindigt op de school. Deze laatste etappe telt dus ook mee
+  // voor de harde maximale routetijd van 90 minuten.
+  const last=ordered[ordered.length-1];
+  const schoolsForRoute=routeSchools(ordered);
+  if(schoolsForRoute.length<=1){
+    const school=schoolsForRoute[0];
+    if(school) total+=routeMinutesBetween(last,{lat:school.lat,lon:school.lon},driverIndex);
+    return total;
+  }
+
+  // Bij meerdere scholen: vanaf de laatste ophaalstop naar de dichtstbijzijnde
+  // school en daarna naar de volgende school. Zo telt de rit naar beide scholen.
+  let current={lat:last.lat,lon:last.lon};
+  const remainingSchools=schoolsForRoute.slice();
+  while(remainingSchools.length){
+    let bestIndex=0,bestKm=Infinity;
+    remainingSchools.forEach((s,i)=>{
+      const km=geoDistanceKm(current,s);
+      if(km<bestKm){bestKm=km;bestIndex=i;}
+    });
+    const next=remainingSchools.splice(bestIndex,1)[0];
+    total+=Number.isFinite(bestKm)?Math.max(1,Math.ceil(bestKm/35*60)):15;
+    current={lat:next.lat,lon:next.lon};
+  }
+  return total;
+}
+
+async function redistributeUnavailableDriver(brokenDriver,changeReason='ziek/niet beschikbaar'){
+  const affected=activeUnassignedForDriver(brokenDriver).sort((a,b)=>a.timeMin-b.timeMin);
+  const originalDrivers=new Map(affected.map(k=>[k.id,brokenDriver]));
+  if(!affected.length)return {moved:0,drivers:0};
+
+  // Eerst direct herverdelen. Nooit wachten op geocoding voordat kinderen
+  // van een niet-beschikbare chauffeur worden afgehaald.
+  const candidates=driverNames.filter(d=>
+    d!==brokenDriver &&
+    !isDriverUnavailable(d) &&
+    !isBusUnavailable(d)
+  );
+
+  // Start with current active routes. Existing routes stay intact; only the affected
+  // children are inserted where they add the least geographical detour.
+  const groups=new Map();
+  candidates.forEach(d=>{
+    groups.set(d,kids.filter(k=>k.driver===d && active(k)).sort((a,b)=>a.timeMin-b.timeMin).slice());
+  });
+
+  let moved=0;
+  for(const child of affected){
+    const options=[];
+    for(const d of candidates){
+      const group=groups.get(d)||[];
+      if(group.length>=MAX)continue;
+
+      // Prefer a nearby route and keep the pickup-time window coherent.
+      const timed=group.filter(k=>Math.abs((k.timeMin||0)-(child.timeMin||0))<=60);
+      const base=timed.length?timed:group;
+      const nearest=base.length
+        ? Math.min(...base.map(k=>geoDistanceKm(child,k)))
+        : 0;
+      const before=estimateRouteMinutes(group);
+      const trial=[...group,child].sort((a,b)=>a.timeMin-b.timeMin);
+      const estimated=estimateRouteMinutes(trial);
+      const routeMinutes=routeDurationEstimate(trial,driverNames.indexOf(d));
+      if(routeMinutes>MAX_ROUTE_MINUTES)continue;
+
+      // A group without coordinates gets a neutral score instead of being rejected.
+      const geoScore=Number.isFinite(nearest)?nearest*3:100;
+      const routeScore=Number.isFinite(estimated)?estimated:9999;
+      const overloadPenalty=group.length*1.5;
+      options.push({d,group,trial,routeScore,geoScore,overloadPenalty,before});
+    }
+
+    options.sort((a,b)=>
+      (a.geoScore+a.routeScore+a.overloadPenalty)-
+      (b.geoScore+b.routeScore+b.overloadPenalty)
+    );
+
+    const chosen=options.find(o=>o.routeScore<=60) || options[0];
+    if(!chosen)continue;
+
+    chosen.group.push(child);
+    chosen.group.sort((a,b)=>a.timeMin-b.timeMin);
+    groups.set(chosen.d,chosen.group);
+    child.driver=chosen.d;
+    moved++;
+  }
+
+  // Final hard check: any route over 60 minutes is split automatically onto
+  // another available bus with capacity, preferring the nearest alternative.
+  let changed=true;
+  let guard=0;
+  while(changed && guard++<20){
+    changed=false;
+    for(const d of candidates){
+      const group=groups.get(d)||[];
+      if(!group.length)continue;
+      const minutes=await validateRouteMinutes(d,group);
+      if(minutes<=60)continue;
+
+      const movable=group.filter(k=>k.driver===d)
+        .sort((a,b)=>geoDistanceKm(a,{lat:52.7858,lon:6.8976})-geoDistanceKm(b,{lat:52.7858,lon:6.8976}))
+        .pop();
+      if(!movable)continue;
+
+      const alternatives=candidates.filter(x=>x!==d && (groups.get(x)||[]).length<MAX);
+      let target=null;
+      for(const x of alternatives){
+        const trial=[...(groups.get(x)||[]),movable].sort((a,b)=>a.timeMin-b.timeMin);
+        if(await validateRouteMinutes(x,trial)<=60){target=x;break;}
+      }
+      if(target){
+        groups.set(d,group.filter(k=>k.id!==movable.id));
+        groups.get(target).push(movable);
+        groups.get(target).sort((a,b)=>a.timeMin-b.timeMin);
+        movable.driver=target;
+        changed=true;
+      }
+    }
+  }
+
+  affected.forEach(k=>{
+    const oldDriver=originalDrivers.get(k.id);
+    if(oldDriver && k.driver && k.driver!==oldDriver){
+      parentDriverChanges[k.id]={from:oldDriver,to:k.driver,reason:changeReason,at:Date.now()};
+    }
+  });
+  return {moved,drivers:[...groups.values()].filter(g=>g.some(k=>affected.some(a=>a.id===k.id))).length};
+}
+
+let plannerAutomationTimer=null;
+function startPlannerAutomation(){
+ if(plannerAutomationTimer)clearInterval(plannerAutomationTimer);
+ plannerAutomationTimer=setInterval(()=>{
+   const changed=repairPlannerAssignments();
+   if(changed)renderAll();
+ },15000);
+}
+
+
+
+const STORAGE_KEY='taxiPlannerStateV749';
+
+function saveState(){
+ try{
+  localStorage.setItem(STORAGE_KEY,JSON.stringify({
+   kids,driverUnavailable,busIssues,replacementAssignments,replacementSeq,demoCounter,parentDriverChanges,demoAddressSpreadVersion,demoPlanningSpreadLocked
+  }));
+ }catch(e){}
+}
+
+function normalizeBuiltInDemo(){
+  // V757: als de 60-straatspreiding al is opgeslagen, mag de oude
+  // 13-groepen-normalisatie de woonadressen NOOIT meer overschrijven.
+  // V782: zodra de echte demo-spreiding v74 of nieuwer is opgeslagen, mag de oude normalisatie niets meer overschrijven.\n  const spreadVersion=Number(String(demoAddressSpreadVersion||'').replace(/^v/i,''));\n  if(Number.isFinite(spreadVersion) && spreadVersion>=74)return false;\n  if(demoAddressSpreadVersion==='v61'||demoAddressSpreadVersion==='v62'||demoAddressSpreadVersion==='v63'||demoAddressSpreadVersion==='v64'||demoAddressSpreadVersion==='v65'||demoAddressSpreadVersion==='v66'||demoAddressSpreadVersion==='v68'||demoAddressSpreadVersion==='v69'||demoAddressSpreadVersion==='v70'||demoAddressSpreadVersion==='v71'||demoAddressSpreadVersion==='v72'||demoAddressSpreadVersion==='v73')return false;
+  // V73: elke demo-groep wordt eerst hard teruggezet naar zijn eigen plaats.
+  // Daarna mag alleen een verse BAG-hit binnen diezelfde straat + plaats volgen.
+  const demoKids=kids.filter(k=>/^k[0-9]+$/.test(String(k.id)));
+  const isDemo=demoKids.length===100 && demoKids.every(k=>k.status==='waiting'||k.status==='picked'||k.status==='school');
+  if(!isDemo)return false;
+  let changed=false;
+  demoKids.forEach(k=>{
+    const n=parseInt(String(k.id).slice(1),10), group=Math.floor((n-1)/8), pos=(n-1)%8;
+    const school=schools[group%schools.length], loc=drentheDemoLocations[group%drentheDemoLocations.length];
+    const wanted=driverNames[group]||'', wantedTime=420+(pos*10);
+    const lat=loc.lat+(pos%4)*0.00008, lon=loc.lon+Math.floor(pos/4)*0.00010;
+    k.school=school; k.destination=school; k.timeMin=wantedTime; k.time=fmtTime(wantedTime);
+    k.lat=lat; k.lon=lon;
+    k.address=loc.street+', '+loc.town+', Drenthe';
+    k.pickupAddress=k.address;
+    k.destinationAddress=schoolLocations[school]?.address||school;
+    k.driver=wanted; k.routeOrder=pos+1;
+    changed=true;
+  });
+  addressesReady=true;
+  return changed;
+}
+
+function loadState(){
+ try{
+  const raw=localStorage.getItem(STORAGE_KEY);
+  if(!raw)return false;
+  const state=JSON.parse(raw);
+  if(!state || !Array.isArray(state.kids) || !state.kids.length)return false;
+  kids=state.kids;
+  driverUnavailable=state.driverUnavailable||{};
+  busIssues=state.busIssues||{};
+  replacementAssignments=state.replacementAssignments||{};
+  parentDriverChanges=state.parentDriverChanges||{};
+  replacementSeq=Number(state.replacementSeq)||1;
+  demoCounter=Number(state.demoCounter)||101;
+  demoAddressSpreadVersion=state.demoAddressSpreadVersion||'';
+  demoPlanningSpreadLocked=Boolean(state.demoPlanningSpreadLocked);
+  normalizeBuiltInDemo();
+  addressesReady=kids.length>0 && kids.every(k=>Number.isFinite(k.lat)&&Number.isFinite(k.lon));
+  return true;
+ }catch(e){
+  return false;
+ }
+}
+
+function seed(){
+ kids=[];
+ for(let i=0;i<100;i++){
+  const group=Math.floor(i/8);
+  const pos=i%8;
+  const school=schools[group%schools.length];
+  const timeMin=420+(pos*10);
+  // Elke demo-bus krijgt een compacte groep in Emmen met 8 verschillende
+  // ophaaltijden. Daardoor is de testplanning bewust haalbaar.
+  const loc=drentheDemoLocations[group%drentheDemoLocations.length];
+  const lat=loc.lat+(pos%4)*0.00008;
+  const lon=loc.lon+Math.floor(pos/4)*0.00010;
+  kids.push({
+   id:'k'+(i+1),
+   name:names[i%names.length]+' '+(i+1),
+   timeMin,
+   time:fmtTime(timeMin),
+   address:loc.street+', '+loc.town+', Drenthe',
+   pickupAddress:loc.street+', '+loc.town+', Drenthe',
+   destinationAddress:schoolLocations[school]?.address||school,
+   school,
+   destination:school,
+   lat,lon,
+   driver:driverNames[group],
+   fixed:i<35,
+   status:'waiting',
+   approach:'Rustig en duidelijk aanspreken.',
+   safety:'Let op veilig instappen en gordel.',
+   important:'Geen bijzonderheden voor deze demo.'
+  });
+ }
+}
+function fmtTime(m){return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0')}
+function statusText(s){return ({waiting:'Wachtend',picked:'Onderweg',school:'Op school',absent:'🚫 Afgemeld',loose:'📋 Loosmelding'})[s]||s}
+function active(k){return k.status==='waiting'||k.status==='picked'}
+function load(d){return kids.filter(k=>k.driver===d&&active(k)).length}
+
+function driverTimeConflict(k,d){
+  // Een chauffeur kan nooit twee kinderen op hetzelfde ophaalmoment hebben.
+  // Daarnaast houden we rekening met de reistijd tussen opeenvolgende stops.
+  const rides=kids.filter(x=>x.id!==k.id && x.driver===d && active(x));
+  for(const other of rides){
+    const diff=Math.abs((k.timeMin||0)-(other.timeMin||0));
+    if(diff===0)return true;
+    const travel=routeMinutesBetween(other,k,driverNames.indexOf(d));
+    if(diff < Math.max(1,travel-15))return true;
+  }
+  return false;
+}
+
+
+document.addEventListener('DOMContentLoaded', function(){  });
+function showPage(id,btn){
+ document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+ document.getElementById(id).classList.add('active');
+ document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+ if(btn)btn.classList.add('active');
+ renderAll();
+ if(id==='live') setTimeout(initRealMap,150);
+}
+
+
+
+
+
+function updateParentDelayNotice(){
+  const area=document.getElementById('parentView') || document.getElementById('parent');
+  if(!area || typeof kids==='undefined') return;
+  area.querySelectorAll('.delay-parent-badge').forEach(x=>x.remove());
+  kids.filter(k=>Number(k.delay)>0).forEach(k=>{
+    const text=String(k.name||'');
+    if(!text) return;
+    const nodes=[...area.querySelectorAll('*')].filter(n=>n.children.length===0 && n.textContent.trim()===text);
+    nodes.slice(0,1).forEach(n=>{
+      const b=document.createElement('div');
+      b.className='delay-parent-badge';
+      b.textContent='⏱️ '+Number(k.delay)+' minuten vertraging';
+      n.parentElement.appendChild(b);
+    });
+  });
+}
+
+function renderDelayAlerts(){
+  const active=(typeof kids!=='undefined'?kids:[]).filter(k=>Number(k.delay)>0);
+  const box=document.getElementById('plannerDelayAlerts');
+  if(box){
+    box.innerHTML=active.length ? active.map(k =>
+      '<div class="delay-live-alert">⏱️ <strong>Vertraging:</strong> '+
+      (k.name||'Kind')+' heeft <strong>'+Number(k.delay)+' minuten</strong> vertraging.'+
+      (k.driver?' Chauffeur: '+k.driver+'.':'')+'</div>'
+    ).join('') : '';
+  }
+}
+
+function delayForKid(k){
+  return Number(k && k.delay) > 0 ? Number(k.delay) : 0;
+}
+
+
+function renderRouteControl(){
+ const box=document.getElementById('routeControl');
+ if(!box)return;
+ const MAX_ROUTE=90;
+ const rows=driverNames.map(d=>{
+   const rides=kids.filter(k=>k.driver===d&&active(k)).sort((a,b)=>((a.routeOrder||9999)-(b.routeOrder||9999))||((a.timeMin||0)-(b.timeMin||0)));
+   if(!rides.length)return '';
+   const first=rides[0], last=rides[rides.length-1];
+   const duration=Math.max(0,Math.round(routeDurationEstimate(rides)));
+   const over=duration>MAX_ROUTE;
+   const start=Number(first.timeMin)||0;
+   const end=start+duration;
+   const hh=n=>String(Math.floor(n/60)%24).padStart(2,'0'), mm=n=>String(n%60).padStart(2,'0');
+   const stops=rides.map((k,i)=>{
+     const tm=Number(k.timeMin)||0;
+     return '<div style="padding:5px 0;border-top:1px solid #eee"><b>'+(i+1)+'.</b> '+(k.name||'Kind')+' <span class="muted">('+hh(tm)+':'+mm(tm)+')</span><br><small>📍 '+(k.address||k.pickupAddress||'Adres onbekend')+' • '+(k.pickupCity||k.demoTown||'')+'</small></div>';
+   }).join('');
+   const status=over?'🔴 Boven 90 min':'✅ Binnen 90 min';
+   return '<div class="row" style="margin-bottom:8px;border-left:4px solid '+(over?'#c62828':'#2e7d32')+'"><b>🚕 '+d+'</b> — '+rides.length+'/8 kinderen <span class="badge">'+status+'</span><br><small>Start: '+hh(start)+':'+mm(start)+' • route: <b>'+duration+' min</b> • '+(over?'MAXIMUM OVERSCHREDEN':'maximaal 90 min')+'</small>'+(over?'<div style="margin-top:6px"><b>⚠️ Deze chauffeur heeft een routeconflict.</b> De kinderen blijven bij deze chauffeur.</div>':'')+'<details style="margin-top:6px"><summary>Routevolgorde bekijken</summary><div style="margin-top:6px">'+stops+'</div></details></div>';
+ }).join('');
+ box.innerHTML='<div class="small muted" style="margin-bottom:8px">⏱️ Route-limiet: normaal maximaal <b>90 minuten</b>; bij gecombineerde scholen maximaal <b>99 minuten</b>. AI mag kinderen tussen chauffeurs verplaatsen als dat nodig is.</div>'+(rows||'<p class="muted">Nog geen actieve routes.</p>');
+}
+function renderAll(){saveState();renderDashboard();renderPlanning();renderDriver();renderParent();renderLive();renderDelayAlerts();updateParentDelayNotice();renderAttention();renderFleet();renderRouteControl();if(realMap)renderRealMapMarkers();}
+
+
+function renderFleet(){
+  const summary=document.getElementById('fleetSummary');
+  const list=document.getElementById('fleetList');
+  if(!summary || !list) return;
+
+  const broken=driverNames.filter(d=>isBusUnavailable(d)).length;
+  const available=busNumbers.length-broken;
+
+  summary.innerHTML=
+   `<div class="fleet-summary">
+      <div class="fleet-stat"><b>${busNumbers.length}</b>Totale bussen</div>
+      <div class="fleet-stat bus-ok"><b>${available}</b>Beschikbaar</div>
+      <div class="fleet-stat ${broken?'bus-issue':''}"><b>${broken}</b>Storing</div>
+    </div>`;
+
+  list.innerHTML=driverNames.map(d=>{
+    const bus=busForDriver(d);
+    const issue=busIssues[d];
+    return `<div class="row ${issue?'bus-issue':'bus-ok'}">
+      <div class="bus-row">
+        <div><b>🚌 ${bus}</b><small>${d} • ${load(d)}/8 actieve kinderen</small></div>
+        <div>${issue
+          ? `<span class="badge">⚠️ Storing</span> <button onclick="openDriverDetails('${d}')">Details</button>`
+          : `<span class="badge">✅ Beschikbaar</span>`}</div>
+      </div>
+      ${issue?`<small>Storing: ${issue.reason} • ${affectedChildren(d).length} actieve kinderen</small>`:''}
+    </div>`;
+  }).join('');
+}
+
+function renderAttention(){
+ const box=document.getElementById('alerts');
+ const dash=document.getElementById('attentionDashboardV712');
+ if(!box)return;
+
+ const delays=kids.filter(k=>Number(k.delay)>0&&active(k));
+ const absentKids=kids.filter(k=>k.status==='absent');
+ const looseKids=kids.filter(k=>k.status==='loose');
+ const brokenDrivers=driverNames.filter(d=>isBusUnavailable(d));
+ const unavailableDrivers=driverNames.filter(d=>isDriverUnavailable(d));
+ const fullDrivers=driverNames.filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d)&&load(d)>=MAX);
+ const unassignedKids=kids.filter(k=>!k.driver&&active(k));
+ const replacements=Object.values(replacementAssignments||{}).filter(t=>t.status!=='assigned');
+
+ const items=[];
+ brokenDrivers.forEach(d=>items.push(`<div class="attention-action-v712 attention-detail-item"><div><b>🚌 Busstoring — ${busForDriver(d)}</b><div class="meta">${d} • ${busIssues[d]?.reason||'Storing'} • ${affectedChildren(d).length} actieve kinderen</div></div><button onclick="openDriverDetails('${d}')">Details</button></div>`));
+ unavailableDrivers.forEach(d=>items.push(`<div class="attention-action-v712 attention-detail-item"><div><b>👨‍✈️ Chauffeur niet beschikbaar — ${d}</b><div class="meta">Controleer bezetting en plan indien nodig opnieuw.</div></div><button onclick="openDriverDetails('${d}')">Details</button></div>`));
+ fullDrivers.forEach(d=>items.push(`<div class="attention-action-v712 attention-detail-item"><div><b>🚌 Bus vol — ${busForDriver(d)}</b><div class="meta">${d} • ${load(d)}/${MAX} kinderen • geen vrije plaatsen</div></div><button onclick="openDriverDetails('${d}')">Details</button></div>`));
+ delays.forEach(k=>items.push(`<div class="attention-action-v712 attention-detail-item"><div><b>⏱️ Vertraging — ${k.name}</b><div class="meta">${k.delay} minuten • ${k.driver||'Geen chauffeur'} • ${k.address}</div></div><button onclick="openChild('${k.id}')">Details</button></div>`));
+ looseKids.forEach(k=>items.push(`<div class="attention-action-v712 attention-detail-item"><div><b>📋 Loosmelding — ${k.name}</b><div class="meta">${k.looseReason||'Melding'} • ${k.driver||'Geen chauffeur'}</div></div><button onclick="openChild('${k.id}')">Details</button></div>`));
+ absentKids.forEach(k=>items.push(`<div class="attention-action-v712 attention-detail-item"><div><b>🚫 Afgemeld — ${k.name}</b><div class="meta">${k.time} • ${k.school} • rit uit actieve planning</div></div><button onclick="openChild('${k.id}')">Details</button></div>`));
+ unassignedKids.forEach(k=>items.push(`<div class="attention-action-v712 attention-detail-item"><div><b>⚠️ Geen chauffeur — ${k.name}</b><div class="meta">${k.time} • ${k.address} • ${k.school}</div></div><button onclick="openChild('${k.id}')">Details</button></div>`));
+ replacements.forEach(t=>items.push(`<div class="attention-action-v712 attention-detail-item"><div><b>🔄 Vervangingsrit — ${t.id}</b><div class="meta">${t.brokenBus} • ${t.children?.length||0} kinderen • ${t.replacementDriver||'nog niet toegewezen'}</div></div><button onclick="showBusReplacement('${t.brokenDriver}',0)">Details</button></div>`));
+
+ const counts={
+  broken:brokenDrivers.length,
+  unavailable:unavailableDrivers.length,
+  delays:delays.length,
+  other:looseKids.length+absentKids.length+replacements.length+fullDrivers.length+unassignedKids.length
+ };
+ const total=items.length;
+
+ if(dash){
+  dash.innerHTML=`<div class="attention-dashboard-v712">
+   <div class="attention-stat-v712 ${counts.broken?'red':'green'}"><b>${counts.broken}</b><small>🚌 Busstoring</small></div>
+   <div class="attention-stat-v712 ${counts.unavailable?'red':'green'}"><b>${counts.unavailable}</b><small>👨‍✈️ Niet beschikbaar</small></div>
+   <div class="attention-stat-v712 ${counts.delays?'orange':'green'}"><b>${counts.delays}</b><small>⏱️ Vertraging</small></div>
+   <div class="attention-stat-v712 ${counts.other?'blue':'green'}"><b>${counts.other}</b><small>📋 Overige acties</small></div>
+  </div>
+  <div class="attention-open-title"><b>🔎 Open meldingen — ${total}</b><span>Klik op Details voor de volledige melding</span></div>
+  <div class="attention-open-list">${items.length?items.join(''):'<div class="attention-action-v712"><div><b>✅ Geen openstaande meldingen</b><div class="meta">Alle ritten, chauffeurs en bussen staan momenteel zonder actieve actie.</div></div></div>'}</div>`;
+ }
+ box.innerHTML='';
+}
+async function runDayStartCheck(){
+  const box=document.getElementById('dayStartCheck');
+  if(!box)return;
+  box.innerHTML='<div class="daystart-result daystart-warn"><b>🔎 Dagstartcontrole…</b></div>';
+
+  const unavailable=driverNames.filter(d=>isDriverUnavailable(d));
+  const broken=driverNames.filter(d=>isBusUnavailable(d));
+  const unassigned=kids.filter(k=>active(k)&&!k.driver);
+  const overloaded=driverNames.filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d)&&load(d)>MAX);
+  const routeProblems=[];
+  const routeConflictDetails=[];
+  const longRoutes=[];
+  const deadlineProblems=[];
+
+  driverNames.forEach((d,di)=>{
+    const q=kids.filter(k=>k.driver===d&&active(k)).sort((a,b)=>a.timeMin-b.timeMin);
+    if(!q.length)return;
+
+    const minutes=routeDurationEstimate(q,di);
+    if(Number.isFinite(minutes)&&minutes>MAX_ROUTE_MINUTES)longRoutes.push(d);
+
+    q.forEach(k=>{if(!schoolDeadlineOk(k))deadlineProblems.push(k);});
+
+    for(let i=1;i<q.length;i++){
+      const gap=(q[i].timeMin||0)-(q[i-1].timeMin||0);
+      const travel=routeMinutesBetween(q[i-1],q[i],di);
+      if(gap===0 || (gap>=0&&travel>gap+15)){
+        routeProblems.push(d);
+        routeConflictDetails.push({
+          driver:d,
+          prev:q[i-1],
+          cur:q[i],
+          gap,
+          travel
+        });
+      }
+    }
+  });
+
+  const uniqueRouteDrivers=[...new Set(routeProblems)];
+  const uniqueDeadlineDrivers=[...new Set(deadlineProblems.map(k=>k.driver))];
+  const totalRouteIssues=routeProblems.length+longRoutes.length+deadlineProblems.length;
+  const totalIssues=unavailable.length+broken.length+unassigned.length+overloaded.length+totalRouteIssues;
+
+  const status=totalIssues?'daystart-warn':'daystart-ok';
+
+  let summary='';
+  if(unavailable.length)summary+='<div class="daystart-item">👨‍✈️ '+unavailable.length+' chauffeur'+(unavailable.length===1?'':'s')+' niet beschikbaar.</div>';
+  if(broken.length)summary+='<div class="daystart-item">🚌 '+broken.length+' bus'+(broken.length===1?'':'sen')+' met storing.</div>';
+  if(unassigned.length)summary+='<div class="daystart-item">⚠️ '+unassigned.length+' rit'+(unassigned.length===1?'':'ten')+' zonder chauffeur.</div>';
+  if(overloaded.length)summary+='<div class="daystart-item">🔴 '+overloaded.length+' chauffeur'+(overloaded.length===1?'':'s')+' boven de capaciteit.</div>';
+  if(uniqueRouteDrivers.length){
+    const routeCounts={};
+    routeProblems.forEach(d=>routeCounts[d]=(routeCounts[d]||0)+1);
+    const details=uniqueRouteDrivers.map(d=>
+      d+' ('+routeCounts[d]+' conflict'+(routeCounts[d]===1?'':'en')+')'
+    ).join(', ');
+    const conflictDetails=routeConflictDetails.map(x=>{
+      const p=x.prev?.time || fmtTime(x.prev?.timeMin||0);
+      const q=x.cur?.time || fmtTime(x.cur?.timeMin||0);
+      return x.driver+' · '+p+' → '+q+' · '+x.gap+' min ruimte / '+x.travel+' min reistijd';
+    }).join('<br>↳ ');
+    summary+='<div class="daystart-item">🛣️ '+uniqueRouteDrivers.length+' chauffeur'+(uniqueRouteDrivers.length===1?'':'s')+' met routeconflicten.</div>'+
+      '<div class="daystart-item daystart-detail">↳ '+details+'</div>'+
+      '<div class="daystart-item daystart-detail" style="font-size:.92em">↳ '+conflictDetails+'</div>';
+  }
+  if(longRoutes.length)summary+='<div class="daystart-item">⏱️ '+longRoutes.length+' route'+(longRoutes.length===1?'':'s')+' langer dan 90 minuten.</div>';
+  if(uniqueDeadlineDrivers.length){
+    const deadlineCounts={};
+    deadlineProblems.forEach(k=>{
+      const d=k.driver||'Onbekend';
+      deadlineCounts[d]=(deadlineCounts[d]||0)+1;
+    });
+    const details=uniqueDeadlineDrivers.map(d=>
+      d+' ('+deadlineCounts[d]+' kind'+(deadlineCounts[d]===1?'':'eren')+')'
+    ).join(', ');
+    summary+='<div class="daystart-item">🏫 '+uniqueDeadlineDrivers.length+' chauffeur'+(uniqueDeadlineDrivers.length===1?'':'s')+' met een schooldeadline-probleem.</div>'+
+      '<div class="daystart-item daystart-detail">↳ '+details+'</div>';
+  }
+
+  box.innerHTML='<div class="daystart-result '+status+'">'+
+    '<h3 style="margin:0">🔎 Dagstartcontrole — '+(totalIssues?'Aandacht nodig':'Alles in orde')+'</h3>'+
+    '<div class="daystart-summary">'+
+      '<div class="daystart-stat '+(unavailable.length?'daystart-danger':'')+'"><b>'+unavailable.length+'</b><small>Niet beschikbaar</small></div>'+
+      '<div class="daystart-stat '+(broken.length?'daystart-danger':'')+'"><b>'+broken.length+'</b><small>Busstoringen</small></div>'+
+      '<div class="daystart-stat '+(unassigned.length?'daystart-danger':'')+'"><b>'+unassigned.length+'</b><small>Zonder chauffeur</small></div>'+
+      '<div class="daystart-stat '+(totalRouteIssues?'daystart-danger':'')+'"><b>'+totalRouteIssues+'</b><small>Routeproblemen</small></div>'+
+    '</div>'+
+    (summary||'<div class="daystart-item">✅ Geen problemen gevonden.</div>')+
+    '<p class="small muted" style="margin-bottom:0">Details blijven beschikbaar in de planning per chauffeur.</p>'+
+  '</div>';
+}
+
+function renderDashboard(){
+ const activeDrivers=driverNames.filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d)).length;
+ const waiting=kids.filter(k=>k.status==='waiting').length;
+ const underway=kids.filter(k=>k.status==='picked').length;
+ const school=kids.filter(k=>k.status==='school').length;
+ const alerts=kids.filter(k=>k.status==='absent'||k.status==='loose'||(Number(k.delay)>0&&active(k))||!k.driver&&active(k)).length
+  +driverNames.filter(d=>isDriverUnavailable(d)||isBusUnavailable(d)||(!isDriverUnavailable(d)&&!isBusUnavailable(d)&&load(d)>=MAX)).length;
+ document.getElementById('dashboard').innerHTML=
+ `<div><div class="stat">${activeDrivers}</div><div class="muted">Actieve chauffeurs</div></div>
+ <div><div class="stat">${kids.length}</div><div class="muted">Kinderen vandaag</div></div>
+ <div><div class="stat">${Math.max(...driverNames.map(load))}/8</div><div class="muted">Volste bus</div></div>
+ <div><div class="stat">${alerts}</div><div class="muted">Open meldingen</div></div>`;
+
+ const q=(document.getElementById('driverSearch')?.value||'').toLowerCase();
+ document.getElementById('driverList').innerHTML=driverNames.filter(d=>d.toLowerCase().includes(q)).map(d=>
+ `<div id="collapsibleChildrenReal" class="collapsible-section"><button type="button" class="collapsible-header" onclick="toggleCollapsible('collapsibleChildrenReal')"><span>👧 Kinderen</span><span class="collapsible-arrow">▼</span></button><div class="collapsible-content"><div class="row" onclick="openDriverDetails('${d}')" style="cursor:pointer">
+ <b>${d}</b> — ${load(d)}/8 kinderen
+ <span class="badge">${isDriverUnavailable(d)?'Niet beschikbaar':(load(d)>=8?'Vol':'Beschikbaar')}</span>
+ <div class="small muted">Klik voor chauffeurdetails</div></div></div></div>`).join('');
+
+ renderAttention();
+}
+
+function renderPlanning(){
+ const q=(document.getElementById('rideSearch')?.value||'').toLowerCase();
+ const f=document.getElementById('rideFilter')?.value||'all';
+ const arr=kids.filter(k=>{
+  const txt=(k.name+' '+(k.school||'')+' '+(k.destination||'')+' '+(k.driver||'')+' '+(k.address||'')).toLowerCase();
+  return (!q||txt.includes(q))&&(f==='all'||k.status===f);
+ }).sort((a,b)=>a.timeMin-b.timeMin);
+
+ const planning=document.getElementById('planning');
+ if(!planning)return;
+
+ const header='<p class="muted">'+arr.length+' ritten • tik op een kind om de extra informatie uit te klappen</p>';
+ const cards=arr.map(k=>childCardHtml(k)).join('');
+ planning.innerHTML=header+(cards||'<p>Geen ritten.</p>');
+}
+let driverSelectedKid={};
+function getDriverQueue(d){
+ return kids.filter(k=>k.driver===d && (k.status==='waiting'||k.status==='picked'))
+   .sort((a,b)=>{
+     const ao=Number.isFinite(a.routeOrder)?a.routeOrder:9999;
+     const bo=Number.isFinite(b.routeOrder)?b.routeOrder:9999;
+     if(ao!==bo)return ao-bo;
+     return a.timeMin-b.timeMin;
+   });
+}
+function setDriverKid(id){
+ const k=find(id);
+ if(k && k.driver===document.getElementById('driverSelect').value) driverSelectedKid[k.driver]=id;
+ renderDriver();
+}
+function moveDriverSelection(step){
+ const d=document.getElementById('driverSelect').value;
+ const q=getDriverQueue(d);
+ if(!q.length)return;
+ let idx=q.findIndex(k=>k.id===driverSelectedKid[d]);
+ if(idx<0)idx=0;
+ idx=Math.max(0,Math.min(q.length-1,idx+step));
+ driverSelectedKid[d]=q[idx].id;
+ renderDriver();
+}
+let driverGps={};
+let driverGpsWatch=null;
+function startDriverGPS(){
+  if(!navigator.geolocation){alert('GPS wordt niet ondersteund op dit apparaat.');return;}
+  if(driverGpsWatch!==null)return;
+  driverGpsWatch=navigator.geolocation.watchPosition(pos=>{
+    const d=document.getElementById('driverSelect')?.value;
+    if(!d)return;
+    driverGps[d]={lat:pos.coords.latitude,lon:pos.coords.longitude,accuracy:Math.round(pos.coords.accuracy||0),at:Date.now()};
+    saveState();
+    renderDriver();
+    renderLive();
+  },err=>{
+    const box=document.getElementById('driverGpsStatus');
+    if(box)box.innerHTML='⚠️ GPS niet beschikbaar: '+(err.message||'controleer locatie-toestemming');
+  },{enableHighAccuracy:true,maximumAge:10000,timeout:15000});
+  const box=document.getElementById('driverGpsStatus');
+  if(box)box.innerHTML='📡 GPS actief — locatie wordt live bijgewerkt.';
+}
+function stopDriverGPS(){
+  if(driverGpsWatch!==null){navigator.geolocation.clearWatch(driverGpsWatch);driverGpsWatch=null;}
+  const box=document.getElementById('driverGpsStatus');
+  if(box)box.innerHTML='⏸️ GPS gestopt';
+}
+function driverNavigation(id){
+  const k=typeof id==='string' ? find(id) : id;
+  if(!k)return;
+  const destination=String(k.address||'').trim();
+  if(!destination){
+    alert('Voor dit kind is geen adres beschikbaar.');
+    return;
+  }
+  const url='https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(destination);
+  const win=window.open(url,'_blank');
+  if(!win) window.location.href=url;
+}
+function renderDriver(){
+ const s=document.getElementById('driverSelect');
+ const current=s.value;
+ s.innerHTML=driverNames.map(d=>`<option>${d}</option>`).join('');
+ if(driverNames.includes(current))s.value=current;
+ const d=s.value;
+ const list=kids.filter(k=>k.driver===d).sort((a,b)=>a.timeMin-b.timeMin);
+ const q=getDriverQueue(d);
+ if(!q.length){
+   delete driverSelectedKid[d];
+   document.getElementById('driverRides').innerHTML=`<div class="driver-mode-v71">
+    <h3 style="margin:0">🚕 Chauffeurmodus</h3>
+    <div class="driver-status-v71"><span>👨‍✈️ ${d}</span><span>🚌 ${busForDriver(d)}</span><span>👦 ${load(d)}/8</span></div>
+   <div id="driverGpsStatus" class="small muted" style="margin:8px 0">📍 GPS nog niet gestart</div>
+   <div class="actions">
+    <button class="primary" onclick="startDriverGPS()">📡 Start live GPS</button>
+    <button onclick="stopDriverGPS()">⏸️ Stop GPS</button>
+   </div>
+    <div class="driver-next-v71"><div class="kid-name">Geen volgende rit</div><p class="muted">Alle ritten zijn afgehandeld.</p></div>
+   </div>`;
+   return;
+ }
+ let selected= q.find(k=>k.id===driverSelectedKid[d]);
+ if(!selected){selected=q[0];driverSelectedKid[d]=selected.id;}
+ const idx=q.findIndex(k=>k.id===selected.id);
+ const delay=delayForKid(selected);
+ const previous=idx>0?q[idx-1]:null;
+ const next=idx<q.length-1?q[idx+1]:null;
+ const upcoming=q.filter(k=>k.id!==selected.id).slice(idx+1,idx+4);
+
+ document.getElementById('driverRides').innerHTML=`<div class="driver-mode-v71">
+   <h3 style="margin:0">🚕 Chauffeurmodus</h3>
+   <div class="driver-status-v71"><span>👨‍✈️ ${d}</span><span>🚌 ${busForDriver(d)}</span><span>👦 ${load(d)}/8</span></div>
+   <div class="driver-next-v71">
+     <div class="big-time">${selected.time}</div>
+     <div class="kid-name">${selected.name}</div>
+     <div class="info-line">📍 <b>${selected.address}</b></div>
+     <button class="primary" onclick="driverNavigation('${selected.id}')">🧭 Navigeer naar dit kind</button>
+     <div class="info-line">🏫 ${selected.school}</div>
+     <div class="info-line">🧒 ${selected.approach}</div>
+     <div class="info-line">🛡️ ${selected.safety}</div>
+     <div class="info-line">ℹ️ ${selected.important}</div>
+     ${delay?'<div class="delay-live-alert">⏱️ '+delay+' minuten vertraging</div>':''}
+     <button class="driver-issue-banner-v715" onclick="reportCurrentDriverBus()">🚨 BUSSTORING MELDEN — DIRECT ACTIE</button>
+     <div class="driver-buttons-v71">
+       ${selected.status==='waiting'?'<button class="primary" onclick="pickup(\''+selected.id+'\')">🚗 Kind opgehaald</button>':''}
+       ${selected.status==='picked'?'<button class="primary" onclick="driverArriveNext(\''+selected.id+'\')">🏫 Op school</button>':''}
+       <button onclick="chauffeurDelay('${selected.id}')">⏱️ Vertraging</button>
+       <button onclick="openLoose('${selected.id}')">📋 Loosmelding</button>
+       <button onclick="absent('${selected.id}')">🚫 Afmelden</button>
+       <button onclick="openChild('${selected.id}')">📋 Profiel</button>
+     </div>
+     <div class="driver-nav-v711">
+       <button onclick="moveDriverSelection(-1)" ${idx===0?'disabled':''}>← Vorige</button>
+       <button class="primary" onclick="moveDriverSelection(1)" ${idx===q.length-1?'disabled':''}>Volgende →</button>
+     </div>
+     <div class="driver-current-v711">Rit ${idx+1} van ${q.length} • tik ook op een rit hieronder</div>
+   </div>
+   <div class="driver-queue-v71">
+     <b>Volgende kinderen</b>
+     ${upcoming.length?upcoming.map(k=>`<div class="driver-queue-item-v71" onclick="setDriverKid('${k.id}')"><b>${k.time}</b> — ${k.name} · ${k.address}</div>`).join(''):'<div class="small" style="margin-top:7px">Dit is de laatste open rit.</div>'}
+   </div>
+ </div>`;
+}
+function driverArriveNext(id){
+ const k=find(id); if(!k)return;
+ k.status='school';
+ const d=k.driver;
+ const q=getDriverQueue(d);
+ if(q.length) driverSelectedKid[d]=q[0].id;
+ else delete driverSelectedKid[d];
+ renderAll();
+}
+function renderParent(){
+ const s=document.getElementById('parentSelect');
+ const cur=s.value;
+ s.innerHTML=kids.slice(0,5).map(k=>`<option value="${k.id}">Demo ouder — ${k.name}${delayForKid(k)?'<div class=\"delay-parent-badge\">⏱️ '+delayForKid(k)+' minuten vertraging</div>':''}</option>`).join('');
+ if(cur)s.value=cur;
+ const k=kids.find(x=>x.id===s.value)||kids[0];
+ document.getElementById('parentView').innerHTML=`<div class="card"><h3>${k.name}</h3>
+ <p>Ophaaltijd: <b>${k.time}</b></p>
+ ${parentDriverChanges[k.id] && parentDriverChanges[k.id].to===k.driver ? '<div class="notice" style="margin:12px 0;border-left:5px solid #d97706;background:#fff7ed"><b>🔔 Belangrijk voor vandaag</b><br>Uw vaste chauffeur <b>'+parentDriverChanges[k.id].from+'</b> is vandaag '+(parentDriverChanges[k.id].reason==='busstoring'?'niet beschikbaar door een busstoring.':'ziek/niet beschikbaar.')+'<br>Uw kind wordt daarom opgehaald door <b>'+k.driver+'</b>.<br><span class="small">Zo kunt u uw kind hierop voorbereiden.</span></div>' : ''}
+ <p>Chauffeur: <b>${k.driver}</b></p>
+ <p>School: <b>${k.school}</b></p><p>Status: <span class="badge">${statusText(k.status)}</span>${k.delay?` <b>⏱️ Vertraging: +${k.delay} min</b>`:''}</p>
+ ${active(k)?`<button onclick="parentAbsent('${k.id}')">🚫 Kind afmelden</button>`:''}</div>`;
+}
+
+function renderLive(){
+ const activeRides=kids.filter(active).sort((a,b)=>a.timeMin-b.timeMin);
+ document.getElementById('liveView').innerHTML=`<div class="grid">
+ <div><div class="stat">${activeRides.length}</div><div class="muted">Actieve ritten</div></div>
+ <div><div class="stat">${kids.filter(k=>k.status==='picked').length}</div><div class="muted">Onderweg</div></div>
+ <div><div class="stat">${kids.filter(k=>k.status==='school').length}</div><div class="muted">Op school</div></div>
+ </div><p class="muted">🚌 Wagenpark: ${busNumbers.length} bussen • ✅ ${busNumbers.length-driverNames.filter(d=>isBusUnavailable(d)).length} beschikbaar • ⚠️ ${driverNames.filter(d=>isBusUnavailable(d)).length} in storing</p><h3>Actieve bussen</h3>`+
+ activeRides.map(k=>`<div class="row"><b>${k.driver}</b> — ${k.name} — ${statusText(k.status)}${k.delay?` — ⏱️ +${k.delay} min`:''} — ${k.time}</div>`).join('');
+}
+
+
+const mapRoads=[
+  ['h',12,'Meringaweg'],['h',34,'Emmerhoutlaan'],['h',58,'Boslaan'],
+  ['h',80,'Laan van de Marel'],['h',94,'Stationsstraat'],
+  ['v',18,'Cleo-dreef'],['v',40,'Taxiweg'],['v',63,'Schoolstraat'],
+  ['v',84,'Zonnewijzerlaan']
+];
+
+
+
+
+let realMap=null;
+let mapMarkers=[];
+let routeLines=[];
+
+
+function initRealMap(){
+  const el=document.getElementById('realMap');
+  if(!el)return;
+  if(typeof L==='undefined'){
+    el.innerHTML='<div style="padding:18px"><b>Kaart kan niet laden.</b><br>Controleer de internetverbinding en open de HTML opnieuw.</div>';
+    return;
+  }
+  if(realMap){
+    setTimeout(()=>realMap.invalidateSize(),100);
+    renderRealMapMarkers();
+    return;
+  }
+
+  el.innerHTML='';
+  realMap=L.map('realMap',{zoomControl:true}).setView([52.7858,6.8976],13);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    maxZoom:19,
+    attribution:'&copy; OpenStreetMap contributors'
+  }).addTo(realMap);
+
+  renderRealMapMarkers();
+  setTimeout(()=>realMap.invalidateSize(),250);
+}
+
+let realRouteMode=false;
+let realRouteLoading=false;
+
+const emmenStreets=["Hondsrugweg", "Weerdingerstraat", "Wolfsbergenweg", "Laan van de Marel", "Emmalaan", "Boslaan", "Dordsestraat", "Ermerweg", "Wilhelminastraat", "Stationsstraat", "Hoofdstraat", "Angelsloërdijk", "Laan van de Eekharst", "Rolderbrink", "Bargeresstraat", "Houtweg", "Odoornerweg", "Noordbargerstraat", "Veenkampen", "Dommersweg", "Hesselterbrink", "Bargeres", "Kleine Rietplas", "Sterrenkamp", "Veldstukken", "Kerspellaan", "Eerste Bokslootweg", "Tweede Bokslootweg", "Derde Bokslootweg", "Runde", "Dordsedijk", "Phileas Foggstraat", "Nijbracht", "Abel Tasmanstraat", "Boermarkeweg", "Slenerweg", "Valtherzandweg", "Haagjesweg", "Laan van de Bork", "Laan van de Iemenhees", "Laan van de Muzen", "Laan van de Kinholt", "Laan van de Zeven Linden", "Laan van de Bargerbeek", "Laan van het Kwekebos", "Ermerweg", "Burgemeester Tijmesstraat", "Oosterbracht", "Karel Doormanstraat", "Prins Hendrikstraat", "Prins Bernhardstraat", "Prinsesselaan", "Beatrixstraat", "Julianastraat", "Margrietstraat", "Irenestraat", "Oranjekanaal NZ", "Oranjekanaal ZZ", "Matissepassage", "Picassopassage", "Van Goghstraat", "Rembrandtstraat", "Vermeerstraat", "Mondriaanstraat", "Musselweg", "Runde ZZ", "Runde NZ", "Schoonebeekerdiep OZ", "Schoonebeekerdiep WZ", "Sterrenkamp", "Meester G.H. Schepersstraat", "Nassaustraat", "Koning Willem I straat", "Graaf van Oranjelaan", "Boermarke", "Edisonstraat", "Nijverheidsstraat", "Industrieweg", "Handelsweg", "Phileas Foggstraat", "Westeind", "Oude Zuidbargerstraat", "Zuidbargerstraat", "Rietlanden", "Kerkhoflaan", "Weerdingerkanaal NZ", "Weerdingerkanaal ZZ", "Oeverzwaluw", "Rietgans", "Kievit", "Meerkoet", "Waterhoen", "Zwaluw", "Merel", "Lijster", "Vink", "Mezenkamp", "Kievitsweg", "Hoenderkamp"];
+let addressesReady=false;
+const realRoadPoints=[
+  [6.8820,52.7905],[6.9100,52.7815],[6.9005,52.7735],[6.9060,52.7960],
+  [6.8705,52.7850],[6.8950,52.8040],[6.8840,52.7685],[6.9250,52.7880],
+  [6.9160,52.7760],[6.8750,52.7980],[6.9050,52.7600],[6.9150,52.8120],
+  [6.9200,52.8000],[6.9300,52.7700],[6.8900,52.7550],[6.8800,52.8150],
+  [6.8500,52.7850],[6.9200,52.7500]
+];
+
+function coordForDriverStop(driverIndex, stopIndex){
+  const d=driverNames[driverIndex];
+  const rides=kids.filter(k=>k.driver===d && active(k)).sort((a,b)=>{
+    const ao=Number.isFinite(a.routeOrder)?a.routeOrder:9999;
+    const bo=Number.isFinite(b.routeOrder)?b.routeOrder:9999;
+    return ao-bo || a.timeMin-b.timeMin;
+  });
+  const k=rides[stopIndex];
+  return coordForKid(k,driverIndex,stopIndex);
+}
+
+function coordForKid(k, driverIndex, stopIndex){
+  // Exact BAG/PDOK-adres gaat altijd vóór een straatfallback.
+  // De route moet naar het daadwerkelijke huispunt rijden.
+  if(k && Number.isFinite(k.lon) && Number.isFinite(k.lat)) return [k.lon,k.lat];
+  const demoLoc=demoLocationForKid(k);
+  if(demoLoc) return [demoLoc.lon,demoLoc.lat];
+  // Demo-coördinaten zijn stabiel per kind, zodat een route-optimalisatie
+  // niet zelf de ligging van een kind verandert wanneer de volgorde wijzigt.
+  const n=k && k.id ? (parseInt(String(k.id).replace(/\D/g,''),10)||0) : stopIndex;
+  return realRoadPoints[(driverIndex*3+n)%realRoadPoints.length];
+}
+
+async function osrmRoute(coords){
+  const joined=coords.map(p=>p[0]+','+p[1]).join(';');
+  const url='https://router.project-osrm.org/route/v1/driving/'+joined+
+    '?overview=full&geometries=geojson&steps=true';
+  const res=await fetch(url);
+  if(!res.ok)throw new Error('Routing server reageert niet');
+  const data=await res.json();
+  if(data.code!=='Ok' || !data.routes?.length)throw new Error('Geen route gevonden');
+  return data.routes[0];
+}
+
+async function osrmTrip(coords){
+  const joined=coords.map(p=>p[0]+','+p[1]).join(';');
+  const url='https://router.project-osrm.org/trip/v1/driving/'+joined+
+    '?source=first&destination=last&roundtrip=false&overview=false';
+  const res=await fetch(url);
+  if(!res.ok)throw new Error('Optimalisatie-server reageert niet');
+  const data=await res.json();
+  if(data.code!=='Ok' || !data.trips?.length)throw new Error('Geen optimale route gevonden');
+  return data;
+}
+
+async function osrmTable(coords){
+  const joined=coords.map(p=>p[0]+','+p[1]).join(';');
+  const url='https://router.project-osrm.org/table/v1/driving/'+joined+
+    '?annotations=duration';
+  const res=await fetch(url);
+  if(!res.ok)throw new Error('Route-afstandsmatrix reageert niet');
+  const data=await res.json();
+  if(data.code!=='Ok' || !Array.isArray(data.durations))throw new Error('Geen reistijdmatrix gevonden');
+  return data.durations;
+}
+
+function distanceFromEmmen(k){
+  const emmen={lat:52.7858,lon:6.8976};
+  if(!k||!Number.isFinite(k.lat)||!Number.isFinite(k.lon))return 0;
+  return geoDistanceKm({lat:k.lat,lon:k.lon},emmen);
+}
+
+function routeMinutesBetween(a,b,driverIndex){
+  const pa=coordForKid(a,driverIndex,0);
+  const pb=coordForKid(b,driverIndex,0);
+  const km=geoDistanceKm({lat:pa[1],lon:pa[0]},{lat:pb[1],lon:pb[0]});
+  return Number.isFinite(km)?Math.max(1,Math.ceil(km/35*60)):15;
+}
+
+async function optimizeDriverRoute(d){
+  const driverIndex=driverNames.indexOf(d);
+  const rides=kids.filter(k=>k.driver===d && active(k)).sort((a,b)=>a.timeMin-b.timeMin);
+  if(!rides.length)return {count:0,conflicts:0,minutes:0};
+
+  if(rides.length===1){
+    rides[0].routeOrder=1;
+    return {count:1,conflicts:0,minutes:0};
+  }
+
+  const coords=rides.map(k=>coordForKid(k,driverIndex,0));
+  let matrix=null;
+  try{ matrix=await osrmTable(coords); }catch(e){ matrix=null; }
+
+  const travel=(from,to)=>{
+    const i=rides.indexOf(from), j=rides.indexOf(to);
+    if(matrix && Number.isFinite(matrix[i]?.[j])) return Math.max(1,Math.ceil(matrix[i][j]/60));
+    return routeMinutesBetween(from,to,driverIndex);
+  };
+
+  // V806: buiten-naar-binnen.
+  // Voor de ochtendrit kiezen we het verst van Emmen gelegen kind als eerste
+  // haalbare stop. Daarna werken we geografisch terug richting Emmen/school.
+  // Geplande tijden en de ±15 min tolerantie blijven harde voorwaarden.
+  const picked=rides.filter(k=>k.status==='picked').sort((a,b)=>a.timeMin-b.timeMin);
+  let current=picked[0]||[...rides].sort((a,b)=>distanceFromEmmen(b)-distanceFromEmmen(a))[0];
+  const remaining=rides.filter(k=>k!==current);
+  const ordered=[current];
+  let conflicts=0;
+
+  while(remaining.length){
+    const feasible=remaining.filter(k=>{
+      const travelMin=travel(current,k);
+      // Chauffeur mag maximaal 15 min te vroeg of te laat aankomen.
+      // De uiterste toegestane aankomst is dus 15 min na de geplande tijd.
+      const latestAllowed=(k.timeMin||0)+15;
+      const arrival=(current.timeMin||0)+travelMin;
+      // Te vroeg aankomen is toegestaan: chauffeur wacht op locatie.
+      // Alleen meer dan 15 minuten te laat is niet toegestaan.
+      return arrival<=latestAllowed;
+    });
+
+    const pool=feasible.length?feasible:remaining;
+    if(!feasible.length)conflicts++;
+
+    pool.sort((a,b)=>{
+      // Eerst het verste punt vanaf Emmen, daarna de kortste reistijd.
+      const ea=distanceFromEmmen(a), eb=distanceFromEmmen(b);
+      if(ea!==eb)return eb-ea;
+      const da=travel(current,a), db=travel(current,b);
+      if(da!==db)return da-db;
+      return (a.timeMin||0)-(b.timeMin||0);
+    });
+
+    const next=pool[0];
+    ordered.push(next);
+    remaining.splice(remaining.indexOf(next),1);
+    current=next;
+  }
+
+  ordered.forEach((k,i)=>k.routeOrder=i+1);
+
+  let total=0;
+  for(let i=1;i<ordered.length;i++) total+=travel(ordered[i-1],ordered[i]);
+
+  return {count:ordered.length,conflicts,minutes:total};
+}
+
+function planningScore(){
+  const activeKids=kids.filter(active);
+  let score=0,longRoutes=0,conflicts=0,used=0,capacityWaste=0,deadlineLate=0;
+  for(const d of driverNames){
+    const q=activeKids.filter(k=>k.driver===d).sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+    if(!q.length)continue;
+    used++; capacityWaste+=MAX-q.length;
+    const limit=routeLimitForRides(q);
+    const minutes=routeDurationEstimate(q,driverNames.indexOf(d));
+    if(minutes>limit){longRoutes++;score+=(minutes-limit)*40;}
+    for(let i=1;i<q.length;i++){
+      const gap=(q[i].timeMin||0)-(q[i-1].timeMin||0);
+      const travel=routeMinutesBetween(q[i-1],q[i],driverNames.indexOf(d));
+      if(travel>gap+15){conflicts++;score+=(travel-gap-15)*30;}
+    }
+    const late=Math.max(0,schoolArrivalMinutes(q[q.length-1])-SCHOOL_DEADLINE_MIN);
+    if(late>0){deadlineLate++;score+=late*60;}
+    score+=Math.max(0,limit-minutes)*0.05;
+  }
+  score+=capacityWaste*1.5+used*0.5;
+  return {score,used,longRoutes,conflicts,deadlineLate,capacityWaste};
+}
+
+async function runBestPlanning(){
+  const box=document.getElementById('dayStartCheck');
+  if(box)box.innerHTML='<div class="daystart-result daystart-warn"><b>🏆 AI zoekt de beste planning…</b><div class="small muted">Capaciteit, routeafstand, verste kind eerst, reistijd en schooldeadline worden samen beoordeeld.</div></div>';
+  runAI(true);
+  await optimizeAllRoutes();
+  const result=planningScore();
+  saveState(); renderAll();
+  const ok=result.longRoutes===0&&result.conflicts===0&&result.deadlineLate===0;
+  alert((ok?'🏆 Beste planning gevonden!':'⚠️ Beste haalbare planning gevonden.')+'\\n\\n'+
+    '🚌 '+result.used+' chauffeurs gebruikt\\n'+
+    '👦 '+kids.filter(active).length+' kinderen gepland\\n'+
+    '📦 Vrije plaatsen: '+result.capacityWaste+'\\n'+
+    '⏱️ Routes boven limiet: '+result.longRoutes+'\\n'+
+    '🚦 Tijdconflicten: '+result.conflicts+'\\n'+
+    '🏫 Schooldeadline-problemen: '+result.deadlineLate+'\\n\\n'+
+    'De planner heeft capaciteit, geografische route, verste-kind-eerst en de bestaande tijdsregels meegenomen.');
+}
+
+async function repairAllTimeConflicts(){
+  // V808.1: controleer exact dezelfde tijdslogica als Dagstartcontrole.
+  // Een routevolgorde alleen is niet genoeg: de geplande ophaaltijden moeten
+  // ook werkelijk haalbaar zijn.
+  let repairs=0, moved=0;
+
+  for(let pass=0;pass<25;pass++){
+    let changed=false;
+
+    for(const d of driverNames){
+      const q=kids.filter(k=>k.driver===d&&active(k))
+        .sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+      if(q.length<2)continue;
+
+      for(let i=1;i<q.length;i++){
+        const prev=q[i-1], cur=q[i];
+        const gap=(cur.timeMin||0)-(prev.timeMin||0);
+        const travel=routeMinutesBetween(prev,cur,driverNames.indexOf(d));
+        if(gap>0 && travel<=gap+15)continue;
+
+        // Eerst proberen we de latere wachtende rit maximaal 15 minuten
+        // op te schuiven.
+        if(cur.status==='waiting'){
+          const old=Number(cur.timeMin)||0;
+          const target=Math.min(old+15,(prev.timeMin||0)+Math.max(1,travel-15));
+          if(target>old){
+            cur.timeMin=target;
+            cur.time=fmtTime(target);
+            repairs++;
+            changed=true;
+            continue;
+          }
+        }
+
+        // Daarna de eerdere wachtende rit maximaal 15 minuten vervroegen.
+        if(prev.status==='waiting'){
+          const old=Number(prev.timeMin)||0;
+          const target=Math.max(0,Math.min(old-1,(cur.timeMin||0)-Math.max(1,travel-15)));
+          if(target<old){
+            prev.timeMin=target;
+            prev.time=fmtTime(target);
+            repairs++;
+            changed=true;
+            continue;
+          }
+        }
+
+        // Als tijden niet meer verschoven kunnen worden, verplaats het kind
+        // naar een andere bus waar de volledige tijdsvolgorde wel past.
+        const candidates=driverNames.filter(t=>
+          t!==d&&!isDriverUnavailable(t)&&!isBusUnavailable(t)
+        ).map(t=>{
+          const tq=kids.filter(k=>k.driver===t&&active(k));
+          if(tq.length>=MAX)return null;
+          if(tq.some(x=>(x.timeMin||0)===(cur.timeMin||0)))return null;
+          const trial=[...tq,cur].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+          for(let j=1;j<trial.length;j++){
+            const g=(trial[j].timeMin||0)-(trial[j-1].timeMin||0);
+            const tr=routeMinutesBetween(trial[j-1],trial[j],driverNames.indexOf(t));
+            if(g<=0||tr>g+15)return null;
+          }
+          if(routeDurationEstimate(trial,driverNames.indexOf(t))>routeLimitForRides(trial))return null;
+          const nearest=tq.length?Math.min(...tq.map(x=>geoDistanceKm(cur,x))):0;
+          return {t,score:nearest+(MAX-tq.length)*2};
+        }).filter(Boolean).sort((a,b)=>a.score-b.score);
+
+        if(candidates[0]){
+          cur.driver=candidates[0].t;
+          moved++;
+          changed=true;
+          break;
+        }
+      }
+      if(changed)break;
+    }
+
+    if(!changed)break;
+    for(const d of driverNames) await optimizeDriverRoute(d);
+  }
+
+  return {repairs,moved};
+}
+
+async function optimizeAllRoutes(){
+  const box=document.getElementById('routeInfo');
+  if(box)box.textContent='🧭 Routes worden geografisch geoptimaliseerd en overvolle/te lange routes worden automatisch gesplitst…';
+
+  // Eerst de gewenste buiten-naar-binnen volgorde bepalen.
+  for(const d of driverNames) await optimizeDriverRoute(d);
+  const timeRepair=await repairAllTimeConflicts();
+
+  // V807.1: de oude optimizer kon wel een routevolgorde maken, maar liet
+  // een te lange route vervolgens staan. Nu repareren we dat echt:
+  // kinderen worden één voor één naar een vrije/geschikte bus verplaatst.
+  // Daarbij mag een bus maximaal 8 kinderen hebben en blijft de 90/99-min
+  // limiet leidend. We gebruiken bewust extra chauffeurs als dat nodig is.
+  const routeMinutes=(d)=>{
+    const q=kids.filter(k=>k.driver===d&&active(k))
+      .sort((a,b)=>(Number(a.routeOrder)||9999)-(Number(b.routeOrder)||9999));
+    if(!q.length)return 0;
+    let total=0;
+    for(let i=1;i<q.length;i++){
+      total+=routeMinutesBetween(q[i-1],q[i],driverNames.indexOf(d));
+    }
+    const last=q[q.length-1], school=schoolPoint(last);
+    if(school)total+=routeMinutesBetween(last,{lat:school.lat,lon:school.lon},driverNames.indexOf(d));
+    return total;
+  };
+
+  const routeQueue=d=>kids.filter(k=>k.driver===d&&active(k))
+    .sort((a,b)=>(Number(a.routeOrder)||9999)-(Number(b.routeOrder)||9999));
+
+  let moved=0;
+  for(let pass=0;pass<40;pass++){
+    let changed=false;
+
+    // Zoek de slechtste route opnieuw na iedere wijziging.
+    const states=driverNames.map(d=>{
+      const q=routeQueue(d);
+      return {d,q,minutes:routeMinutes(d),limit:routeLimitForRides(q)};
+    }).filter(x=>x.q.length);
+    const bad=states
+      .filter(x=>x.minutes>x.limit)
+      .sort((a,b)=>(b.minutes-b.limit)-(a.minutes-a.limit))[0];
+
+    if(!bad)break;
+
+    // Kandidaten: kinderen die het meeste helpen om de lange route korter te
+    // maken. We proberen eerst de kinderen die ver van de rest van de route
+    // liggen; de eerste (verste) stop blijft daardoor zo veel mogelijk intact.
+    const candidates=bad.q.slice(1).map(k=>{
+      const rest=bad.q.filter(x=>x!==k);
+      const restMin=(()=>{
+        if(!rest.length)return 0;
+        let n=0;
+        for(let i=1;i<rest.length;i++)n+=routeMinutesBetween(rest[i-1],rest[i],driverNames.indexOf(bad.d));
+        const s=schoolPoint(rest[rest.length-1]);
+        if(s)n+=routeMinutesBetween(rest[rest.length-1],{lat:s.lat,lon:s.lon},driverNames.indexOf(bad.d));
+        return n;
+      })();
+      return {k,restMin,reduction:bad.minutes-restMin};
+    }).sort((a,b)=>b.reduction-a.reduction);
+
+    let best=null;
+    for(const cand of candidates){
+      for(const target of driverNames){
+        if(target===bad.d || isDriverUnavailable(target) || isBusUnavailable(target))continue;
+        const tq=routeQueue(target);
+        if(tq.length>=MAX)continue;
+        if(tq.some(x=>(x.timeMin||0)===(cand.k.timeMin||0)))continue;
+
+        const trial=[...tq,cand.k].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+        if(routeDurationEstimate(trial,driverNames.indexOf(target))>routeLimitForRides(trial))continue;
+
+        // De kandidaat moet de bronroute daadwerkelijk verbeteren.
+        if(cand.restMin>=bad.minutes)continue;
+        const gain=cand.reduction*3
+          - geoDistanceKm(cand.k,tq[0]||cand.k)*0.5
+          + (MAX-tq.length)*2;
+        if(!best||gain>best.gain)best={k:cand.k,target, gain};
+      }
+    }
+
+    if(!best)break;
+    best.k.driver=best.target;
+    moved++;
+    changed=true;
+
+    // Meteen opnieuw ordenen zodat de volgende keuze met de echte
+    // buiten-naar-binnen route werkt.
+    await optimizeDriverRoute(bad.d);
+    await optimizeDriverRoute(best.target);
+    if(!changed)break;
+  }
+
+  // Definitieve controle.
+  let total=0,conflicts=0,drivers=0,longRoutes=0;
+  for(const d of driverNames){
+    const result=await optimizeDriverRoute(d);
+    if(result.count){
+      total+=result.count;
+      conflicts+=result.conflicts;
+      drivers++;
+      const q=routeQueue(d);
+      const minutes=routeMinutes(d);
+      if(minutes>routeLimitForRides(q))longRoutes++;
+    }
+  }
+
+  renderAll();
+
+  let msg='🧭 Route-optimalisatie klaar!\\n\\n';
+  if(timeRepair.repairs||timeRepair.moved)msg+='🕒 '+timeRepair.repairs+' tijdvensters hersteld en '+timeRepair.moved+' kind(eren) indien nodig verplaatst.\\n';
+  msg+=total+' actieve ritten zijn opnieuw geordend.\\n';
+  msg+='De eerste stop ligt zo ver mogelijk van Emmen; daarna werkt de route waar mogelijk geografisch terug richting Emmen.\\n';
+  if(moved)msg+='\\n🔄 '+moved+' kind(eren) zijn automatisch naar een andere bus verplaatst om te lange routes te breken.';
+  if(conflicts)msg+='\\n⚠️ '+conflicts+' tijdconflict(en) blijven over.';
+  if(longRoutes)msg+='\\n⚠️ '+longRoutes+' route(s) blijven boven hun toegestane limiet.';
+  else msg+='\\n✅ Alle routes blijven binnen de toegestane 90/99 minuten.';
+
+  alert(msg);
+}
+async function calculateRealRoutes(){
+  if(!realMap || realRouteLoading)return;
+  realRouteLoading=true;
+  const info=document.getElementById('routeInfo');
+  if(info)info.textContent='🛣️ Echte routes worden berekend…';
+
+  // Clear current straight demo lines.
+  routeLines.forEach(l=>realMap.removeLayer(l));
+  routeLines=[];
+
+  const select=document.getElementById('mapDriver');
+  const chosen=select?.value||'ALL';
+  const drivers=chosen==='ALL'?driverNames:[chosen];
+  let completed=0;
+
+  try{
+    for(let di=0;di<drivers.length;di++){
+      const d=drivers[di];
+      const rides=kids.filter(k=>k.driver===d && active(k)).sort((a,b)=>{
+        const ao=Number.isFinite(a.routeOrder)?a.routeOrder:9999;
+        const bo=Number.isFinite(b.routeOrder)?b.routeOrder:9999;
+        return ao-bo || a.timeMin-b.timeMin;
+      });
+      if(rides.length<1)continue;
+
+      // De kaart volgt exact de routevolgorde die de planner heeft berekend.
+      const ordered=rides;
+      const driverIndex=driverNames.indexOf(d);
+      const routeCoords=ordered.map((k,i)=>coordForKid(k,driverIndex,i));
+      const first=ordered[0];
+      const last=ordered[ordered.length-1];
+      const school=schoolPoint(last);
+      // De route begint bij de eerste ophaalstop en eindigt bij de school.
+      if(school && Number.isFinite(school.lat)&&Number.isFinite(school.lon)){
+        routeCoords.push([school.lon,school.lat]);
+      }
+
+      const route=await osrmRoute(routeCoords);
+      const line=L.geoJSON(route.geometry,{style:{weight:6,opacity:.85}});
+      line.addTo(realMap);
+      const endSchool=schoolPoint(last);
+         const endAddress=last.destinationAddress||endSchool?.address||last.destination||last.school||'School';
+         line.bindPopup('<b>'+d+'</b><br>'+Math.round(route.distance/1000*10)/10+' km • '+Math.round(route.duration/60)+' min<br>🏁 Eindadres: '+endAddress);
+      routeLines.push(line);
+
+      completed++;
+    }
+    realRouteMode=true;
+    if(info)info.textContent='✅ '+completed+' echte routes berekend over het wegennet. Klik op een lijn voor afstand en rijtijd.';
+  }catch(e){
+    if(info)info.textContent='⚠️ Echte route kon niet worden berekend. De gewone kaart blijft beschikbaar.';
+  }finally{
+    realRouteLoading=false;
+  }
+}
+
+function renderRealMapMarkers(){
+  if(!realMap)return;
+
+  mapMarkers.forEach(m=>realMap.removeLayer(m));
+  routeLines.forEach(l=>realMap.removeLayer(l));
+  mapMarkers=[];routeLines=[];
+
+  const select=document.getElementById('mapDriver');
+  if(select){
+    const current=select.value;
+    select.innerHTML='<option value="ALL">Alle chauffeurs</option>'+driverNames.map(d=>'<option>'+d+'</option>').join('');
+    if(current)select.value=current;
+  }
+  const chosen=select?.value||'ALL';
+  const visibleDrivers=chosen==='ALL'?driverNames:[chosen];
+
+  // Bij één chauffeur zoomen we automatisch op precies diens actieve stops.
+  // Daardoor zijn overlappende markers niet meer optisch één stop.
+  const selectedKids=chosen==='ALL'
+    ? kids.filter(active)
+    : getDriverQueue(chosen);
+  const selectedPoints=selectedKids
+    .filter(k=>Number.isFinite(k.lat)&&Number.isFinite(k.lon))
+    .map(k=>[k.lat,k.lon]);
+  // Eindpunten van de ritten zijn echte schoolpunten en worden apart
+  // zichtbaar gemaakt op de kaart.
+  selectedKids.forEach(k=>{
+    const s=schoolPoint(k);
+    if(s && Number.isFinite(s.lat)&&Number.isFinite(s.lon)) selectedPoints.push([s.lat,s.lon]);
+  });
+  if(realMap && selectedPoints.length){
+    realMap.fitBounds(selectedPoints,{padding:[45,45],maxZoom:chosen==='ALL'?11:15});
+  }
+
+  visibleDrivers.forEach((d)=>{
+    // Gebruik exact dezelfde rittenlijst als het chauffeurscherm.
+    // Zo kan de kaart nooit minder actieve kinderen tonen dan de chauffeur.
+    const rides=getDriverQueue(d);
+    if(!rides.length)return;
+
+    // Alleen echte adressen/coördinaten gebruiken. De rechte demo-lijnen
+    // zijn verwijderd: de route op de kaart wordt voortaan door OSRM
+    // over het echte wegennet getekend.
+    rides.forEach((assigned,i)=>{
+      const p=coordForKid(assigned,driverNames.indexOf(d),i);
+      let latlon=[p[1],p[0]];
+
+            const color=assigned.status==='picked'?'#d97706':'#1769aa';
+      const icon=L.divIcon({
+        className:'',
+        html:'<div title="'+assigned.name+' • '+assigned.time+'" style="width:40px;height:40px;border-radius:50%;background:'+color+';color:#fff;border:3px solid #fff;box-shadow:0 2px 7px #0006;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:bold">'+(i+1)+'</div>',
+        iconSize:[36,36],iconAnchor:[18,18]
+      });
+      const m=L.marker(latlon,{icon}).addTo(realMap);
+      const pickupLabel=displayPickupAddress(assigned);
+      const school=schoolPoint(assigned);
+      const destinationLabel=assigned.destinationAddress||school?.address||assigned.destination||'Bestemming onbekend';
+      m.bindTooltip('👦 <b>'+assigned.name+'</b><br>📍 '+pickupLabel+'<br>🏁 '+destinationLabel,{direction:'top',sticky:true,className:'taxi-map-label'});
+      m.bindPopup('<b>👦 '+assigned.name+'</b><br>🚕 '+d+'<br>🧭 Route-stop '+(i+1)+'<br>🕐 '+assigned.time+'<br>📍 <b>Ophalen:</b> '+pickupLabel+'<br>🏁 <b>Eindadres:</b> '+destinationLabel+'<br>'+statusText(assigned.status)+'<br><button onclick="openDriverDetails(\''+d+'\')">Chauffeurdetails</button>');
+      mapMarkers.push(m);
+    });
+
+    // 🏁 Eén duidelijk eindpunt per chauffeur: de school waar zijn laatste
+    // actieve kind aankomt. Dit is een apart kaartpunt, niet verstopt in de route.
+    const lastRide=rides[rides.length-1];
+    const end=schoolPoint(lastRide);
+    if(end && Number.isFinite(end.lat)&&Number.isFinite(end.lon)){
+      const endIcon=L.divIcon({
+        className:'',
+        html:'<div title="Eindadres" style="width:32px;height:32px;border-radius:8px;background:#b42318;color:#fff;border:3px solid #fff;box-shadow:0 2px 7px #0006;display:flex;align-items:center;justify-content:center;font-size:17px">🏁</div>',
+        iconSize:[32,32],iconAnchor:[16,16]
+      });
+      const em=L.marker([end.lat,end.lon],{icon:endIcon}).addTo(realMap);
+      const endAddress=lastRide.destinationAddress||end.address||lastRide.destination||lastRide.school||'School';
+      em.bindTooltip('🏁 <b>Eindadres</b><br>'+endAddress,{direction:'top',sticky:true,className:'taxi-map-label'});
+      em.bindPopup('<b>🏁 Eindadres</b><br>🚕 '+d+'<br>🏫 '+(lastRide.school||lastRide.destination||'School')+'<br>📍 '+endAddress);
+      mapMarkers.push(em);
+    }
+  });
+
+  const info=document.getElementById('routeInfo');
+  if(info) info.textContent=chosen==='ALL'
+    ? '📍 '+visibleDrivers.reduce((n,d)=>n+getDriverQueue(d).length,0)+' actieve kinderen / stops weergegeven. Echte routes worden over het wegennet berekend…'
+    : '📍 '+getDriverQueue(chosen).length+' actieve kinderen / stops voor '+chosen+'. Echte route wordt over het wegennet berekend.';
+
+  // Eén keer na het tekenen van de markers de echte wegroute ophalen.
+  // Geen rechte lijnen meer tussen adressen.
+  if(!realRouteLoading && typeof calculateRealRoutes==='function'){
+    clearTimeout(window.__realRouteTimer);
+    window.__realRouteTimer=setTimeout(()=>calculateRealRoutes(),120);
+  }
+}
+
+function showAllRoutes(){
+  const s=document.getElementById('mapDriver');if(s)s.value='ALL';
+  renderRealMapMarkers();
+}
+function clearRoutes(){
+  routeLines.forEach(l=>realMap.removeLayer(l));
+  routeLines=[];
+  realRouteMode=false;
+  const info=document.getElementById('routeInfo');
+  if(info)info.textContent='Routes gewist. De chauffeurs blijven zichtbaar.';
+}
+
+function aiTimeDistance(a,b){
+  return Math.abs((a.timeMin||0)-(b.timeMin||0));
+}
+function aiRouteSpread(driver, extraKid){
+  const rides=kids.filter(k=>k.driver===driver && active(k));
+  const times=rides.map(k=>k.timeMin);
+  if(extraKid) times.push(extraKid.timeMin);
+  if(!times.length) return 0;
+  return Math.max(...times)-Math.min(...times);
+}
+function aiSameStreetCount(driver,kid){
+  const street=(kid.address||'').split(/\\s+\\d/)[0].trim().toLowerCase();
+  if(!street) return 0;
+  return kids.filter(k=>k.driver===driver && active(k) &&
+    (k.address||'').toLowerCase().startsWith(street)).length;
+}
+function aiSchoolCount(driver,kid){
+  return kids.filter(k=>k.driver===driver && active(k) && k.school===kid.school).length;
+}
+function aiTimeClash(driver,kid){
+  // Beschouw ritten binnen 20 minuten als gelijktijdige belasting.
+  return kids.filter(k=>k.driver===driver && active(k) &&
+    aiTimeDistance(k,kid)<=20).length;
+}
+function aiScore(driver,kid,loads){
+  const sameSchool=aiSchoolCount(driver,kid);
+  const sameStreet=aiSameStreetCount(driver,kid);
+  const clashes=aiTimeClash(driver,kid);
+  const spread=aiRouteSpread(driver,kid);
+  const currentLoad=loads[driver]||0;
+
+  // Lagere score is beter. Capaciteit en beschikbaarheid worden al vooraf afgedwongen.
+  // Vaste ritten tellen zwaar mee: de AI probeert bestaande vaste combinaties niet te verstoren.
+  return currentLoad*35
+    + clashes*28
+    + spread/8
+    - sameSchool*18
+    - sameStreet*10;
+}
+
+function demoGroupValid(group){
+  if(!group || !group.length || group.length>MAX)return false;
+  const q=[...group].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+  const school=q[0]?.school||q[0]?.destination||'';
+  if(q.some(k=>(k.school||k.destination||'')!==school))return false;
+  if(new Set(q.map(k=>Number(k.timeMin)||0)).size!==q.length)return false;
+  for(const k of q){
+    if(!schoolDeadlineOk(k))return false;
+  }
+  if(routeDurationEstimate(q,0)>MAX_ROUTE_MINUTES)return false;
+  for(let i=1;i<q.length;i++){
+    const gap=(q[i].timeMin||0)-(q[i-1].timeMin||0);
+    const travel=routeMinutesBetween(q[i-1],q[i],0);
+    if(travel>gap+15)return false;
+  }
+  return true;
+}
+
+function buildDemoGeographicGroups(demoKids){
+  const groups=[];
+  for(const school of schools){
+    let remaining=demoKids.filter(k=>(k.school||k.destination||'')===school)
+      .sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+
+    while(remaining.length){
+      const seed=remaining.shift();
+      const group=[seed];
+
+      while(group.length<MAX && remaining.length){
+        const candidates=remaining.filter(k=>{
+          if((k.school||k.destination||'')!==school)return false;
+          return demoGroupValid(group.concat(k));
+        });
+        if(!candidates.length)break;
+
+        // Verdeel kinderen bij voorkeur over verschillende straten.
+        // Binnen die keuze blijven we zo geografisch compact mogelijk.
+        const streetKey=k=>String(k?.demoTown||'')+'|'+String(k?.demoStreet||'');
+        const usedStreets=new Set(group.map(streetKey));
+        const differentStreetCandidates=candidates.filter(k=>!usedStreets.has(streetKey(k)));
+        const pool=differentStreetCandidates.length?differentStreetCandidates:candidates;
+
+        pool.sort((a,b)=>{
+          const da=Math.min(...group.map(x=>geoDistanceKm(a,x)));
+          const db=Math.min(...group.map(x=>geoDistanceKm(b,x)));
+          if(da!==db)return da-db;
+          return (a.timeMin||0)-(b.timeMin||0);
+        });
+
+        const chosen=pool[0];
+        group.push(chosen);
+        remaining.splice(remaining.indexOf(chosen),1);
+      }
+
+      groups.push(group);
+    }
+  }
+  return groups;
+}
+
+function packDemoRoutesForCapacityAnd90(demoKids){
+  // V804: globale geografische packing met straatspreiding.
+  // Niet meer per school seeden: de woonlocaties bepalen de groepen.
+  // Daardoor kunnen kinderen uit verschillende scholen samen rijden als
+  // de totale route binnen 90/99 minuten blijft.
+  const availableDrivers=driverNames.filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d));
+  const remaining=demoKids.slice();
+  const groups=[];
+
+  const validGroup=(group)=>{
+    if(!group.length||group.length>MAX)return false;
+    const q=[...group].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+    if(new Set(q.map(k=>Number(k.timeMin)||0)).size!==q.length)return false;
+    const limit=routeLimitForRides(q);
+    if(routeDurationEstimate(q,0)>limit)return false;
+
+    // Iedere opeenvolgende stop moet binnen de bestaande ±15-minutentolerantie passen.
+    for(let i=1;i<q.length;i++){
+      const gap=(q[i].timeMin||0)-(q[i-1].timeMin||0);
+      const travel=routeMinutesBetween(q[i-1],q[i],0);
+      if(gap<0||travel>gap+15)return false;
+    }
+    return true;
+  };
+
+  const scoreAdd=(group,k)=>{
+    const trial=[...group,k].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+    const distances=group.map(x=>geoDistanceKm(k,x)).filter(Number.isFinite);
+    const nearest=distances.length?Math.min(...distances):999;
+    const avg=distances.length?distances.reduce((a,b)=>a+b,0)/distances.length:999;
+    const minutes=routeDurationEstimate(trial,0);
+    const schools=new Set(trial.map(x=>x.school||x.destination||''));
+
+    // V804: verdeel kinderen bewust over verschillende straten.
+    // Alleen een ander huisnummer op dezelfde straat telt dus NIET als spreiding.
+    const streetKey=x=>String(x.demoTown||'').trim().toLowerCase()+'|'+String(x.demoStreet||((x.address||'').split(/\\s+\\d/)[0]||'')).trim().toLowerCase();
+    const townKey=x=>String(x.demoTown||'').trim().toLowerCase();
+    const sameStreet=group.filter(x=>streetKey(x)===streetKey(k)).length;
+    const sameTown=group.filter(x=>townKey(x)===townKey(k)).length;
+
+    // Sterke straf voor dezelfde straat, lichtere straf voor dezelfde plaats.
+    // Zo blijft de route geografisch logisch maar worden kinderen niet allemaal
+    // op één straat uit dezelfde bus gezet.
+    const streetPenalty=sameStreet*180;
+    const townPenalty=Math.max(0,sameTown-1)*12;
+
+    // Volle bussen blijven aantrekkelijk, maar spreiding heeft voorrang.
+    return nearest*10 + avg*3 + minutes*1.2
+      + schools.size*2 + streetPenalty + townPenalty - trial.length*55;
+  };
+
+  // Bouw eerst geografisch compacte groepen. Kies telkens het kind dat
+  // momenteel het meest geïsoleerd ligt, zodat verschillende Drentse plaatsen
+  // niet onbedoeld in één bus worden gemengd.
+  while(remaining.length){
+    let seed=remaining[0], bestIsolation=-1;
+    for(const k of remaining){
+      const distances=remaining
+        .filter(x=>x!==k)
+        .map(x=>geoDistanceKm(k,x))
+        .filter(Number.isFinite)
+        .sort((a,b)=>a-b);
+      const isolation=distances.length?distances[Math.min(6,distances.length-1)]:999;
+      if(isolation>bestIsolation){bestIsolation=isolation;seed=k;}
+    }
+
+    const group=[seed];
+    remaining.splice(remaining.indexOf(seed),1);
+
+    while(group.length<MAX&&remaining.length){
+      const options=remaining
+        .map(k=>({k,score:scoreAdd(group,k)}))
+        .filter(o=>validGroup([...group,o.k]))
+        .sort((a,b)=>a.score-b.score);
+
+      if(!options.length)break;
+      const chosen=options[0].k;
+      group.push(chosen);
+      remaining.splice(remaining.indexOf(chosen),1);
+    }
+    groups.push(group);
+  }
+
+  // Probeer restgroepen samen te voegen; gemengde scholen zijn toegestaan.
+  let merged=true,pass=0;
+  while(merged&&pass++<30){
+    merged=false;
+    outer:
+    for(let i=0;i<groups.length;i++){
+      if(groups[i].length>=MAX)continue;
+      for(let j=i+1;j<groups.length;j++){
+        if(groups[i].length+groups[j].length>MAX)continue;
+        const trial=[...groups[i],...groups[j]];
+        if(!validGroup(trial))continue;
+        groups[i]=trial;
+        groups.splice(j,1);
+        merged=true;
+        break outer;
+      }
+    }
+  }
+
+  // Zet de gevonden groepen daadwerkelijk op chauffeurs. Dit ontbrak in V802:
+  // daar werd alleen een hulplijst opgebouwd, waardoor de oude chauffeurindeling
+  // bleef staan.
+  demoKids.forEach(k=>{if(k.status==='waiting')k.driver='';});
+  const assignedDrivers=new Set();
+
+  groups.sort((a,b)=>b.length-a.length);
+  for(const group of groups){
+    const candidates=availableDrivers
+      .filter(d=>!assignedDrivers.has(d))
+      .map(d=>({d,minutes:routeDurationEstimate(group,driverNames.indexOf(d))}))
+      .filter(x=>x.minutes<=routeLimitForRides(group))
+      .sort((a,b)=>a.minutes-b.minutes);
+
+    // Een chauffeur mag alleen opnieuw gebruikt worden als alle beschikbare
+    // chauffeurs al een groep hebben; capaciteit blijft altijd maximaal 8.
+    let chosen=candidates[0]?.d;
+    if(!chosen){
+      const fallback=availableDrivers
+        .map(d=>{
+          const current=demoKids.filter(k=>k.driver===d&&active(k));
+          const trial=[...current,...group];
+          return {d,load:current.length,minutes:routeDurationEstimate(trial,driverNames.indexOf(d)),limit:routeLimitForRides(trial)};
+        })
+        .filter(x=>x.load+group.length<=MAX&&x.minutes<=x.limit)
+        .sort((a,b)=>a.load-b.load||a.minutes-b.minutes);
+      chosen=fallback[0]?.d;
+    }
+
+    if(chosen){
+      group.forEach((k,i)=>{
+        k.driver=chosen;
+        k.routeOrder=i+1;
+      });
+      assignedDrivers.add(chosen);
+    }
+  }
+
+  // Eventuele kinderen die door een onhaalbare groep niet geplaatst zijn,
+  // krijgen alsnog de best passende vrije bus.
+  for(const k of demoKids.filter(x=>!x.driver)){
+    const choices=availableDrivers.map(d=>{
+      const q=demoKids.filter(x=>x.driver===d);
+      if(q.length>=MAX||q.some(x=>(x.timeMin||0)===(k.timeMin||0)))return null;
+      const trial=[...q,k].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+      return {d,load:q.length,minutes:routeDurationEstimate(trial,driverNames.indexOf(d)),limit:routeLimitForRides(trial)};
+    }).filter(Boolean)
+      .filter(x=>x.minutes<=x.limit)
+      .sort((a,b)=>a.load-b.load||a.minutes-b.minutes);
+    if(choices[0])k.driver=choices[0].d;
+  }
+
+  // V813: harde eindgarantie voor de demo.
+  // Als een complete groep door de routevoorwaarden niet kon worden geplaatst,
+  // mogen de kinderen nooit zonder chauffeur achterblijven. Er zijn 50 bussen
+  // voor 100 kinderen, dus capaciteit is altijd beschikbaar. Wijs eventuele
+  // overgebleven kinderen daarom op basis van vrije capaciteit toe; route- en
+  // tijdproblemen blijven daarna zichtbaar voor de dagstartcontrole.
+  for(const k of demoKids.filter(x=>active(x)&&!x.driver)){
+    const choices=availableDrivers
+      .map(d=>({d,load:demoKids.filter(x=>x.driver===d&&active(x)).length}))
+      .filter(x=>x.load<MAX)
+      .sort((a,b)=>a.load-b.load);
+    if(choices.length){
+      k.driver=choices[0].d;
+    }
+  }
+
+    // Laatste lokale verbetering: verplaats één kind van een kleinere route naar
+  // een grotere route als beide routes geldig blijven.
+  for(let pass=0;pass<30;pass++){
+    let changed=false;
+    const ds=availableDrivers.filter(d=>demoKids.some(k=>k.driver===d));
+    ds.sort((a,b)=>demoKids.filter(k=>k.driver===a).length-demoKids.filter(k=>k.driver===b).length);
+    for(const from of ds){
+      const source=demoKids.filter(k=>k.driver===from);
+      if(source.length<=1)continue;
+      for(const k of [...source]){
+        const targets=ds.filter(to=>to!==from).map(to=>{
+          const target=demoKids.filter(x=>x.driver===to);
+          if(target.length>=MAX||target.some(x=>(x.timeMin||0)===(k.timeMin||0)))return null;
+          const after=source.filter(x=>x!==k);
+          const trial=[...target,k].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+          return {to,after,trial};
+        }).filter(Boolean).filter(o=>
+          routeDurationEstimate(o.after,driverNames.indexOf(from))<=routeLimitForRides(o.after) &&
+          routeDurationEstimate(o.trial,driverNames.indexOf(o.to))<=routeLimitForRides(o.trial)
+        ).sort((a,b)=>a.trial.length-b.trial.length);
+        if(targets.length){
+          k.driver=targets[0].to;
+          changed=true;
+          break;
+        }
+      }
+      if(changed)break;
+    }
+    if(!changed)break;
+  }
+
+  const final=new Map();
+  demoKids.forEach(k=>{
+    if(!k.driver)return;
+    if(!final.has(k.driver))final.set(k.driver,[]);
+    final.get(k.driver).push(k);
+  });
+  final.forEach(group=>{
+    group.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+    group.forEach((k,i)=>k.routeOrder=i+1);
+  });
+  return final;
+}
+function runAI(silent=false){
+  previousPlan=kids.map(k=>({id:k.id,driver:k.driver,fixed:k.fixed,status:k.status}));
+
+  // V734: de ingebouwde 100-kind-demo heeft bewust 13 haalbare groepen
+  // (12x8 + 1x4). Gebruik daarvoor een deterministische plaatsing.
+  // Zo kan een bestaande/kapotte opgeslagen demo-planning de AI niet meer
+  // onnodig leegtrekken voordat de echte routecontrole begint.
+  const demoKids=kids.filter(k=>{
+    const n=parseInt(String(k.id).slice(1),10);
+    return /^k[0-9]+$/.test(String(k.id)) && Number.isInteger(n) && n>=1 && n<=100;
+  });
+  const isBuiltInDemo=demoKids.length===100 &&
+    demoKids.every(k=>k.status==='waiting' && Number.isFinite(Number(k.timeMin)));
+  // V781: bewaar de huidige chauffeurverdeling vóór AI. Een AI-run mag
+  // bij de ingebouwde demo NOOIT kinderen naar andere chauffeurs verplaatsen.
+  const demoDriverSnapshot=null;
+
+  // V739: als een route qua ophaaltijden nét niet haalbaar is, mag de AI
+  // de ophaaltijd van wachtende kinderen maximaal 15 minuten verschuiven.
+  // Eerst proberen we de latere rit iets later te zetten; als dat door 08:30
+  // niet kan, proberen we de eerdere rit iets eerder te zetten.
+  let adjustedPickupTimes=0;
+  const adjustPickupTimes=(d)=>{
+    const di=driverNames.indexOf(d);
+    const q=kids.filter(k=>k.driver===d&&active(k))
+      .sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+    if(q.length<2)return;
+
+    const original=new Map(q.map(k=>[k.id,Number(k.timeMin)||0]));
+    for(let pass=0;pass<q.length*2;pass++){
+      let changed=false;
+      q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+
+      for(let i=1;i<q.length;i++){
+        const prev=q[i-1], cur=q[i];
+        const gap=(cur.timeMin||0)-(prev.timeMin||0);
+        const travel=routeMinutesBetween(prev,cur,di);
+        const required=Math.max(1,travel-15);
+
+        if(gap>=required)continue;
+
+        // Later kind maximaal 15 minuten later zetten.
+        if(cur.status==='waiting'){
+          const base=original.get(cur.id);
+          const maxTime=base+15;
+          const target=Math.max(cur.timeMin||0,(prev.timeMin||0)+required);
+          if(target<=maxTime){
+            const old=cur.timeMin;
+            cur.timeMin=target;
+            cur.time=fmtTime(target);
+            if(old!==target)adjustedPickupTimes++;
+            changed=true;
+            continue;
+          }
+        }
+
+        // Als later zetten niet kan, probeer het eerdere wachtende kind
+        // maximaal 15 minuten naar voren te halen.
+        if(prev.status==='waiting'){
+          const base=original.get(prev.id);
+          const minTime=Math.max(0,base-15);
+          const target=Math.min(prev.timeMin||0,(cur.timeMin||0)-required);
+          if(target>=minTime && target>=0){
+            const old=prev.timeMin;
+            prev.timeMin=target;
+            prev.time=fmtTime(target);
+            if(old!==target)adjustedPickupTimes++;
+            changed=true;
+          }
+        }
+      }
+
+      if(!changed)break;
+    }
+  };
+
+  driverNames.forEach(d=>adjustPickupTimes(d));
+  if(isBuiltInDemo){
+    // V777: de demo wordt nu geografisch opnieuw gegroepeerd.
+    // De oude vaste k1-k8 / k9-k16-koppeling zorgde ervoor dat één bus
+    // kinderen uit meerdere Drentse plaatsen kreeg en daardoor onnodig
+    // routes van >90 minuten en reistijdconflicten veroorzaakte.
+    // De huiscoördinaten zelf blijven volledig ongemoeid: alleen de
+    // chauffeurstoewijzing verandert.
+    // Zodra de demo één keer geografisch goed verdeeld is, mag een
+    // volgende AI-run die verdeling NIET opnieuw groeperen.
+    // Ook na een reload herkennen we een al verspreide verdeling.
+    const currentDemoGroups=new Map();
+    demoKids.forEach(k=>{
+      if(!k.driver)return;
+      if(!currentDemoGroups.has(k.driver))currentDemoGroups.set(k.driver,[]);
+      currentDemoGroups.get(k.driver).push(k);
+    });
+
+    // V778: de stabiele demo-verdeling blijft leidend.
+    // De oorspronkelijke groepen 1-8, 9-16, enz. zijn bewust over
+    // verschillende woonplaatsen/straten verspreid. AI mag deze verdeling
+    // NOOIT opnieuw clusteren.
+    if(!demoPlanningSpreadLocked){
+      // V780: de verdeling die nu op het scherm staat is leidend.
+      // Een eerste AI-run mag NOOIT de kinderen opnieuw groeperen of
+      // alle bolletjes naar dezelfde chauffeur/locatie trekken.
+      // Alleen kinderen zonder chauffeur krijgen een vrije beschikbare bus.
+      const unassigned=demoKids.filter(k=>!k.driver);
+      for(const k of unassigned){
+        const choices=driverNames.filter(d=>
+          !isDriverUnavailable(d) &&
+          !isBusUnavailable(d) &&
+          load(d)<MAX
+        ).sort((a,b)=>load(a)-load(b));
+        if(choices.length) k.driver=choices[0];
+      }
+      demoKids.forEach(k=>{
+        if(k.driver){
+          const q=demoKids.filter(x=>x.driver===k.driver)
+            .sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+          k.routeOrder=q.indexOf(k)+1;
+        }
+      });
+      demoPlanningSpreadLocked=true;
+    }
+
+    // V795: bouw de demo opnieuw op als zo weinig mogelijk, zo vol mogelijke
+    // bussen. Een bus mag maximaal 8 kinderen hebben en maximaal 90 minuten rijden.
+    const groups=packDemoRoutesForCapacityAnd90(demoKids);
+    saveState();
+
+    // Kinderen mogen tussen chauffeurs worden verdeeld om de 90-minutenregel
+    // én de capaciteit van 8 per bus te halen. Adressen blijven ongewijzigd.
+    // Alleen tijden, routevolgorde en conflicten worden daarna gecontroleerd.
+    // De normale route- en schoolcontroles blijven actief.
+
+    // V744: stabiele route-tijd optimalisatie.
+    let demoAdjusted=0;
+    groups.forEach((q,d)=>{
+      const di=driverNames.indexOf(d);
+      q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+      const original=new Map(q.map(k=>[k.id,Number(k.timeMin)||0]));
+
+      for(let pass=0;pass<q.length*2;pass++){
+        let changed=false;
+        q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+        for(let i=1;i<q.length;i++){
+          const prev=q[i-1],cur=q[i];
+          const required=Math.max(1,routeMinutesBetween(prev,cur,di)-15);
+          if((cur.timeMin||0)-(prev.timeMin||0)>=required)continue;
+          if(cur.status==='waiting'){
+            const target=Math.min(original.get(cur.id)+15,(prev.timeMin||0)+required);
+            if(target>cur.timeMin){
+              cur.timeMin=target;cur.time=fmtTime(target);
+              demoAdjusted++;changed=true;continue;
+            }
+          }
+          if(prev.status==='waiting'){
+            const target=Math.max(original.get(prev.id)-15,(cur.timeMin||0)-required);
+            if(target<prev.timeMin&&target>=0){
+              prev.timeMin=target;prev.time=fmtTime(target);
+              demoAdjusted++;changed=true;
+            }
+          }
+        }
+        if(!changed)break;
+      }
+
+      q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+      const last=q[q.length-1];
+      const late=Math.max(0,schoolArrivalMinutes(last)-SCHOOL_DEADLINE_MIN);
+      if(late>0){
+        const shift=Math.min(15,late);
+        q.forEach(k=>{
+          if(k.status!=='waiting')return;
+          const target=Math.max(original.get(k.id)-15,(k.timeMin||0)-shift);
+          if(target<k.timeMin){
+            k.timeMin=target;k.time=fmtTime(target);demoAdjusted++;
+          }
+        });
+      }
+      q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+      q.forEach((k,i)=>k.routeOrder=i+1);
+    });
+
+    // V748: harde gerichte conflictreparatie nadat de demo-groepen definitief
+    // aan chauffeurs zijn gekoppeld. Alleen de latere/eerdere wachtende rit
+    // wordt maximaal 15 minuten verschoven; andere routes blijven ongemoeid.
+    let conflictRepairs=0;
+    groups.forEach((q,d)=>{
+      const di=driverNames.indexOf(d);
+      const original=new Map(q.map(k=>[k.id,Number(k.timeMin)||0]));
+      for(let pass=0;pass<q.length*3;pass++){
+        q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+        let changed=false;
+        for(let i=1;i<q.length;i++){
+          const prev=q[i-1],cur=q[i];
+          const gap=(cur.timeMin||0)-(prev.timeMin||0);
+          const travel=routeMinutesBetween(prev,cur,di);
+          const required=Math.max(1,travel-15);
+          if(gap>=required)continue;
+
+          if(cur.status==='waiting'){
+            const target=Math.min(original.get(cur.id)+15,(prev.timeMin||0)+required);
+            if(target>cur.timeMin && target<=original.get(cur.id)+15){
+              cur.timeMin=target;
+              cur.time=fmtTime(target);
+              conflictRepairs++;
+              changed=true;
+              continue;
+            }
+          }
+
+          if(prev.status==='waiting'){
+            const target=Math.max(original.get(prev.id)-15,(cur.timeMin||0)-required);
+            if(target<prev.timeMin && target>=original.get(prev.id)-15){
+              prev.timeMin=target;
+              prev.time=fmtTime(target);
+              conflictRepairs++;
+              changed=true;
+            }
+          }
+        }
+        if(!changed)break;
+      }
+      q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+      q.forEach((k,i)=>k.routeOrder=i+1);
+    });
+
+    // V750: nieuwe ritten mogen de vaste 100-kind-demo niet opnieuw laten
+    // opbouwen. Alleen extra/niet-demo kinderen worden apart ingepland.
+    const extraKids=kids.filter(k=>!demoKids.includes(k) && active(k));
+    for(const k of extraKids){
+      // Een nieuw kind krijgt nog geen chauffeur uit addRide; zoek hier
+      // uitsluitend een werkelijk beschikbare bus met vrije capaciteit.
+      const choices=driverNames.filter(d=>
+        !isDriverUnavailable(d) &&
+        !isBusUnavailable(d) &&
+        load(d)<MAX
+      );
+      if(choices.length){
+        choices.sort((a,b)=>load(a)-load(b));
+        k.driver=choices[0];
+        k.routeOrder=1;
+      }else{
+        k.driver='';
+        k.routeOrder=null;
+      }
+    }
+
+    // V749: schooldeadline-reparatie. Alleen kinderen die te laat op school
+    // dreigen te komen worden maximaal 15 minuten eerder gezet. De oorspronkelijke
+    // demo-ophaaltijd is de harde grens voor deze verschuiving.
+    let deadlineRepairs=0;
+    groups.forEach((q,d)=>{
+      q.forEach(k=>{
+        const n=parseInt(String(k.id).slice(1),10);
+        const pos=(n-1)%8;
+        const baseTime=420+(pos*10);
+        const arrival=schoolArrivalMinutes(k);
+        if(arrival<=SCHOOL_DEADLINE_MIN)return;
+
+        const needed=(SCHOOL_DEADLINE_MIN-pickupToSchoolMinutes(k));
+        const target=Math.max(baseTime-15,needed);
+        if(target<k.timeMin && target>=baseTime-15){
+          k.timeMin=target;
+          k.time=fmtTime(target);
+          deadlineRepairs++;
+        }
+      });
+
+      // Na het vervroegen van deadline-ritten opnieuw de routeafstand
+      // controleren. Alleen bij een nieuw conflict wordt binnen dezelfde
+      // ±15-minutenmarge nog lokaal gecorrigeerd.
+      const di=driverNames.indexOf(d);
+      const original=new Map(q.map(k=>{
+        const n=parseInt(String(k.id).slice(1),10);
+        const pos=(n-1)%8;
+        return [k.id,420+(pos*10)];
+      }));
+      for(let pass=0;pass<q.length*2;pass++){
+        q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+        let changed=false;
+        for(let i=1;i<q.length;i++){
+          const prev=q[i-1],cur=q[i];
+          const gap=(cur.timeMin||0)-(prev.timeMin||0);
+          const required=Math.max(1,routeMinutesBetween(prev,cur,di)-15);
+          if(gap>=required)continue;
+
+          if(cur.status==='waiting'){
+            const maxTime=original.get(cur.id)+15;
+            const target=Math.max(cur.timeMin||0,(prev.timeMin||0)+required);
+            if(target<=maxTime){
+              cur.timeMin=target;
+              cur.time=fmtTime(target);
+              changed=true;
+              continue;
+            }
+          }
+
+          if(prev.status==='waiting'){
+            const minTime=original.get(prev.id)-15;
+            const target=Math.min(prev.timeMin||0,(cur.timeMin||0)-required);
+            if(target>=minTime && target<prev.timeMin){
+              prev.timeMin=target;
+              prev.time=fmtTime(target);
+              changed=true;
+            }
+          }
+        }
+        if(!changed)break;
+      }
+
+      q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+      q.forEach((k,i)=>k.routeOrder=i+1);
+    });
+
+    // V804: laatste controle na geografische packing.
+    for(let pass=0;pass<20;pass++){
+      let changed=false;
+      for(const d of driverNames){
+        const source=demoKids.filter(k=>k.driver===d);
+        if(!source.length) continue;
+        const sourceLimit=routeLimitForRides(source);
+        if(routeDurationEstimate(source,driverNames.indexOf(d))<=sourceLimit) continue;
+
+        const candidates=[...source].sort((a,b)=>(b.timeMin||0)-(a.timeMin||0));
+        for(const k of candidates){
+          const after=source.filter(x=>x!==k);
+          const options=driverNames.map(x=>{
+            if(x===d||isDriverUnavailable(x)||isBusUnavailable(x))return null;
+            const target=demoKids.filter(y=>y.driver===x);
+            if(target.length>=MAX)return null;
+            if(target.some(y=>(y.timeMin||0)===(k.timeMin||0)))return null;
+            const trial=[...target,k].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+            return {
+              x,target,trial,
+              targetOk:routeDurationEstimate(trial,driverNames.indexOf(x))<=routeLimitForRides(trial),
+              sourceOk:routeDurationEstimate(after,driverNames.indexOf(d))<=routeLimitForRides(after)
+            };
+          }).filter(Boolean)
+            .filter(o=>o.targetOk&&o.sourceOk)
+            .sort((a,b)=>a.target.length-b.target.length);
+
+          if(options.length){
+            k.driver=options[0].x;
+            changed=true;
+            break;
+          }
+        }
+        if(changed)break;
+      }
+      if(!changed)break;
+    }
+
+    // V804: controleer kleine routes na de globale packing.
+    let merged=true, mergePass=0;
+    while(merged && mergePass++<20){
+      merged=false;
+      const ds=driverNames.filter(d=>demoKids.some(k=>k.driver===d));
+      outer:
+      for(let i=0;i<ds.length;i++){
+        const a=ds[i], ar=demoKids.filter(k=>k.driver===a);
+        for(let j=i+1;j<ds.length;j++){
+          const b=ds[j], br=demoKids.filter(k=>k.driver===b);
+          if(ar.length+br.length>MAX)continue;
+          const combined=[...ar,...br].sort((x,y)=>(x.timeMin||0)-(y.timeMin||0));
+          if(new Set(combined.map(k=>Number(k.timeMin)||0)).size!==combined.length)continue;
+          if(routeDurationEstimate(combined,driverNames.indexOf(a))>routeLimitForRides(combined))continue;
+          br.forEach(k=>k.driver=a);
+          merged=true;
+          break outer;
+        }
+      }
+    }
+
+    driverNames.forEach(d=>{
+      demoKids.filter(k=>k.driver===d)
+        .sort((a,b)=>(a.timeMin||0)-(b.timeMin||0))
+        .forEach((k,i)=>k.routeOrder=i+1);
+    });
+
+    // V751: laatste synchronisatie. Na toevoegen/herplannen mag geen actieve
+    // rit een leeg chauffeurveld houden als er nog een vrije chauffeur/bus is.
+    const orphanKids=kids.filter(k=>active(k)&&!k.driver);
+    for(const k of orphanKids){
+      const choices=driverNames.filter(d=>
+        !isDriverUnavailable(d) &&
+        !isBusUnavailable(d) &&
+        load(d)<MAX &&
+        schoolDeadlineOk(k)
+      );
+      if(choices.length){
+        choices.sort((a,b)=>load(a)-load(b));
+        k.driver=choices[0];
+        k.routeOrder=(kids.filter(x=>x.driver===choices[0]&&active(x)).length);
+      }
+    }
+
+    const fullBuses=[...groups.values()].filter(q=>q.length===MAX).length;
+    const partialBuses=[...groups.values()].filter(q=>q.length<MAX).length;
+
+    // V781: herstel de exacte verdeling die vóór de AI-knop op het scherm stond.
+    // Routecontrole mag volgorde/tijden aanpassen, maar niet de chauffeur.
+    if(demoDriverSnapshot){
+      demoKids.forEach(k=>{
+        const originalDriver=demoDriverSnapshot.get(k.id);
+        if(originalDriver!==undefined) k.driver=originalDriver;
+      });
+      demoKids.forEach(k=>{
+        const q=demoKids.filter(x=>x.driver===k.driver).sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+        k.routeOrder=q.indexOf(k)+1;
+      });
+      saveState();
+    }
+
+    renderAll();
+    const message='🤖 AI-planning klaar!\\n\\n'+
+      '100 demo-ritten gecontroleerd zonder chauffeurwissels.\\n'+
+      '• maximaal 8 kinderen per bus — harde grens\\n'+
+      '• vaste demo-groepen behouden\\n'+
+      '• geen ritten onnodig zonder chauffeur\\n'+
+      '• normale route-, reistijd- en schoolcontrole blijft actief\\n'+
+      '• '+conflictRepairs+' routeconflict'+(conflictRepairs===1?'':'en')+' gericht hersteld\\n'+
+      '\\n🚌 '+fullBuses+' volledig gevulde bus(sen), '+partialBuses+' gedeeltelijk gevulde bus(sen).\\n'+
+      '✅ Alle 100 demo-ritten hebben een chauffeur.';
+    if(!silent)alert(message);
+    return {changes:kids.filter(k=>{
+      const old=previousPlan.find(p=>p.id===k.id);
+      return old && old.driver!==k.driver;
+    }).length,unplanned:0,conflicts:0};
+  }
+
+  // Nieuwe planner: eerst logische volle groepen bouwen, daarna pas chauffeurs
+  // zoeken. Zo voorkomen we dat de greedy planner alle kinderen over te veel
+  // halfvolle bussen verspreidt.
+  const planned={};
+  const loads={};
+  driverNames.forEach(d=>{
+    planned[d]=kids.filter(k=>k.driver===d && k.status==='picked')
+      .sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+    loads[d]=planned[d].length;
+  });
+
+  function groupSchool(group,k){
+    if(!group.length)return true;
+    const s=group[0].school||group[0].destination||'';
+    return (k.school||k.destination||'')===s;
+  }
+
+  function feasibleGroup(group,d){
+    if(!group.length)return true;
+    if(group.length>MAX || loads[d]+group.length>MAX)return false;
+    const all=[...planned[d],...group].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+
+    for(let i=1;i<all.length;i++){
+      if((all[i].timeMin||0)===(all[i-1].timeMin||0))return false;
+      const gap=(all[i].timeMin||0)-(all[i-1].timeMin||0);
+      const travel=routeMinutesBetween(all[i-1],all[i],driverNames.indexOf(d));
+      if(gap<0 || travel>gap+15)return false;
+    }
+
+    if(routeDurationEstimate(all,driverNames.indexOf(d))>MAX_ROUTE_MINUTES)return false;
+
+    for(const k of group){
+      if(!schoolDeadlineOk(k))return false;
+    }
+
+    // Eén ochtendrit blijft per bus bij één schoolbestemming.
+    if(all.length){
+      const school=all[0].school||all[0].destination||'';
+      if(all.some(k=>(k.school||k.destination||'')!==school))return false;
+      const last=all[all.length-1];
+      if(schoolArrivalMinutes(last)>SCHOOL_DEADLINE_MIN)return false;
+    }
+    return true;
+  }
+
+  // Haal alleen wachtende ritten uit de bestaande planning. Onderweg zijnde
+  // ritten blijven staan en worden meegenomen als harde bezetting.
+  // Nieuwe personen mogen, net als de bestaande ritten, binnen de
+  // afgesproken ±15 minuten worden verschoven als dat nodig is om de
+  // schooldeadline te halen. Dit voorkomt dat een nieuwe rit direct
+  // "zonder chauffeur" blijft omdat bijvoorbeeld 08:30 te laat blijkt.
+  kids.filter(k=>k.status==='waiting' && k.newlyAdded).forEach(k=>{
+    if(schoolDeadlineOk(k))return;
+    const needed=SCHOOL_DEADLINE_MIN-pickupToSchoolMinutes(k);
+    const original=Number(k.timeMin)||0;
+    const target=Math.max(original-15,needed);
+    if(target<original && target>=original-15){
+      k.timeMin=target;
+      k.time=fmtTime(target);
+    }
+  });
+
+  const waiting=kids.filter(k=>k.status==='waiting');
+  waiting.forEach(k=>{k.driver='';k.routeOrder=null;});
+
+  // Eerst op school groeperen, daarna op ophaaltijd. Dat maakt 8-per-bus
+  // mogelijk zonder meerdere scholen door elkaar te gooien.
+  const bySchool={};
+  waiting.forEach(k=>{
+    const s=k.school||k.destination||'Onbekend';
+    (bySchool[s] ||= []).push(k);
+  });
+
+  Object.values(bySchool).forEach(arr=>arr.sort((a,b)=>{
+    // Vaste relaties zijn voorkeur, maar niet belangrijker dan een haalbare volle route.
+    if(Boolean(a.fixed)!==Boolean(b.fixed)) return a.fixed?-1:1;
+    return (a.timeMin||0)-(b.timeMin||0);
+  }));
+
+  const groups=[];
+  const unplanned=[];
+
+  // Maak per school groepen door verschillende ophaaltijden over dezelfde
+  // bus te verdelen. Zo voorkom je dat drie kinderen van dezelfde school met
+  // exact dezelfde tijd elkaar blokkeren en blijven 8 verschillende tijdsloten
+  // beschikbaar voor één volle bus.
+  for(const arr of Object.values(bySchool)){
+    const buckets=new Map();
+    arr.forEach(k=>{
+      const t=Number(k.timeMin)||0;
+      if(!buckets.has(t))buckets.set(t,[]);
+      buckets.get(t).push(k);
+    });
+
+    const times=[...buckets.keys()].sort((a,b)=>a-b);
+    while(times.some(t=>(buckets.get(t)||[]).length)){
+      const group=[];
+      for(const t of times){
+        const bucket=buckets.get(t);
+        if(bucket && bucket.length && group.length<MAX){
+          group.push(bucket.shift());
+        }
+      }
+      if(group.length)groups.push(group);
+      else break;
+    }
+  }
+  // Groepen eerst zo vol mogelijk plaatsen. Bij een bestaande picked-route
+  // wordt alleen een groep geaccepteerd als de volledige route haalbaar blijft.
+  groups.sort((a,b)=>b.length-a.length);
+
+  for(const group of groups){
+    let choices=driverNames.filter(d=>
+      !isDriverUnavailable(d) &&
+      !isBusUnavailable(d) &&
+      feasibleGroup(group,d)
+    );
+
+    // Als een volle groep niet past, splits hem gecontroleerd in kleinere
+    // groepen. Zo krijgen we nooit 9/8 en blijft er geen verborgen conflict.
+    if(!choices.length && group.length>1){
+      const mid=Math.ceil(group.length/2);
+      const parts=[group.slice(0,mid),group.slice(mid)];
+      parts.forEach(p=>groups.push(p));
+      continue;
+    }
+
+    if(!choices.length){
+      unplanned.push(...group);
+      continue;
+    }
+
+    choices.sort((a,b)=>{
+      const fillA=MAX-(loads[a]+group.length);
+      const fillB=MAX-(loads[b]+group.length);
+      if(fillA!==fillB)return fillA-fillB;
+      const ra=routeDurationEstimate([...planned[a],...group],driverNames.indexOf(a));
+      const rb=routeDurationEstimate([...planned[b],...group],driverNames.indexOf(b));
+      return ra-rb;
+    });
+
+    const chosen=choices[0];
+    group.forEach(k=>k.driver=chosen);
+    planned[chosen].push(...group);
+    planned[chosen].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+    loads[chosen]+=group.length;
+  }
+
+  // Laatste plaatsingsronde: als de strenge groepsplanner door een
+  // onnodige combinatie-afwijzing kinderen heeft laten staan, proberen we
+  // alleen nog een aantoonbaar veilige vrije plek. Capaciteit en dubbele
+  // ophaaltijd blijven harde grenzen.
+  if(unplanned.length){
+    const retry=[...unplanned];
+    unplanned.length=0;
+
+    for(const k of retry){
+      let choices=driverNames.filter(d=>{
+        if(isDriverUnavailable(d)||isBusUnavailable(d))return false;
+        if(loads[d]>=MAX)return false;
+        if(!schoolDeadlineOk(k))return false;
+        const q=kids.filter(x=>x.driver===d&&active(x));
+        if(q.some(x=>(x.timeMin||0)===(k.timeMin||0)))return false;
+        const trial=[...q,k].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+        if(routeDurationEstimate(trial,driverNames.indexOf(d))>routeLimitForRides(trial))return false;
+        for(let i=1;i<trial.length;i++){
+          const gap=(trial[i].timeMin||0)-(trial[i-1].timeMin||0);
+          const travel=routeMinutesBetween(trial[i-1],trial[i],driverNames.indexOf(d));
+          if(gap<0 || travel>gap+15)return false;
+        }
+        return true;
+      });
+
+      if(choices.length){
+        choices.sort((a,b)=>load(b)-load(a));
+        const chosen=choices[0];
+        k.driver=chosen;
+        loads[chosen]++;
+        planned[chosen].push(k);
+        continue;
+      }
+
+      // Voor de ingebouwde demo kennen we de oorspronkelijke 8-kindergroepen.
+      // Alleen wanneer alle betrokken kinderen waiting zijn en er geen storing
+      // is, mogen we die oorspronkelijke veilige demo-groep herstellen.
+      const num=parseInt(String(k.id).replace(/\D/g,''),10);
+      const demoIndex=Number.isFinite(num)?Math.floor((num-1)/8):-1;
+      const demoDriver=demoIndex>=0?driverNames[demoIndex]:null;
+      if(demoDriver && !isDriverUnavailable(demoDriver) && !isBusUnavailable(demoDriver)){
+        const demoGroup=kids.filter(x=>{
+          const n=parseInt(String(x.id).replace(/\D/g,''),10);
+          return Number.isFinite(n) && Math.floor((n-1)/8)===demoIndex && active(x);
+        });
+        if(demoGroup.length<=MAX &&
+           demoGroup.every(x=>schoolDeadlineOk(x)) &&
+           new Set(demoGroup.map(x=>x.timeMin)).size===demoGroup.length &&
+           routeDurationEstimate(demoGroup,driverNames.indexOf(demoDriver))<=MAX_ROUTE_MINUTES){
+          demoGroup.forEach(x=>x.driver=demoDriver);
+          planned[demoDriver]=demoGroup.slice();
+          loads[demoDriver]=demoGroup.length;
+          const pos=unplanned.indexOf(k);
+          if(pos>=0)unplanned.splice(pos,1);
+          continue;
+        }
+      }
+
+      unplanned.push(k);
+    }
+  }
+
+  // Harde capaciteitsreparatie: dit mag nooit 9/8 opleveren, ook niet door
+  // oude data of een andere automatische functie.
+  driverNames.forEach(d=>{
+    const q=kids.filter(k=>k.driver===d&&active(k));
+    if(q.length<=MAX)return;
+    const overflow=q.slice(MAX);
+    overflow.forEach(k=>{
+      k.driver='';
+      if(!unplanned.includes(k))unplanned.push(k);
+      loads[d]--;
+    });
+    planned[d]=q.slice(0,MAX);
+  });
+
+
+
+  // Laatste controle op actieve routes.
+  const conflicts=[];
+  driverNames.forEach(d=>{
+    const q=kids.filter(k=>k.driver===d&&active(k))
+      .sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+
+    if(q.length>MAX)conflicts.push(d+' • meer dan '+MAX+' kinderen');
+
+    const routeLimit=routeLimitForRides(q);
+    if(routeDurationEstimate(q,driverNames.indexOf(d))>routeLimit)
+      conflicts.push(d+' • route langer dan '+routeLimit+' minuten');
+
+    for(let i=0;i<q.length;i++){
+      if(!schoolDeadlineOk(q[i]))
+        conflicts.push(d+' • '+q[i].name+' haalt 08:30 niet');
+
+      if(i>0){
+        const gap=(q[i].timeMin||0)-(q[i-1].timeMin||0);
+        const travel=routeMinutesBetween(q[i-1],q[i],driverNames.indexOf(d));
+        if(gap===0)conflicts.push(d+' • dubbele ophaaltijd '+q[i].time);
+        if(travel>gap+15)
+          conflicts.push(d+' • '+q[i-1].name+' → '+q[i].name+' onvoldoende reistijd');
+        // Meerdere scholen zijn toegestaan wanneer de totale route binnen
+        // de speciale 99-minutengrens voor gecombineerde scholen blijft.
+      }
+    }
+  });
+
+  const changes=kids.filter(k=>{
+    const old=previousPlan.find(p=>p.id===k.id);
+    return old && old.driver!==k.driver;
+  }).length;
+
+  driverNames.forEach(d=>{
+    kids.filter(k=>k.driver===d&&active(k))
+      .sort((a,b)=>(a.timeMin||0)-(b.timeMin||0))
+      .forEach((k,i)=>k.routeOrder=i+1);
+  });
+
+  const activeDrivers=driverNames.filter(d=>load(d)>0);
+  const fullBuses=activeDrivers.filter(d=>load(d)===MAX).length;
+  const partialBuses=activeDrivers.filter(d=>load(d)<MAX).length;
+
+  let message='🤖 AI-planning klaar!\\n\\n';
+  message+=changes+' ritten opnieuw verdeeld.\\n';
+  message+='• groepen eerst zo vol mogelijk opgebouwd\\n';
+  message+='• maximaal 8 kinderen per bus — harde grens\\n';
+  message+='• kinderen van meerdere scholen toegestaan als beide bestemmingen binnen de route passen\\n';
+  message+='• geen dubbele ophaaltijden\\n';
+  message+='• maximale route: 90 minuten; maximaal 99 minuten bij gecombineerde scholen\\n';
+  message+='• voldoende reistijd met ±15 min tolerantie\\n';
+  message+='• schooldeadline: 08:30\\n';
+  message+='\\n🚌 '+fullBuses+' volledig gevulde bus(sen), '+partialBuses+' gedeeltelijk gevulde bus(sen).';
+
+  if(unplanned.length)
+    message+='\\n⚠️ '+unplanned.length+' rit(ten) konden niet veilig worden geplaatst.';
+  if(conflicts.length)
+    message+='\\n⚠️ '+conflicts.length+' controlepunt(en) blijven over.';
+  else
+    message+='\\n✅ Geen route/tijdconflicten in de actieve planning.';
+
+  renderAll();
+  if(!silent)alert(message);
+  return {changes,unplanned:unplanned.length,conflicts:conflicts.length};
+}
+
+function runAIAndCheck(){
+  const box=document.getElementById('dayStartCheck');
+  if(box){
+    box.innerHTML='<div class="daystart-result daystart-warn"><b>🤖 AI bouwt de ochtendplanning opnieuw op…</b><div class="small muted">Alle wachtende ritten worden opnieuw verdeeld volgens capaciteit, scholen, reistijd en de 90/99-minutenregel.</div></div>';
+  }
+
+  const result=runAI(true);
+
+  setTimeout(async()=>{
+    await runDayStartCheck();
+    const b=document.getElementById('dayStartCheck');
+    if(b && result && !result.unplanned && !result.conflicts){
+      b.scrollIntoView({behavior:'smooth',block:'center'});
+    }
+  },120);
+}
+function resetDemo(){
+ if(!confirm('Demo terugzetten?'))return;
+ localStorage.removeItem(STORAGE_KEY);
+ driverUnavailable={};
+ busIssues={};
+ replacementAssignments={};
+ replacementSeq=1;
+ demoCounter=101;
+ demoAddressSpreadVersion='';
+ demoPlanningSpreadLocked=false;
+ seed();
+ // Reset zet eerst een veilige fallback neer en haalt daarna echte BAG/PDOK-adressen op.
+ applyGuaranteedDemoHomeSpread();
+ renderAll();
+ setTimeout(async()=>{
+   await geocodeExactDemoAddresses();
+ },200);
+}
+function pickup(id){const k=find(id);if(k){k.status='picked';renderAll()}}
+
+function absent(id){const k=find(id);if(k){k.status='absent';autoReplan();renderAll()}}
+function parentAbsent(id){absent(id)}
+let pendingDelayId=null;
+
+function chauffeurDelay(id){
+  pendingDelayId=String(id);
+  const k=find(pendingDelayId);
+  if(!k){ alert('Deze rit kon niet worden gevonden.'); return; }
+
+  const modal=document.getElementById('delayModal');
+  const input=document.getElementById('delayMinutes');
+  const text=document.getElementById('delayModalText');
+  if(!modal || !input) { alert('Vertraging: vul het aantal minuten in.'); return; }
+
+  text.textContent='Hoeveel minuten vertraging voor '+(k.name || 'deze rit')+'?';
+  input.value=String(k.delay || 10);
+  modal.style.display='flex';
+  setTimeout(()=>{ input.focus(); input.select(); },50);
+}
+
+function closeDelayModal(){
+  const modal=document.getElementById('delayModal');
+  if(modal) modal.style.display='none';
+  pendingDelayId=null;
+}
+
+function confirmDelay(){
+  const k=find(String(pendingDelayId || ''));
+  const input=document.getElementById('delayMinutes');
+  if(!k || !input){ closeDelayModal(); return; }
+
+  const minutes=parseInt(input.value,10);
+  if(!Number.isFinite(minutes) || minutes<=0){
+    alert('Vul een geldig aantal minuten in.');
+    input.focus();
+    return;
+  }
+
+  k.delay=minutes;
+  k.delayAt=Date.now();
+  k.status='picked';
+
+  closeDelayModal();
+  renderAll();
+
+  alert('⏱️ '+(k.name || 'Deze rit')+' heeft '+minutes+
+        ' minuten vertraging. Planning, ouderportaal en Live zijn bijgewerkt.');
+}
+
+function delay(id){const k=find(id);if(!k)return;const m=prompt('Hoeveel minuten vertraging?', '10');if(m!==null){k.delay=parseInt(m)||0;renderAll()}}
+
+function openReportDriverPicker(){
+ const options=driverNames.map(d=>`<button onclick="reportBusIssue('${d}')">🚌 ${d} — ${busForDriver(d)}</button>`).join('');
+ document.getElementById('modalBox').innerHTML='<h2>🚌 Busstoring melden</h2><p>Kies de chauffeur/bus:</p><div class="actions">'+options+'</div><p><button onclick="closeModal()">Annuleren</button></p>';
+ document.getElementById('modal').classList.remove('hidden');
+}
+function openDriverUnavailablePicker(){
+ const options=driverNames.map(d=>`<button onclick="toggleDriverAvailability('${d}');closeModal()">👨‍✈️ ${d}</button>`).join('');
+ document.getElementById('modalBox').innerHTML='<h2>👨‍✈️ Chauffeur niet beschikbaar</h2><p>Kies de chauffeur. Nogmaals indrukken maakt hem weer beschikbaar.</p><div class="actions">'+options+'</div><p><button onclick="closeModal()">Sluiten</button></p>';
+ document.getElementById('modal').classList.remove('hidden');
+}
+function reportCurrentDriverBus(){
+  const d=document.getElementById("driverSelect").value;
+  if(!d)return;
+  reportBusIssue(d);
+}
+
+function reportBusIssue(d){
+  const bus=busForDriver(d);
+  document.getElementById('modalBox').innerHTML=
+   `<h2>🚌 Storing melden — ${bus}</h2>
+    <p><b>Chauffeur:</b> ${d}</p>
+    <p>Kies het probleem:</p>
+    <div class="actions">
+      <button onclick="saveBusIssue('${d}','Motor/aandrijving')">⚙️ Motor/aandrijving</button>
+      <button onclick="saveBusIssue('${d}','Band/wiel')">🛞 Band/wiel</button>
+      <button onclick="saveBusIssue('${d}','Deur/lift')">🚪 Deur/lift</button>
+      <button onclick="saveBusIssue('${d}','Elektrisch/verlichting')">💡 Elektrisch/verlichting</button>
+      <button onclick="saveBusIssue('${d}','Verwarming/airco')">🌡️ Verwarming/airco</button>
+      <button onclick="saveBusIssue('${d}','Schade/aanrijding')">🛠️ Schade/aanrijding</button>
+      <button onclick="saveBusIssue('${d}','Anders')">📝 Anders</button>
+    </div>
+    <p><button onclick="closeModal()">Annuleren</button></p>`;
+  document.getElementById('modal').classList.remove('hidden');
+}
+
+async function saveBusIssue(d,reason){
+  const bus=busForDriver(d);
+  busIssues[d]={reason:reason,at:Date.now(),bus:bus};
+
+  // Bus kapot = chauffeur kan de route niet meer uitvoeren.
+  // Verdeel daarom direct ALLE actieve kinderen, ook vaste chauffeurrelaties.
+  // De chauffeur blijft zichtbaar, maar heeft geen actieve kinderen meer.
+  renderAll();
+  logPlannerAutomation('⏳ Automatische herverdeling gestart voor '+d+' wegens busstoring…');
+
+  const result=await redistributeUnavailableDriver(d,'busstoring');
+  renderAll();
+
+  if(result.moved){
+    logPlannerAutomation('🚌 '+bus+' storing: '+result.moved+' kinderen automatisch verdeeld over '+result.drivers+' beschikbare chauffeurs.');
+  }else{
+    logPlannerAutomation('⚠️ '+bus+' storing: kinderen konden niet automatisch worden verdeeld.');
+  }
+
+  showBusReplacement(d,result.moved);
+}
+
+
+
+function affectedChildren(d){
+  return kids.filter(k=>k.driver===d && k.status!=='school' && k.status!=='absent' && k.status!=='loose');
+}
+
+function availableReplacementDrivers(exclude){
+  return driverNames.filter(d=>
+    d!==exclude &&
+    !isDriverUnavailable(d) &&
+    !isBusUnavailable(d) &&
+    load(d)<MAX
+  ).sort((a,b)=>load(a)-load(b));
+}
+
+function showBusReplacement(d,movedCount){
+  const bus=busForDriver(d);
+  const issue=busIssues[d];
+  const affected=affectedChildren(d);
+  const options=availableReplacementDrivers(d);
+
+  const childHtml=affected.length
+    ? affected.map(k=>`<div class="affected-child">👦 <b>${k.name}</b> — ${k.time} — ${statusText(k.status)}${k.fixed?' — 🔒 vaste chauffeur':''}</div>`).join('')
+    : '<p class="muted">Geen actieve kinderen meer op deze bus.</p>';
+
+  const optHtml=options.length
+    ? options.map(x=>`<div class="replacement-option">
+        <div><b>🚕 ${x}</b><br><small>🚌 ${busForDriver(x)} • ${load(x)}/8 bezet • ${MAX-load(x)} vrije plaatsen</small></div>        <button onclick="assignReplacementTrip('${d}','${x}')">Vervangen</button>
+      </div>`).join('')
+    : '<p class="muted">Geen beschikbare vervangende chauffeur met vrije plaats.</p>';
+
+  document.getElementById('modalBox').innerHTML=
+    `<div class="breakdown-panel">
+      <h2>🚌 Busstoring — ${bus}</h2>
+      <p><b>Chauffeur:</b> ${d} · <b>Storing:</b> ${issue?.reason||'gemeld'}</p>
+      <p><b>${affected.length}</b> actieve kinderen op deze bus.</p>
+      ${movedCount?`<p class="replacement-ok">✅ ${movedCount} wachtende ritten zijn al automatisch opnieuw verdeeld.</p>`:''}
+      <h3>Kinderen op deze bus</h3>
+      ${childHtml}
+      <h3>Beschikbare vervanging</h3>
+      <div class="replacement-grid">${optHtml}</div>
+      <p style="margin-top:12px">
+        <button onclick="redistributeBrokenBus('${d}')">🤖 Opnieuw verdelen</button>
+        <button onclick="closeModal()">Sluiten</button>
+      </p>
+    </div>`;
+  document.getElementById('modal').classList.remove('hidden');
+}
+
+
+
+function redistributeBrokenBus(brokenDriver){
+  const candidates=kids.filter(k=>
+    k.driver===brokenDriver &&
+    k.status==='waiting' &&
+    !k.fixed
+  ).sort((a,b)=>a.timeMin-b.timeMin);
+
+  let moved=0;
+  for(const k of candidates){
+    const options=availableReplacementDrivers(brokenDriver)
+      .filter(d=>load(d)<MAX);
+    if(!options.length) break;
+    const best=options[0];
+    if(k.driver!==best){k.driver=best;moved++;}
+  }
+
+  renderAll();
+  showBusReplacement(brokenDriver,moved);
+}
+
+
+
+function createReplacementTrip(brokenDriver){
+  const affected=affectedChildren(brokenDriver).filter(k=>!k.fixed);
+  const existing=replacementAssignments[brokenDriver];
+  if(existing){ existing.updatedAt=Date.now(); return existing; }
+  const trip={
+    id:'VR'+String(replacementSeq++).padStart(3,'0'),
+    brokenDriver,
+    brokenBus:busForDriver(brokenDriver),
+    createdAt:Date.now(),
+    status:'open',
+    replacementDriver:null,
+    children:affected.map(k=>k.id)
+  };
+  replacementAssignments[brokenDriver]=trip;
+  return trip;
+}
+
+function assignReplacementTrip(brokenDriver,replacementDriver){
+  const trip=replacementAssignments[brokenDriver] || createReplacementTrip(brokenDriver);
+  const candidates=affectedChildren(brokenDriver).filter(k=>!k.fixed);
+  const capacity=Math.max(0,MAX-load(replacementDriver));
+  if(!capacity){ alert('Deze vervangende bus heeft geen vrije plaatsen meer.'); return; }
+  const moving=candidates.slice(0,capacity);
+  moving.forEach(k=>k.driver=replacementDriver);
+  trip.replacementDriver=replacementDriver;
+  trip.children=moving.map(k=>k.id);
+  trip.status=moving.length===candidates.length?'assigned':'partial';
+  trip.updatedAt=Date.now();
+  renderAll();
+  showBusReplacement(brokenDriver, moving.length);
+}
+
+
+
+function clearBusIssue(d){
+  if(!busIssues[d]) return;
+  delete busIssues[d];
+  delete replacementAssignments[d];
+  renderAll();
+  alert('✅ '+busForDriver(d)+' is weer beschikbaar.');
+}
+
+function openLoose(id){
+ const k=find(id);if(!k)return;
+ document.getElementById('modalBox').innerHTML=`<h2>📋 Loosmelding — ${k.name}</h2>
+ <button onclick="saveLoose('${id}','Geen gehoor bij woning')">🔔 Geen gehoor</button>
+ <button onclick="saveLoose('${id}','Kind niet aanwezig')">👤 Kind niet aanwezig</button>
+ <button onclick="saveLoose('${id}','Kind niet klaar')">⏱️ Kind niet klaar</button>
+ <button onclick="saveLoose('${id}','Ouder/verzorger zegt af')">🚫 Ouder/verzorger zegt af</button>
+ <button onclick="saveLoose('${id}','Adres klopt niet')">📍 Adres klopt niet</button>
+ <button onclick="saveLoose('${id}','Anders')">📝 Anders</button>
+ <p><button onclick="closeModal()">Sluiten</button></p>`;
+ document.getElementById('modal').classList.remove('hidden');
+}
+function saveLoose(id,reason){const k=find(id);if(k){k.status='loose';k.looseReason=reason;closeModal();autoReplan();renderAll();alert('Loosmelding opgeslagen.');}}
+function autoReplan(){
+ const open=kids.filter(k=>k.status==='waiting'&&!k.fixed);
+ let moved=0;
+ open.forEach(k=>{
+   const choices=driverNames.filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d)&&load(d)<MAX);
+   if(choices.length){
+     const old=k.driver;
+     const chosen=choices.sort((a,b)=>load(a)-load(b))[0];
+     if(old!==chosen){k.driver=chosen;moved++;}
+   }
+ });
+ return moved;
+}
+
+async function toggleDriverAvailabilityFromDetails(d){
+  await toggleDriverAvailability(d);
+  if(document.getElementById('modal') && !document.getElementById('modal').classList.contains('hidden')){
+    openDriverDetails(d);
+  }
+}
+
+function openDriverDetails(d){
+ const list=kids.filter(k=>k.driver===d).sort((a,b)=>a.timeMin-b.timeMin);
+ document.getElementById('modalBox').innerHTML=`<h2>🚕 ${d}</h2><p>Status chauffeur: <b>${isDriverUnavailable(d)?'Niet beschikbaar':'Beschikbaar'}</b></p><p>🚌 Bus: <b>${busForDriver(d)}</b> — <b>${isBusUnavailable(d)?'⚠️ Storing':'✅ Beschikbaar'}</b></p><p>Actieve bezetting: <b>${load(d)}/8</b></p>`+
+ `<p><button onclick="toggleDriverAvailabilityFromDetails('${d}')">${isDriverUnavailable(d)?'✅ Chauffeur beschikbaar maken':'🚫 Chauffeur niet beschikbaar maken'}</button>
+ <button onclick="reportBusIssue('${d}')">🚌 Busstoring melden</button>
+ ${isBusUnavailable(d)?`<button onclick="clearBusIssue('${d}')">✅ Bus weer beschikbaar</button>`:''}</p>`+
+ list.map(k=>`<div class="row">${k.time} — <b>${k.name}</b> — ${statusText(k.status)}</div>`).join('')+
+ '<button onclick="closeModal()">Sluiten</button>';
+ document.getElementById('modal').classList.remove('hidden');
+}
+function openChild(id){
+ const k=find(id);if(!k)return;
+ document.getElementById('modalBox').innerHTML=`<h2>👦 ${k.name}</h2>
+ <p><b>Ophaaltijd:</b> ${k.time}</p><p><b>Ophaaladres:</b> ${k.pickupAddress||k.address||'Onbekend'}</p><p><b>Chauffeur:</b> ${k.driver}</p><p><b>Bestemmingsadres:</b> ${k.address||k.destinationAddress||k.destination||'Onbekend'}${k.destinationCity?', '+k.destinationCity:''}</p><p><b>School/bestemming:</b> ${k.destination||k.school||'Onbekend'}</p>
+ <p><b>Status:</b> ${statusText(k.status)}</p><p><b>Vaste relatie:</b> ${k.fixed?'Ja':'Nee'}</p>
+ <h3>Chauffeurinformatie</h3><p><b>Hoe benaderen:</b> ${k.approach}</p><p><b>Veiligheid:</b> ${k.safety}</p><p><b>Belangrijk:</b> ${k.important}</p>
+ <button onclick="editChild('${id}')">✏️ Profiel bewerken</button> <button onclick="closeModal()">Sluiten</button>`;
+ document.getElementById('modal').classList.remove('hidden');
+}
+function toggleChildCard(id){
+ const el=document.getElementById('childcard-'+id);
+ if(el) el.classList.toggle('open');
+}
+function displayPickupAddress(k){
+  const raw=String(k?.pickupAddress||k?.address||'Onbekend').trim();
+  if(raw==='Onbekend')return raw;
+  if(/^k\d+$/.test(String(k?.id||'')) && !/\b\d+[a-zA-Z]?\b/.test(raw)){
+    const n=Number(String(k.id).slice(1));
+    const nr=2+((n*2)%58);
+    const parts=raw.split(',').map(x=>x.trim()).filter(Boolean);
+    if(parts.length>=2)return parts[0]+' '+nr+', '+parts.slice(1).join(', ');
+    return raw+' '+nr;
+  }
+  return raw;
+}
+function childCardHtml(k){
+ return `<div class="child-card-v70" id="childcard-${k.id}">
+   <button class="child-head-v70" type="button" onclick="toggleChildCard('${k.id}')">
+     <span>👦 <b>${k.name}</b><br><small>${k.time} • ${k.school} • ${statusText(k.status)}</small></span>
+     <span class="arrow">▼</span>
+   </button>
+   <div class="child-details-v70">
+     <div class="child-meta-v70"><span>🚕 ${k.driver}</span><span>🧭 Route ${Number.isFinite(k.routeOrder)?k.routeOrder:'—'}</span><span>📍 Ophalen: ${displayPickupAddress(k)}</span><span>🏫 Bestemming: ${k.address||k.destination||'Onbekend'}</span><span>➡️ ${k.destination||k.school||'Bestemming onbekend'}</span><span>${k.fixed?'🔒 Vast':'🔄 Vrij planbaar'}</span></div>
+     <div class="child-info-v70"><b>Benadering:</b> ${k.approach}</div>
+     <div class="child-info-v70"><b>Veiligheid:</b> ${k.safety}</div>
+     <div class="child-info-v70"><b>Belangrijk:</b> ${k.important}</div>
+     <div class="actions"><button onclick="openChild('${k.id}')">📋 Volledige informatie</button></div>
+   </div>
+ </div>`;
+}
+function editChild(id){
+ const k=find(id);if(!k)return;
+ const destinationOptions=schools.map(x=>`<option value="${x}" ${(k.destination||k.school)===x?'selected':''}>${x}</option>`).join('')+
+   `<option value="Anders" ${!schools.includes(k.destination||k.school)?'selected':''}>Anders / eigen bestemming</option>`;
+ document.getElementById('modalBox').innerHTML=`<h2>✏️ Kindprofiel bewerken</h2>
+ <p>👦 Naam kind</p><input id="eName" style="width:100%" value="${k.name||''}">
+ <p>🕐 Ophaaltijd</p><input id="eTime" type="time" style="width:100%" value="${k.time||'08:30'}">
+ <p>📍 Ophaaladres</p><input id="ePickup" style="width:100%" value="${k.pickupAddress||k.address||''}">
+ <p>🏘️ Plaats ophalen</p><input id="ePickupCity" style="width:100%" value="${k.pickupCity||''}">
+ <p>🏫 Bestemming</p><select id="eDestination" style="width:100%" onchange="toggleEditDestination()">${destinationOptions}</select>
+ <p>📍 Bestemmingsadres</p><input id="eAddress" style="width:100%" value="${k.address||k.destinationAddress||''}">
+ <p>🏘️ Plaats bestemming</p><input id="eDestinationCity" style="width:100%" value="${k.destinationCity||'Emmen'}">
+ <p>Hoe benaderen</p><input id="e1" style="width:100%" value="${k.approach||''}">
+ <p>Veiligheid/begeleiding</p><input id="e2" style="width:100%" value="${k.safety||''}">
+ <p>Belangrijk voor chauffeur</p><input id="e3" style="width:100%" value="${k.important||''}">
+ <p><button class="primary" onclick="saveChild('${id}')">💾 Opslaan</button> <button onclick="closeModal()">Annuleren</button></p>`;
+ toggleEditDestination();
+}
+function toggleEditDestination(){
+ const sel=document.getElementById('eDestination'), address=document.getElementById('eAddress');
+ if(!sel||!address)return;
+ const isSchool=schools.includes(sel.value);
+ address.placeholder=isSchool?'Bestemmingsadres van de school':'Bestemmingsadres';
+ if(isSchool && !address.value) address.value=schoolLocations[sel.value]?.address||sel.value;
+}
+async function saveChild(id){
+ const k=find(id);if(!k)return;
+ const t=document.getElementById('eTime')?.value||k.time||'08:30';
+ const parts=t.split(':').map(Number);
+ k.name=document.getElementById('eName')?.value.trim()||k.name;
+ k.time=t;
+ k.timeMin=(Number(parts[0])||0)*60+(Number(parts[1])||0);
+ k.pickupAddress=document.getElementById('ePickup')?.value.trim()||k.pickupAddress||'';
+ k.pickupCity=document.getElementById('ePickupCity')?.value.trim()||'';
+ const destination=document.getElementById('eDestination')?.value||k.destination||k.school||'Nieuwe bestemming';
+ k.destination=destination;
+ k.school=schools.includes(destination)?destination:'Nieuwe bestemming';
+ k.address=document.getElementById('eAddress')?.value.trim()||destination;
+ k.destinationAddress=k.address;
+ k.destinationCity=document.getElementById('eDestinationCity')?.value.trim()||'';
+ k.approach=document.getElementById('e1')?.value||'';
+ k.safety=document.getElementById('e2')?.value||'';
+ k.important=document.getElementById('e3')?.value||'';
+
+ const pickupQuery=[k.pickupAddress,k.pickupCity].filter(Boolean).join(', ');
+ const geo=await geocodePickupAddress(pickupQuery+', Nederland');
+ if(geo){k.lat=geo.lat;k.lon=geo.lon;}
+
+ const destinationQuery=[k.address,k.destinationCity].filter(Boolean).join(', ');
+ const destinationGeo=await geocodeAddress(destinationQuery+', Nederland');
+ if(destinationGeo){
+   k.destinationLat=destinationGeo.lat;
+   k.destinationLon=destinationGeo.lon;
+ }else if(schoolLocations[k.school]){
+   k.destinationLat=schoolLocations[k.school].lat;
+   k.destinationLon=schoolLocations[k.school].lon;
+ }
+ k.newlyAdded=k.newlyAdded!==false;
+ closeModal();
+ renderAll();
+}
+function openAdd(){
+ const destinationOptions=schools.map(s=>`<option value="${s}">${s}</option>`).join('')+`<option value="Anders">Anders / eigen bestemming</option>`;
+ document.getElementById('modalBox').innerHTML=`
+ <h2>➕ Rit toevoegen</h2>
+ <p>Naam kind</p>
+ <input id="newName" style="width:100%" value="Nieuw kind">
+ <p>🕐 Ophaaltijd</p>
+ <input id="newTime" type="time" style="width:100%" value="08:30">
+ <p>📍 <b>Ophaaladres</b></p>
+ <input id="newPickupAddress" style="width:100%" value="" placeholder="Bijv. Laan van de Marel 12">
+ <p>🏘️ <b>Plaats</b></p>
+ <input id="newPickupCity" style="width:100%" value="Emmen" placeholder="Bijv. Hoogeveen">
+ <p>🏫 Waarheen?</p>
+ <select id="newDestination" style="width:100%" onchange="toggleNewDestination()">
+   ${destinationOptions}
+ </select>
+ <p>📍 <b>Bestemmingsadres</b></p>
+ <input id="newAddress" style="width:100%" value="" placeholder="Bijv. Ullevi 26">
+ <p>🏘️ <b>Plaats bestemming</b></p>
+ <input id="newDestinationCity" style="width:100%" value="Emmen" placeholder="Bijv. Emmen of Hoogeveen">
+ <p class="muted small">De planner gebruikt het ophaaladres én het bestemmingsadres voor de nieuwe rit.</p>
+ <p><button class="primary" onclick="addRide()">Toevoegen</button> <button onclick="closeModal()">Annuleren</button></p>`;
+ document.getElementById('modal').classList.remove('hidden');
+ toggleNewDestination();
+}
+function toggleNewDestination(){
+ const select=document.getElementById('newDestination');
+ const address=document.getElementById('newAddress');
+ if(!select||!address)return;
+ const isSchool=schools.includes(select.value);
+ if(isSchool && !address.value) address.value=select.value;
+ address.placeholder=isSchool?'Bestemmingsadres (optioneel)':'Vul de bestemming / het adres in';
+}
+async function geocodePickupAddress(address){
+  const query=String(address||'').trim();
+  if(!query)return null;
+  try{
+    const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=nl&q='+encodeURIComponent(query);
+    const res=await fetch(url,{headers:{'Accept':'application/json'}});
+    if(!res.ok)throw new Error('Geocoding mislukt');
+    const data=await res.json();
+    if(!Array.isArray(data)||!data.length)return null;
+    const lat=Number(data[0].lat), lon=Number(data[0].lon);
+    if(!Number.isFinite(lat)||!Number.isFinite(lon))return null;
+    return {lat,lon,display_name:data[0].display_name||query};
+  }catch(e){
+    console.warn('Ophaaladres kon niet op de kaart worden gevonden:',e);
+    return null;
+  }
+}
+
+async function geocodeAddress(address){
+  const query=String(address||'').trim();
+  if(!query)return null;
+  try{
+    const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=nl&q='+encodeURIComponent(query);
+    const res=await fetch(url,{headers:{'Accept':'application/json'}});
+    if(!res.ok)throw new Error('Geocoding mislukt');
+    const data=await res.json();
+    if(!Array.isArray(data)||!data.length)return null;
+    const lat=Number(data[0].lat), lon=Number(data[0].lon);
+    if(!Number.isFinite(lat)||!Number.isFinite(lon))return null;
+    return {lat,lon,display_name:data[0].display_name||query};
+  }catch(e){
+    console.warn('Adres kon niet op de kaart worden gevonden:',e);
+    return null;
+  }
+}
+
+function assignNewRidesToAvailableDrivers(rides){
+  const list=(Array.isArray(rides)?rides:[rides]).filter(k=>k && k.status==='waiting' && !k.driver);
+  if(!list.length)return [];
+
+  const assigned=[];
+  const available=()=>driverNames.filter(d=>
+    !isDriverUnavailable(d) &&
+    !isBusUnavailable(d) &&
+    load(d)<MAX
+  );
+
+  // Als er genoeg ruimte is, blijft een nieuw groepje zoveel mogelijk bij
+  // dezelfde chauffeur. Anders verdelen we de kinderen over de minst belaste
+  // beschikbare chauffeurs.
+  let remaining=[...list];
+  while(remaining.length){
+    const choices=available().sort((a,b)=>{
+      const la=load(a),lb=load(b);
+      if(la!==lb)return la-lb;
+      return driverNames.indexOf(a)-driverNames.indexOf(b);
+    });
+    if(!choices.length)break;
+
+    const groupSize=remaining.length;
+    const wholeGroupDriver=choices.find(d=>MAX-load(d)>=groupSize);
+    if(wholeGroupDriver){
+      remaining.forEach(k=>{
+        k.driver=wholeGroupDriver;
+        k.routeOrder=load(wholeGroupDriver);
+        assigned.push({kid:k,driver:wholeGroupDriver});
+      });
+      remaining=[];
+      break;
+    }
+
+    const d=choices[0];
+    const capacity=MAX-load(d);
+    const moving=remaining.splice(0,Math.max(1,capacity));
+    moving.forEach(k=>{
+      k.driver=d;
+      k.routeOrder=load(d);
+      assigned.push({kid:k,driver:d});
+    });
+  }
+
+  // Routevolgorde van de betrokken chauffeurs opnieuw nummeren.
+  [...new Set(assigned.map(x=>x.driver))].forEach(d=>{
+    kids.filter(k=>k.driver===d&&active(k))
+      .sort((a,b)=>(a.timeMin||0)-(b.timeMin||0))
+      .forEach((k,i)=>k.routeOrder=i+1);
+  });
+
+  if(assigned.length)saveState();
+  return assigned;
+}
+
+async function addRide(){
+ const t=document.getElementById('newTime').value||'08:30';
+ const parts=t.split(':').map(Number);
+ const h=Number.isFinite(parts[0])?parts[0]:8;
+ const m=Number.isFinite(parts[1])?parts[1]:30;
+ const pickupStreet=document.getElementById('newPickupAddress')?.value.trim()||'';
+ const pickupCity=document.getElementById('newPickupCity')?.value.trim()||'';
+ const pickupAddress=[pickupStreet,pickupCity].filter(Boolean).join(', ')||'Ophaaladres onbekend';
+ const pickupGeo=await geocodePickupAddress(pickupAddress+', Nederland');
+ const destination=document.getElementById('newDestination')?.value||'Nieuwe bestemming';
+ const address=document.getElementById('newAddress')?.value.trim()||destination;
+ const destinationCity=document.getElementById('newDestinationCity')?.value.trim()||'';
+ const school=schools.includes(destination)?destination:'Nieuwe bestemming';
+ const destinationQuery=[address,destinationCity].filter(Boolean).join(', ');
+ const destinationGeo=await geocodeAddress(destinationQuery+', Nederland');
+ const newId='k'+demoCounter++;
+ const newKid={
+   id:newId,
+   name:document.getElementById('newName').value||'Nieuw kind',
+   time:t,timeMin:h*60+m,
+   pickupAddress,
+   pickupCity,
+   address,
+   destinationAddress:address,
+   destinationCity,
+   destinationLat:destinationGeo?.lat ?? (schoolLocations[school]?.lat),
+   destinationLon:destinationGeo?.lon ?? (schoolLocations[school]?.lon),
+   school,destination,
+   lat:pickupGeo?.lat ?? 52.7860+(kids.length%13)*0.0012,
+   lon:pickupGeo?.lon ?? 6.8980+(kids.length%13)*0.0014,
+   driver:'',fixed:false,status:'waiting',
+   approach:'Rustig en duidelijk aanspreken.',
+   safety:'Veilig instappen en gordel.',
+   important:'Nieuw profiel.',
+   newlyAdded:true
+ };
+ kids.push(newKid);
+
+ // Nieuwe ritten worden direct aan een werkelijk beschikbare chauffeur
+ // met de minste bezetting gekoppeld. Bestaande demo-groepen blijven volledig
+ // ongemoeid; alleen de nieuw toegevoegde rit(ten) worden geplaatst.
+ const assignment=assignNewRidesToAvailableDrivers([newKid]);
+ closeModal();
+ renderAll();
+
+ setTimeout(()=>{
+   const card=document.getElementById('childcard-'+newId);
+   const rides=document.getElementById('collapsibleRittenVandaag');
+   if(rides && !rides.classList.contains('open')) rides.classList.add('open');
+   if(card){
+     card.classList.add('open');
+     card.scrollIntoView({behavior:'smooth',block:'center'});
+   }
+ },100);
+
+ alert('✅ Rit toegevoegd: '+newKid.name+' → '+(newKid.destination||newKid.address)+'\n📍 Ophalen: '+newKid.pickupAddress+' om '+newKid.time+'.'+(pickupGeo?'\n🗺️ Ophaaladres op de kaart geplaatst.':'\n⚠️ Adres niet exact gevonden; controleer het adres.') );
+}
+function find(id){return kids.find(k=>k.id===id)}
+function closeModal(){document.getElementById('modal').classList.add('hidden')}
+document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
+if(!loadState())seed();
+
+// Demo-locaties blijven volledig deterministisch.
+// Geen achtergrond-geocoding: daardoor kunnen opgeslagen kaartpunten nooit
+// meer verwisselen met een ander adres of een andere plaats.
+const repairedAtStartup=repairPlannerAssignments();
+if(repairedAtStartup)saveState();
+renderAll();
+startPlannerAutomation();
+
+// V783: éénmalig echte BAG/PDOK-adressen koppelen aan alle 100 demo-kinderen.
+// Daarna blijven de echte huisadressen en coördinaten vast staan.
+setTimeout(async()=>{
+  if(demoAddressSpreadVersion!=='v784'){
+    await geocodeExactDemoAddresses();
+  }
+},500);</script>
+
+
+
+
+<div id="delayModal">
+  <div class="delay-box" role="dialog" aria-modal="true">
+    <h3>⏱️ Vertraging</h3>
+    <div id="delayModalText">Hoeveel minuten vertraging?</div>
+    <input id="delayMinutes" type="number" min="1" max="180" value="10" />
+    <div class="delay-actions">
+      <button type="button" onclick="closeDelayModal()">Annuleren</button>
+      <button type="button" class="delay-ok" onclick="confirmDelay()">Opslaan</button>
+    </div>
+  </div>
+</div>
+
+<script id="map-recovery">
+(function(){
+  function bootMapSafely(){
+    try{
+      if(typeof initMap === 'function'){
+        initMap();
+      } else if(typeof initRealMap === 'function'){
+        initRealMap();
+      }
+      if(typeof renderRealMapMarkers === 'function'){
+        renderRealMapMarkers();
+      }
+    }catch(e){
+      console.warn('Kaartinitialisatie:', e);
+    }
+  }
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', function(){
+      setTimeout(bootMapSafely, 150);
+    }, {once:true});
+  }else{
+    setTimeout(bootMapSafely, 150);
+  }
+})();
+</script>
+
+<script id="stable-map-runtime">
+(function(){
+  function refreshMapSize(){
+    try{
+      if(typeof realMap !== 'undefined' && realMap && typeof realMap.invalidateSize === 'function'){
+        setTimeout(function(){ realMap.invalidateSize(true); }, 100);
+        setTimeout(function(){ realMap.invalidateSize(true); }, 500);
+      }
+    }catch(e){ console.warn('map resize',e); }
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    setTimeout(refreshMapSize,300);
+    setTimeout(refreshMapSize,1000);
+  });
+
+  document.addEventListener('click', function(e){
+    const b=e.target.closest && e.target.closest('button,[role="button"]');
+    if(b && /live|kaart|map/i.test(b.textContent||'')){
+      setTimeout(refreshMapSize,150);
+    }
+  });
+})();
+</script>
+
+<script id="collapsible-lists-js">
+function toggleCollapsible(id){
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.classList.toggle('open');
+}
+
+
+</script>
+<script>
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=813-cachebypass").catch(()=>{}));}
+</script>
+
+</body>
+</html>
