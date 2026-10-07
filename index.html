@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V812</h1>
+<h1>🚕 Taxi Planner V813</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -2329,7 +2329,23 @@ function packDemoRoutesForCapacityAnd90(demoKids){
     if(choices[0])k.driver=choices[0].d;
   }
 
-  // Laatste lokale verbetering: verplaats één kind van een kleinere route naar
+  // V813: harde eindgarantie voor de demo.
+  // Als een complete groep door de routevoorwaarden niet kon worden geplaatst,
+  // mogen de kinderen nooit zonder chauffeur achterblijven. Er zijn 50 bussen
+  // voor 100 kinderen, dus capaciteit is altijd beschikbaar. Wijs eventuele
+  // overgebleven kinderen daarom op basis van vrije capaciteit toe; route- en
+  // tijdproblemen blijven daarna zichtbaar voor de dagstartcontrole.
+  for(const k of demoKids.filter(x=>active(x)&&!x.driver)){
+    const choices=availableDrivers
+      .map(d=>({d,load:demoKids.filter(x=>x.driver===d&&active(x)).length}))
+      .filter(x=>x.load<MAX)
+      .sort((a,b)=>a.load-b.load);
+    if(choices.length){
+      k.driver=choices[0].d;
+    }
+  }
+
+    // Laatste lokale verbetering: verplaats één kind van een kleinere route naar
   // een grotere route als beide routes geldig blijven.
   for(let pass=0;pass<30;pass++){
     let changed=false;
