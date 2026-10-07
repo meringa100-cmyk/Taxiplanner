@@ -1640,12 +1640,96 @@ async function runBestPlanning(){
     'De planner heeft capaciteit, geografische route, verste-kind-eerst en de bestaande tijdsregels meegenomen.');
 }
 
+async function repairAllTimeConflicts(){
+  // V808.1: controleer exact dezelfde tijdslogica als Dagstartcontrole.
+  // Een routevolgorde alleen is niet genoeg: de geplande ophaaltijden moeten
+  // ook werkelijk haalbaar zijn.
+  let repairs=0, moved=0;
+
+  for(let pass=0;pass<25;pass++){
+    let changed=false;
+
+    for(const d of driverNames){
+      const q=kids.filter(k=>k.driver===d&&active(k))
+        .sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+      if(q.length<2)continue;
+
+      for(let i=1;i<q.length;i++){
+        const prev=q[i-1], cur=q[i];
+        const gap=(cur.timeMin||0)-(prev.timeMin||0);
+        const travel=routeMinutesBetween(prev,cur,driverNames.indexOf(d));
+        if(gap>0 && travel<=gap+15)continue;
+
+        // Eerst proberen we de latere wachtende rit maximaal 15 minuten
+        // op te schuiven.
+        if(cur.status==='waiting'){
+          const old=Number(cur.timeMin)||0;
+          const target=Math.min(old+15,(prev.timeMin||0)+Math.max(1,travel-15));
+          if(target>old){
+            cur.timeMin=target;
+            cur.time=fmtTime(target);
+            repairs++;
+            changed=true;
+            continue;
+          }
+        }
+
+        // Daarna de eerdere wachtende rit maximaal 15 minuten vervroegen.
+        if(prev.status==='waiting'){
+          const old=Number(prev.timeMin)||0;
+          const target=Math.max(0,Math.min(old-1,(cur.timeMin||0)-Math.max(1,travel-15)));
+          if(target<old){
+            prev.timeMin=target;
+            prev.time=fmtTime(target);
+            repairs++;
+            changed=true;
+            continue;
+          }
+        }
+
+        // Als tijden niet meer verschoven kunnen worden, verplaats het kind
+        // naar een andere bus waar de volledige tijdsvolgorde wel past.
+        const candidates=driverNames.filter(t=>
+          t!==d&&!isDriverUnavailable(t)&&!isBusUnavailable(t)
+        ).map(t=>{
+          const tq=kids.filter(k=>k.driver===t&&active(k));
+          if(tq.length>=MAX)return null;
+          if(tq.some(x=>(x.timeMin||0)===(cur.timeMin||0)))return null;
+          const trial=[...tq,cur].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+          for(let j=1;j<trial.length;j++){
+            const g=(trial[j].timeMin||0)-(trial[j-1].timeMin||0);
+            const tr=routeMinutesBetween(trial[j-1],trial[j],driverNames.indexOf(t));
+            if(g<=0||tr>g+15)return null;
+          }
+          if(routeDurationEstimate(trial,driverNames.indexOf(t))>routeLimitForRides(trial))return null;
+          const nearest=tq.length?Math.min(...tq.map(x=>geoDistanceKm(cur,x))):0;
+          return {t,score:nearest+(MAX-tq.length)*2};
+        }).filter(Boolean).sort((a,b)=>a.score-b.score);
+
+        if(candidates[0]){
+          cur.driver=candidates[0].t;
+          moved++;
+          changed=true;
+          break;
+        }
+      }
+      if(changed)break;
+    }
+
+    if(!changed)break;
+    for(const d of driverNames) await optimizeDriverRoute(d);
+  }
+
+  return {repairs,moved};
+}
+
 async function optimizeAllRoutes(){
   const box=document.getElementById('routeInfo');
   if(box)box.textContent='🧭 Routes worden geografisch geoptimaliseerd en overvolle/te lange routes worden automatisch gesplitst…';
 
   // Eerst de gewenste buiten-naar-binnen volgorde bepalen.
   for(const d of driverNames) await optimizeDriverRoute(d);
+  const timeRepair=await repairAllTimeConflicts();
 
   // V807.1: de oude optimizer kon wel een routevolgorde maken, maar liet
   // een te lange route vervolgens staan. Nu repareren we dat echt:
@@ -1748,6 +1832,7 @@ async function optimizeAllRoutes(){
   renderAll();
 
   let msg='🧭 Route-optimalisatie klaar!\\n\\n';
+  if(timeRepair.repairs||timeRepair.moved)msg+='🕒 '+timeRepair.repairs+' tijdvensters hersteld en '+timeRepair.moved+' kind(eren) indien nodig verplaatst.\\n';
   msg+=total+' actieve ritten zijn opnieuw geordend.\\n';
   msg+='De eerste stop ligt zo ver mogelijk van Emmen; daarna werkt de route waar mogelijk geografisch terug richting Emmen.\\n';
   if(moved)msg+='\\n🔄 '+moved+' kind(eren) zijn automatisch naar een andere bus verplaatst om te lange routes te breken.';
