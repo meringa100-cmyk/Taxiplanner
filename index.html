@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V808</h1>
+<h1>🚕 Taxi Planner V809</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1318,6 +1318,35 @@ function moveDriverSelection(step){
  driverSelectedKid[d]=q[idx].id;
  renderDriver();
 }
+let driverGps={};
+let driverGpsWatch=null;
+function startDriverGPS(){
+  if(!navigator.geolocation){alert('GPS wordt niet ondersteund op dit apparaat.');return;}
+  if(driverGpsWatch!==null)return;
+  driverGpsWatch=navigator.geolocation.watchPosition(pos=>{
+    const d=document.getElementById('driverSelect')?.value;
+    if(!d)return;
+    driverGps[d]={lat:pos.coords.latitude,lon:pos.coords.longitude,accuracy:Math.round(pos.coords.accuracy||0),at:Date.now()};
+    saveState();
+    renderDriver();
+    renderLive();
+  },err=>{
+    const box=document.getElementById('driverGpsStatus');
+    if(box)box.innerHTML='⚠️ GPS niet beschikbaar: '+(err.message||'controleer locatie-toestemming');
+  },{enableHighAccuracy:true,maximumAge:10000,timeout:15000});
+  const box=document.getElementById('driverGpsStatus');
+  if(box)box.innerHTML='📡 GPS actief — locatie wordt live bijgewerkt.';
+}
+function stopDriverGPS(){
+  if(driverGpsWatch!==null){navigator.geolocation.clearWatch(driverGpsWatch);driverGpsWatch=null;}
+  const box=document.getElementById('driverGpsStatus');
+  if(box)box.innerHTML='⏸️ GPS gestopt';
+}
+function driverNavigation(k){
+  if(!k)return;
+  const destination=encodeURIComponent(k.address||'');
+  if(destination)window.open('https://www.google.com/maps/dir/?api=1&destination='+destination,'_blank');
+}
 function renderDriver(){
  const s=document.getElementById('driverSelect');
  const current=s.value;
@@ -1331,6 +1360,11 @@ function renderDriver(){
    document.getElementById('driverRides').innerHTML=`<div class="driver-mode-v71">
     <h3 style="margin:0">🚕 Chauffeurmodus</h3>
     <div class="driver-status-v71"><span>👨‍✈️ ${d}</span><span>🚌 ${busForDriver(d)}</span><span>👦 ${load(d)}/8</span></div>
+   <div id="driverGpsStatus" class="small muted" style="margin:8px 0">📍 GPS nog niet gestart</div>
+   <div class="actions">
+    <button class="primary" onclick="startDriverGPS()">📡 Start live GPS</button>
+    <button onclick="stopDriverGPS()">⏸️ Stop GPS</button>
+   </div>
     <div class="driver-next-v71"><div class="kid-name">Geen volgende rit</div><p class="muted">Alle ritten zijn afgehandeld.</p></div>
    </div>`;
    return;
@@ -1350,6 +1384,7 @@ function renderDriver(){
      <div class="big-time">${selected.time}</div>
      <div class="kid-name">${selected.name}</div>
      <div class="info-line">📍 <b>${selected.address}</b></div>
+     <button class="primary" onclick="driverNavigation(selected)">🧭 Navigeer naar dit kind</button>
      <div class="info-line">🏫 ${selected.school}</div>
      <div class="info-line">🧒 ${selected.approach}</div>
      <div class="info-line">🛡️ ${selected.safety}</div>
