@@ -3687,6 +3687,8 @@ if(!loadState())seed();
 // Demo-locaties blijven volledig deterministisch.
 // Geen achtergrond-geocoding: daardoor kunnen opgeslagen kaartpunten nooit
 // meer verwisselen met een ander adres of een andere plaats.
+const repairedAtStartup=repairPlannerAssignments();
+if(repairedAtStartup)saveState();
 renderAll();
 startPlannerAutomation();
 
