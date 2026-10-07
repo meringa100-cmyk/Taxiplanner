@@ -250,7 +250,7 @@ button[onclick^="chauffeurDelay"]:active{
 <div class="card">
 <h3>Wat moet er vandaag gebeuren?</h3>
 <div class="actions">
-<button class="primary" type="button" onclick="runAI()">🤖 AI plannen</button>
+<button class="primary" type="button" onclick="runAI()">🤖 AI plannen</button><button type="button" onclick="runBestPlanning()">🏆 Automatisch beste planning</button>
 <button type="button" onclick="optimizeAllRoutes()">🧭 Routes optimaal</button>
 <button onclick="openAdd()">➕ Rit toevoegen</button>
 <button onclick="resetDemo()">↩️ Demo resetten</button>
@@ -1599,6 +1599,47 @@ async function optimizeDriverRoute(d){
   return {count:ordered.length,conflicts,minutes:total};
 }
 
+function planningScore(){
+  const activeKids=kids.filter(active);
+  let score=0,longRoutes=0,conflicts=0,used=0,capacityWaste=0,deadlineLate=0;
+  for(const d of driverNames){
+    const q=activeKids.filter(k=>k.driver===d).sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+    if(!q.length)continue;
+    used++; capacityWaste+=MAX-q.length;
+    const limit=routeLimitForRides(q);
+    const minutes=routeDurationEstimate(q,driverNames.indexOf(d));
+    if(minutes>limit){longRoutes++;score+=(minutes-limit)*40;}
+    for(let i=1;i<q.length;i++){
+      const gap=(q[i].timeMin||0)-(q[i-1].timeMin||0);
+      const travel=routeMinutesBetween(q[i-1],q[i],driverNames.indexOf(d));
+      if(travel>gap+15){conflicts++;score+=(travel-gap-15)*30;}
+    }
+    const late=Math.max(0,schoolArrivalMinutes(q[q.length-1])-SCHOOL_DEADLINE_MIN);
+    if(late>0){deadlineLate++;score+=late*60;}
+    score+=Math.max(0,limit-minutes)*0.05;
+  }
+  score+=capacityWaste*1.5+used*0.5;
+  return {score,used,longRoutes,conflicts,deadlineLate,capacityWaste};
+}
+
+async function runBestPlanning(){
+  const box=document.getElementById('dayStartCheck');
+  if(box)box.innerHTML='<div class="daystart-result daystart-warn"><b>🏆 AI zoekt de beste planning…</b><div class="small muted">Capaciteit, routeafstand, verste kind eerst, reistijd en schooldeadline worden samen beoordeeld.</div></div>';
+  runAI(true);
+  await optimizeAllRoutes();
+  const result=planningScore();
+  saveState(); renderAll();
+  const ok=result.longRoutes===0&&result.conflicts===0&&result.deadlineLate===0;
+  alert((ok?'🏆 Beste planning gevonden!':'⚠️ Beste haalbare planning gevonden.')+'\\n\\n'+
+    '🚌 '+result.used+' chauffeurs gebruikt\\n'+
+    '👦 '+kids.filter(active).length+' kinderen gepland\\n'+
+    '📦 Vrije plaatsen: '+result.capacityWaste+'\\n'+
+    '⏱️ Routes boven limiet: '+result.longRoutes+'\\n'+
+    '🚦 Tijdconflicten: '+result.conflicts+'\\n'+
+    '🏫 Schooldeadline-problemen: '+result.deadlineLate+'\\n\\n'+
+    'De planner heeft capaciteit, geografische route, verste-kind-eerst en de bestaande tijdsregels meegenomen.');
+}
+
 async function optimizeAllRoutes(){
   const box=document.getElementById('routeInfo');
   if(box)box.textContent='🧭 Routes worden geografisch geoptimaliseerd…';
@@ -1618,7 +1659,7 @@ async function optimizeAllRoutes(){
 
   let msg='🧭 Route-optimalisatie klaar!\\n\\n';
   msg+=total+' actieve ritten zijn per chauffeur opnieuw geordend.\\n';
-  msg+='Na de eerste rit wordt steeds de dichtstbijzijnde haalbare volgende rit gekozen.\\n';
+  msg+='De eerste stop ligt zo ver mogelijk van Emmen; daarna werkt de route waar mogelijk geografisch terug richting Emmen.\\n';
   msg+='Daarbij wordt eerst de echte weg-reistijd gebruikt als de route-server beschikbaar is; anders wordt de afstand geschat.\\n';
   if(conflicts)msg+='\\n⚠️ '+conflicts+' keer was de dichtstbijzijnde rit qua tijd niet haalbaar; daar is de eerstvolgende haalbare rit gekozen.';
   if(longRoutes)msg+='\\n⚠️ '+longRoutes+' route(s) komen na optimalisatie boven 90 minuten uit en blijven zichtbaar voor controle.';
