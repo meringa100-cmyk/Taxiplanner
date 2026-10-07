@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V809</h1>
+<h1>🚕 Taxi Planner V810</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -280,6 +280,15 @@ button[onclick^="chauffeurDelay"]:active{
 </section>
 
 <section id="driver" class="page">
+<div class="card" style="border:2px solid #1769aa;background:#f4f9ff;margin-bottom:12px">
+  <h3 style="margin-top:0">📡 Chauffeur GPS</h3>
+  <p class="muted">Zet je GPS aan zodat de planner je actuele positie kan zien.</p>
+  <div id="driverGpsStatus" class="small" style="margin:8px 0">📍 GPS nog niet gestart</div>
+  <div class="actions">
+    <button class="primary" type="button" onclick="startDriverGPS()">📡 START LIVE GPS</button>
+    <button type="button" onclick="stopDriverGPS()">⏸️ Stop GPS</button>
+  </div>
+</div>
 <div class="card"><h2>🚕 Chauffeur</h2>
 <select id="driverSelect" onchange="renderDriver()"></select>
 <div id="driverRides"></div>
