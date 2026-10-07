@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V814</title>
+<title>Taxi Planner V815</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V814</h1>
+<h1>🚕 Taxi Planner V815</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1695,8 +1695,13 @@ async function optimizeDriverRoute(d){
 
 function planningScore(){
   const activeKids=kids.filter(active);
-  let score=0,longRoutes=0,conflicts=0,used=0,capacityWaste=0,deadlineLate=0;
+  let score=0,longRoutes=0,conflicts=0,used=0,capacityWaste=0,deadlineLate=0,unassigned=0,overloaded=0;
+  unassigned=activeKids.filter(k=>!k.driver||!driverNames.includes(k.driver)).length;
+  score+=unassigned*10000;
   for(const d of driverNames){
+    const q=activeKids.filter(k=>k.driver===d).sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+    if(q.length>MAX){overloaded++;score+=(q.length-MAX)*10000;}
+
     const q=activeKids.filter(k=>k.driver===d).sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
     if(!q.length)continue;
     used++; capacityWaste+=MAX-q.length;
@@ -1713,17 +1718,31 @@ function planningScore(){
     score+=Math.max(0,limit-minutes)*0.05;
   }
   score+=capacityWaste*1.5+used*0.5;
-  return {score,used,longRoutes,conflicts,deadlineLate,capacityWaste};
+  return {score,used,longRoutes,conflicts,deadlineLate,capacityWaste,unassigned,overloaded};
 }
 
 async function runBestPlanning(){
+  // V815: nooit een slechtere planning accepteren.
+  const before=JSON.parse(JSON.stringify(kids));
+  const beforeScore=planningScore();
+  const beforeLock=demoPlanningSpreadLocked;
   const box=document.getElementById('dayStartCheck');
   if(box)box.innerHTML='<div class="daystart-result daystart-warn"><b>🏆 AI zoekt de beste planning…</b><div class="small muted">Capaciteit, routeafstand, verste kind eerst, reistijd en schooldeadline worden samen beoordeeld.</div></div>';
   runAI(true);
   await optimizeAllRoutes();
-  const result=planningScore();
-  saveState(); renderAll();
-  const ok=result.longRoutes===0&&result.conflicts===0&&result.deadlineLate===0;
+  let result=planningScore();
+  if(result.score>beforeScore.score){
+    kids=before;
+    demoPlanningSpreadLocked=beforeLock;
+    result=planningScore();
+    saveState();
+    renderAll();
+    if(box)box.innerHTML='<div class="daystart-result daystart-warn"><b>🛡️ AI-resultaat geweigerd</b><div class="small muted">De vorige planning was beter en is behouden.</div></div>';
+  }else{
+    saveState();
+    renderAll();
+  }
+  const ok=result.longRoutes===0&&result.conflicts===0&&result.deadlineLate===0&&result.unassigned===0&&result.overloaded===0;
   alert((ok?'🏆 Beste planning gevonden!':'⚠️ Beste haalbare planning gevonden.')+'\\n\\n'+
     '🚌 '+result.used+' chauffeurs gebruikt\\n'+
     '👦 '+kids.filter(active).length+' kinderen gepland\\n'+
@@ -3132,19 +3151,32 @@ function runAI(silent=false){
 }
 
 function runAIAndCheck(){
+  // V815: AI is now transactional. A worse planning result is never saved.
+  const before=JSON.parse(JSON.stringify(kids));
+  const beforeScore=planningScore();
+  const beforeLock=demoPlanningSpreadLocked;
   const box=document.getElementById('dayStartCheck');
   if(box){
     box.innerHTML='<div class="daystart-result daystart-warn"><b>🤖 AI bouwt de ochtendplanning opnieuw op…</b><div class="small muted">Alle wachtende ritten worden opnieuw verdeeld volgens capaciteit, scholen, reistijd en de 90/99-minutenregel.</div></div>';
   }
 
   const result=runAI(true);
+  const afterScore=planningScore();
+  if(afterScore.score>beforeScore.score){
+    kids=before;
+    demoPlanningSpreadLocked=beforeLock;
+    saveState();
+    renderAll();
+    if(box)box.innerHTML='<div class="daystart-result daystart-warn"><b>🛡️ AI-resultaat geweigerd</b><div class="small muted">De AI maakte de planning slechter. De vorige planning is daarom behouden.</div></div>';
+  }else{
+    saveState();
+    renderAll();
+  }
 
   setTimeout(async()=>{
     await runDayStartCheck();
     const b=document.getElementById('dayStartCheck');
-    if(b && result && !result.unplanned && !result.conflicts){
-      b.scrollIntoView({behavior:'smooth',block:'center'});
-    }
+    if(b) b.scrollIntoView({behavior:'smooth',block:'center'});
   },120);
 }
 function resetDemo(){
