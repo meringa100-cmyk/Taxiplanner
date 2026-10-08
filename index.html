@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V823</title>
+<title>Taxi Planner V824</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V823</h1>
+<h1>🚕 Taxi Planner V824</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -521,38 +521,24 @@ async function geocodeExactDemoAddresses(){
     return;
   }
 
-  // V822: geografische spreiding is leidend. We verdelen de 100 demo-kinderen
-  // bewust over de beschikbare plaatsen: 8 kinderen per plaats (13 plaatsen).
-  // Daardoor kunnen ze nooit allemaal in één klein gebied terechtkomen.
+  // V824: TERUG NAAR DE BEWEZEN STABIELE V777-VERDELING.
+  // Niet 8 kinderen achter elkaar uit één plaats kiezen. We lopen juist
+  // beurt voor beurt door alle plaatsen heen. Daardoor wordt k1, k2, k3...
+  // geografisch over Drenthe verspreid en krijgen routes echte spreiding.
   const selected=[];
   const used=new Set();
-  const orderedPools=[...pools].slice(0,13);
-  let kidIndex=0;
-
-  for(const pool of orderedPools){
-    let picked=0;
-    for(const addr of pool.addresses){
-      if(picked>=8 || kidIndex>=demoKids.length)break;
-      const key=(pool.town+'|'+addr.street+'|'+addr.number).toLowerCase();
+  let round=0;
+  while(selected.length<100 && round<100){
+    for(const pool of pools){
+      const addr=pool.addresses[round];
+      if(!addr)continue;
+      const key=(addr.town+'|'+addr.street+'|'+addr.number).toLowerCase();
       if(used.has(key))continue;
       used.add(key);
-      selected.push({kid:demoKids[kidIndex++],address:addr});
-      picked++;
+      selected.push({kid:demoKids[selected.length],address:addr});
+      if(selected.length>=100)break;
     }
-  }
-
-  if(selected.length<demoKids.length){
-    // Aanvullen met nog niet gebruikte echte BAG-adressen.
-    for(const pool of pools){
-      for(const addr of pool.addresses){
-        if(kidIndex>=demoKids.length)break;
-        const key=(pool.town+'|'+addr.street+'|'+addr.number).toLowerCase();
-        if(used.has(key))continue;
-        used.add(key);
-        selected.push({kid:demoKids[kidIndex++],address:addr});
-      }
-      if(kidIndex>=demoKids.length)break;
-    }
+    round++;
   }
 
   if(selected.length<100){
@@ -577,10 +563,10 @@ async function geocodeExactDemoAddresses(){
   });
 
   addressesReady=true;
-  demoAddressSpreadVersion='v805';
+  demoAddressSpreadVersion='v824';
   saveState();
   renderAll();
-  console.log('V776: 100 echte adressen over '+new Set(selected.map(a=>a.town)).size+' plaatsen en '+new Set(selected.map(a=>a.street+'|'+a.town)).size+' straten.');
+  console.log('V824 stable: 100 echte adressen over +new Set(selected.map(a=>a.town)).size+' plaatsen en '+new Set(selected.map(a=>a.street+'|'+a.town)).size+' straten.');
 }
 function demoLocationForKid(k){
   const n=parseInt(String(k?.id||'').slice(1),10);
@@ -3990,9 +3976,9 @@ startPlannerAutomation();
 // V783: éénmalig echte BAG/PDOK-adressen koppelen aan alle 100 demo-kinderen.
 // Daarna blijven de echte huisadressen en coördinaten vast staan.
 setTimeout(async()=>{
-  if(demoAddressSpreadVersion!=='v822'){
+  if(demoAddressSpreadVersion!=='v824'){
     await geocodeExactDemoAddresses();
-    demoAddressSpreadVersion='v822';
+    demoAddressSpreadVersion='v824';
     demoHardPlanVersion='';
     const rebuiltAfterGeocode=repairBuiltInDemoPlanningHard();
     if(rebuiltAfterGeocode)saveState();
@@ -4076,7 +4062,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=823").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=824").catch(()=>{}));}
 </script>
 
 </body>
