@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V828</title>
+<title>Taxi Planner V829</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style><style id="v827-demo-gps-css">.demo-gps-panel{padding:12px;border:1px solid #b9d6f3;border-radius:12px;background:#eef6ff;margin:10px 0}.demo-gps-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #d9e6f2}.demo-gps-row:last-child{border-bottom:0}.demo-gps-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#16a34a;margin-right:6px}</style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V828</h1>
+<h1>🚕 Taxi Planner V829</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1946,6 +1946,9 @@ async function optimizeAllRoutes(){
 async function calculateRealRoutes(){
   if(!realMap || realRouteLoading)return;
   realRouteLoading=true;
+  const select=document.getElementById('mapDriver');
+  const chosen=select?.value||'ALL';
+  const visibleDrivers=chosen==='ALL'?driverNames:[chosen];
   visibleDrivers.forEach(d=>{const p=driverGps[d];if(!p||!Number.isFinite(p.lat)||!Number.isFinite(p.lon))return;const icon=L.divIcon({className:"",html:'<div title="'+d+'" style="width:42px;height:42px;border-radius:50%;background:#16a34a;color:#fff;border:3px solid #fff;box-shadow:0 2px 8px #0007;display:flex;align-items:center;justify-content:center;font-size:18px">🚕</div>',iconSize:[42,42],iconAnchor:[21,21]});const m=L.marker([p.lat,p.lon],{icon,zIndexOffset:1000}).addTo(realMap);m.bindTooltip("🚕 <b>"+d+"</b><br>"+demoGpsText(d),{direction:"top",sticky:true,className:"taxi-map-label"});m.bindPopup("<b>🚕 "+d+"</b><br>📍 "+demoGpsText(d));mapMarkers.push(m);});
 
   const info=document.getElementById('routeInfo');
