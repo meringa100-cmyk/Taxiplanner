@@ -2542,7 +2542,7 @@ function runAI(silent=false){
       demoPlanningSpreadLocked=true;
     }
 
-    // V829: behoud de huidige geografische verdeling.
+    // V830: behoud de huidige geografische verdeling.
     // AI mag de demo niet opnieuw geografisch clusteren of alle kinderen
     // naar dezelfde kluit trekken. De bestaande chauffeurgroepen zijn leidend.
     const groups=driverNames.map(d=>
@@ -2822,8 +2822,22 @@ function runAI(silent=false){
     const fullBuses=[...groups.values()].filter(q=>q.length===MAX).length;
     const partialBuses=[...groups.values()].filter(q=>q.length<MAX).length;
 
-    // V781: herstel de exacte verdeling die vóór de AI-knop op het scherm stond.
-    // Routecontrole mag volgorde/tijden aanpassen, maar niet de chauffeur.
+    // V830: na AI-planning de ingebouwde demo opnieuw geografisch clusteren.
+    // Zo blijven kinderen na iedere AI-run weer bij elkaar in dezelfde
+    // woonomgeving in plaats van verspreid over heel Drenthe.
+    if(isBuiltInDemo){
+      repairBuiltInDemoPlanningHard();
+      demoPlanningSpreadLocked=true;
+      driverNames.forEach(d=>{
+        demoKids.filter(k=>k.driver===d)
+          .sort((a,b)=>(a.timeMin||0)-(b.timeMin||0))
+          .forEach((k,i)=>k.routeOrder=i+1);
+      });
+    }
+
+    // V781: herstel alleen een expliciet bewaarde verdeling wanneer die
+    // daadwerkelijk bestaat. De ingebouwde demo gebruikt hierboven bewust
+    // de geografische clustering.
     if(demoDriverSnapshot){
       demoKids.forEach(k=>{
         const originalDriver=demoDriverSnapshot.get(k.id);
