@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V829.2</title>
+<title>Taxi Planner V830.2</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style><style id="v827-demo-gps-css">.demo-gps-panel{padding:12px;border:1px solid #b9d6f3;border-radius:12px;background:#eef6ff;margin:10px 0}.demo-gps-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #d9e6f2}.demo-gps-row:last-child{border-bottom:0}.demo-gps-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#16a34a;margin-right:6px}</style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V829</h1>
+<h1>🚕 Taxi Planner V830</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -3102,6 +3102,13 @@ function runAI(silent=false){
       }
     }
   });
+
+  // V830: na AI-plannen blijft de ingebouwde demo geografisch op een kluitje.
+  // De AI-optimalisatie mag de kinderen niet opnieuw over de regio verspreiden.
+  if(isBuiltInDemo){
+    demoHardPlanVersion='';
+    repairBuiltInDemoPlanningHard();
+  }
 
   const changes=kids.filter(k=>{
     const old=previousPlan.find(p=>p.id===k.id);
