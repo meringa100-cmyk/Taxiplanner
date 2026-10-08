@@ -2542,9 +2542,13 @@ function runAI(silent=false){
       demoPlanningSpreadLocked=true;
     }
 
-    // V795: bouw de demo opnieuw op als zo weinig mogelijk, zo vol mogelijke
-    // bussen. Een bus mag maximaal 8 kinderen hebben en maximaal 90 minuten rijden.
-    const groups=packDemoRoutesForCapacityAnd90(demoKids);
+    // V829: behoud de huidige geografische verdeling.
+    // AI mag de demo niet opnieuw geografisch clusteren of alle kinderen
+    // naar dezelfde kluit trekken. De bestaande chauffeurgroepen zijn leidend.
+    const groups=driverNames.map(d=>
+      demoKids.filter(k=>k.driver===d && active(k))
+        .sort((a,b)=>(a.timeMin||0)-(b.timeMin||0))
+    );
     saveState();
 
     // Kinderen mogen tussen chauffeurs worden verdeeld om de 90-minutenregel
@@ -4031,7 +4035,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=829").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=830").catch(()=>{}));}
 </script>
 
 </body>
