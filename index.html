@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V824</title>
+<title>Taxi Planner V825</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V824</h1>
+<h1>🚕 Taxi Planner V825</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -3973,15 +3973,30 @@ startPlannerAutomation();
 // V783: éénmalig echte BAG/PDOK-adressen koppelen aan alle 100 demo-kinderen.
 // Daarna blijven de echte huisadressen en coördinaten vast staan.
 setTimeout(async()=>{
-  if(demoAddressSpreadVersion!=='v824'){
+  // V825: éénmalig harde reset van oude/stale demo-coördinaten.
+  // Anders kan een eerder opgeslagen V823/V824-planning de nieuwe
+  // geografische spreiding blijven overschrijven.
+  if(demoAddressSpreadVersion!=='v825'){
+    const demo=kids.filter(k=>/^k[0-9]+$/.test(String(k.id))&&Number(k.id.slice(1))>=1&&Number(k.id.slice(1))<=100);
+    demo.forEach(k=>{
+      delete k.lat; delete k.lon;
+      delete k.demoTown; delete k.demoStreet; delete k.demoGroup;
+      delete k.address; delete k.pickupAddress;
+      k.driver='';
+      k.routeOrder=0;
+    });
+    demoAddressSpreadVersion='pending';
+    demoHardPlanVersion='';
+    demoPlanningSpreadLocked=false;
+    saveState();
     await geocodeExactDemoAddresses();
-    demoAddressSpreadVersion='v824';
+    demoAddressSpreadVersion='v825';
     demoHardPlanVersion='';
     const rebuiltAfterGeocode=repairBuiltInDemoPlanningHard();
     if(rebuiltAfterGeocode)saveState();
     renderAll();
   }
-},500);</script>
+},700);</script>
 
 
 
@@ -4059,7 +4074,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=824").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=825").catch(()=>{}));}
 </script>
 
 </body>
