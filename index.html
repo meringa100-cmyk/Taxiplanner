@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V821</title>
+<title>Taxi Planner V822</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V821</h1>
+<h1>🚕 Taxi Planner V822</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -521,46 +521,42 @@ async function geocodeExactDemoAddresses(){
     return;
   }
 
-  // V784: koppel adressen per bestaande chauffeur-groep.
-  // Zo blijven de kinderen bij dezelfde chauffeur, maar krijgt iedere
-  // chauffeur een geografisch compacte set echte BAG-adressen.
-  const selected=[],used=new Set();
-  const driverGroups=[...new Map(
-    demoKids.filter(k=>k.driver).map(k=>[k.driver,null])
-  ).keys()];
-  driverGroups.forEach((d,idx)=>{
-    const group=demoKids.filter(k=>k.driver===d);
-    const pool=pools[idx % pools.length];
-    if(!pool)return;
+  // V822: geografische spreiding is leidend. We verdelen de 100 demo-kinderen
+  // bewust over de beschikbare plaatsen: 8 kinderen per plaats (13 plaatsen).
+  // Daardoor kunnen ze nooit allemaal in één klein gebied terechtkomen.
+  const selected=[];
+  const used=new Set();
+  const orderedPools=[...pools].slice(0,13);
+  let kidIndex=0;
+
+  for(const pool of orderedPools){
     let picked=0;
-    for(const a of pool.addresses){
-      const key=(a.town+'|'+a.street+'|'+a.number).toLowerCase();
+    for(const addr of pool.addresses){
+      if(picked>=8 || kidIndex>=demoKids.length)break;
+      const key=(pool.town+'|'+addr.street+'|'+addr.number).toLowerCase();
       if(used.has(key))continue;
       used.add(key);
-      selected.push({kid:group[picked],address:a});
+      selected.push({kid:demoKids[kidIndex++],address:addr});
       picked++;
-      if(picked>=group.length)break;
-    }
-  });
-
-  if(selected.length<demoKids.length){
-    console.warn('V784: niet genoeg unieke adressen per chauffeur-groep; fallback naar algemene spreiding.');
-    selected.length=0;
-    used.clear();
-    let idx=0;
-    for(const pool of pools){
-      for(const a of pool.addresses){
-        const key=(a.town+'|'+a.street+'|'+a.number).toLowerCase();
-        if(used.has(key))continue;
-        used.add(key);
-        selected.push({kid:demoKids[idx++],address:a});
-        if(selected.length>=demoKids.length)break;
-      }
-      if(selected.length>=demoKids.length)break;
     }
   }
+
+  if(selected.length<demoKids.length){
+    // Aanvullen met nog niet gebruikte echte BAG-adressen.
+    for(const pool of pools){
+      for(const addr of pool.addresses){
+        if(kidIndex>=demoKids.length)break;
+        const key=(pool.town+'|'+addr.street+'|'+addr.number).toLowerCase();
+        if(used.has(key))continue;
+        used.add(key);
+        selected.push({kid:demoKids[kidIndex++],address:addr});
+      }
+      if(kidIndex>=demoKids.length)break;
+    }
+  }
+
   if(selected.length<100){
-    console.warn('V776: slechts '+selected.length+' unieke adressen gevonden; gebruik gegarandeerde demo-spreiding.');
+    console.warn('V822: slechts '+selected.length+' unieke echte adressen gevonden; gebruik gegarandeerde spreiding.');
     applyGuaranteedDemoHomeSpread();
     return;
   }
@@ -3752,10 +3748,10 @@ function find(id){return kids.find(k=>k.id===id)}
 function closeModal(){document.getElementById('modal').classList.add('hidden')}
 document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
 function repairBuiltInDemoPlanningHard(){
-  // V821: bouw de demo opnieuw op met ECHTE routegroepen.
-  // Belangrijk: nooit meer alle overgebleven kinderen naar chauffeur 1 schuiven.
-  // Eerst maken we geografisch verspreide zaadgroepen, daarna vullen we die
-  // alleen wanneer de volledige route onder de harde voorwaarden blijft.
+  // V822: geografische planning op PLAATS.
+  // Eerst kinderen per woonplaats groeperen, daarna pas de route optimaliseren.
+  // Zo blijven kinderen uit dezelfde regio bij elkaar en worden verschillende
+  // plaatsen bewust over verschillende bussen verdeeld.
   const demoKids=kids.filter(k=>{
     const n=parseInt(String(k.id).slice(1),10);
     return /^k[0-9]+$/.test(String(k.id)) && Number.isInteger(n) && n>=1 && n<=100 && active(k);
@@ -3770,9 +3766,7 @@ function repairBuiltInDemoPlanningHard(){
 
   const scheduleRoute=(q)=>{
     if(!q.length||q.length>MAX)return null;
-    // Buitenste stop eerst: verste kind van Emmen wordt als eerste opgehaald.
     const ordered=[...q].sort((a,b)=>distEmmen(b)-distEmmen(a));
-
     const last=ordered[ordered.length-1];
     let t=SCHOOL_DEADLINE_MIN-pickupToSchoolMinutes(last);
     if(t<300)return null;
@@ -3792,166 +3786,85 @@ function repairBuiltInDemoPlanningHard(){
       const travel=routeMinutesBetween(ordered[i-1],ordered[i],0);
       if(gap<=0||travel>gap+15)return null;
     }
-
     if(!ordered.every(schoolDeadlineOk))return null;
-    const limit=routeLimitForRides(ordered);
-    if(routeDurationEstimate(ordered,0)>limit)return null;
+    if(routeDurationEstimate(ordered,0)>routeLimitForRides(ordered))return null;
     return ordered;
   };
 
-  // Oude koppelingen volledig wissen.
   demoKids.forEach(k=>{k.driver='';k.routeOrder=0;});
 
-  let remaining=demoKids.slice();
-  const groups=[];
+  // Maak eerst één groep per echte woonplaats. De geocoder levert 13 plaatsen
+  // met maximaal 8 kinderen per plaats.
+  const byTown=new Map();
+  demoKids.forEach(k=>{
+    const town=String(k.demoTown||'Onbekend').trim()||'Onbekend';
+    if(!byTown.has(town))byTown.set(town,[]);
+    byTown.get(town).push(k);
+  });
 
-  // 1. Maak eerst maximaal 25 geografisch verspreide startgroepen.
-  // Hierdoor kunnen 100 kinderen nooit als één grote groep eindigen.
-  const targetSeeds=Math.min(25,available.length,remaining.length);
-  while(groups.length<targetSeeds && remaining.length){
-    let seed;
-    if(!groups.length){
-      seed=remaining.slice().sort((a,b)=>distEmmen(b)-distEmmen(a))[0];
-    }else{
-      seed=remaining.reduce((best,k)=>{
-        const separation=Math.min(...groups.map(g=>
-          Math.min(...g.map(x=>geoDistanceKm(k,x)))
-        ));
-        const bestSep=best?Math.min(...groups.map(g=>
-          Math.min(...g.map(x=>geoDistanceKm(best,x)))
-        )):-1;
-        return separation>bestSep?k:best;
-      },null);
-    }
-    if(!seed)break;
-    groups.push([seed]);
-    remaining=remaining.filter(k=>k.id!==seed.id);
-  }
-
-  // 2. Vul iedere startgroep met nabije kinderen, maar uitsluitend wanneer
-  // de complete route echt haalbaar blijft.
-  for(const group of groups){
-    while(group.length<MAX && remaining.length){
-      const anchor=group[group.length-1];
-      const candidates=remaining
-        .map(k=>({k,distance:geoDistanceKm(anchor,k)}))
-        .sort((a,b)=>a.distance-b.distance);
-
-      let chosen=null;
-      for(const item of candidates){
-        const trial=[...group,item.k];
-        const scheduled=scheduleRoute(trial);
-        if(!scheduled)continue;
-
-        // Zelfde plaats/school heeft voorkeur; afstand blijft de hoofdregel.
-        const sameTown=String(group[0].demoTown||'').toLowerCase()===String(item.k.demoTown||'').toLowerCase();
-        const sameSchool=String(group[0].school||'')===String(item.k.school||'');
-        const score=item.distance
-          -(sameTown?8:0)
-          -(sameSchool?3:0)
-          +group.length*0.15;
-
-        if(!chosen||score<chosen.score)chosen={k:item.k,scheduled,score};
+  const townGroups=[...byTown.entries()]
+    .sort((a,b)=>distEmmen(b[1][0])-distEmmen(a[1][0]))
+    .flatMap(([town,q])=>{
+      const chunks=[];
+      // Maximaal 8 per bus; als één plaatsroute niet haalbaar is, splitsen we.
+      let rest=[...q];
+      while(rest.length){
+        let best=[];
+        for(let size=Math.min(MAX,rest.length);size>=1;size--){
+          const candidates=rest.slice(0,size);
+          const scheduled=scheduleRoute(candidates);
+          if(scheduled){best=scheduled;break;}
+        }
+        if(!best.length)best=[rest[0]];
+        chunks.push({town,route:best});
+        const usedIds=new Set(best.map(k=>k.id));
+        rest=rest.filter(k=>!usedIds.has(k.id));
       }
-      if(!chosen)break;
+      return chunks;
+    });
 
-      group.splice(0,group.length,...chosen.scheduled);
-      remaining=remaining.filter(k=>k.id!==chosen.k.id);
-    }
-  }
-
-  // 3. Alles wat niet in de eerste 25 routes past krijgt een nieuwe route.
-  // Ook hier blijft de route hard begrensd; nooit meer een "alles naar bus 1"
-  // fallback.
-  while(remaining.length && groups.length<available.length){
-    const seed=remaining.slice().sort((a,b)=>distEmmen(b)-distEmmen(a))[0];
-    remaining=remaining.filter(k=>k.id!==seed.id);
-    let group=[seed];
-
-    while(group.length<MAX&&remaining.length){
-      const candidates=remaining
-        .map(k=>({k,distance:geoDistanceKm(group[group.length-1],k)}))
-        .sort((a,b)=>a.distance-b.distance);
-      let chosen=null;
-      for(const item of candidates){
-        const scheduled=scheduleRoute([...group,item.k]);
-        if(scheduled){chosen={k:item.k,scheduled};break;}
-      }
-      if(!chosen)break;
-      group=chosen.scheduled;
-      remaining=remaining.filter(k=>k.id!==chosen.k.id);
-    }
-    groups.push(scheduleRoute(group)||group);
-  }
-
-  // 4. Als een route toch niet past, probeer kinderen nog één voor één in
-  // andere routes. Alleen geldige routes worden geaccepteerd.
-  let guard=0;
-  while(remaining.length && guard++<1000 && groups.length<available.length){
-    const seed=remaining.shift();
-    groups.push([seed]);
-  }
-
-  // 5. Verdeel de routes één-op-één over verschillende chauffeurs.
-  // Nooit meer meerdere groepen op dezelfde chauffeur zolang er vrije
-  // chauffeurs zijn.
-  groups.forEach((group,i)=>{
+  // Routes blijven gescheiden per plaats. Alleen wanneer er meer routes dan
+  // beschikbare chauffeurs zijn, zoeken we een geldige combinatie.
+  townGroups.forEach((g,i)=>{
     const d=available[i];
     if(!d)return;
-    const ordered=scheduleRoute(group)||group.slice().sort((a,b)=>distEmmen(b)-distEmmen(a));
+    const ordered=scheduleRoute(g.route)||g.route;
     ordered.forEach((k,n)=>{
       k.driver=d;
       k.routeOrder=n+1;
     });
   });
 
-  // 6. Alleen in het uitzonderlijke geval dat er meer routes dan chauffeurs
-  // zijn, probeer kleine routes samen te voegen. Nooit boven capaciteit of
-  // route-limiet; anders blijft de route bewust apart en wordt het probleem
-  // zichtbaar in plaats van verborgen.
-  if(groups.length>available.length){
-    for(let i=available.length;i<groups.length;i++){
-      const extra=groups[i]||[];
-      for(const k of extra){
-        const options=available.map(d=>{
-          const q=demoKids.filter(x=>x.driver===d&&active(x));
-          if(q.length>=MAX)return null;
-          const trial=scheduleRoute([...q,k]);
-          return trial?{d,trial}:null;
-        }).filter(Boolean).sort((a,b)=>a.trial.length-b.trial.length);
-        if(options.length){
-          const old=demoKids.find(x=>x.id===k.id);
-          old.driver=options[0].d;
-          old.routeOrder=options[0].trial.findIndex(x=>x.id===old.id)+1;
-        }
-      }
+  // Geen cross-town fallback. Als een kind niet geplaatst kon worden, probeer
+  // alleen een chauffeur met een geldige route uit dezelfde woonplaats.
+  const orphans=demoKids.filter(k=>!k.driver);
+  for(const k of orphans){
+    const sameTownDrivers=available.filter(d=>{
+      const q=demoKids.filter(x=>x.driver===d&&active(x));
+      if(q.length>=MAX)return false;
+      const towns=new Set(q.map(x=>x.demoTown));
+      if(towns.size && !towns.has(k.demoTown))return false;
+      return !!scheduleRoute([...q,k]);
+    });
+    if(sameTownDrivers.length){
+      const d=sameTownDrivers[0];
+      k.driver=d;
+      const q=demoKids.filter(x=>x.driver===d&&active(x));
+      const ordered=scheduleRoute(q)||q;
+      ordered.forEach((x,n)=>{x.driver=d;x.routeOrder=n+1;});
     }
   }
 
-  // Definitieve routevolgorde en tijden per chauffeur.
+  // Definitieve controle en routevolgorde.
   available.forEach(d=>{
     const q=demoKids.filter(k=>k.driver===d&&active(k));
-    const ordered=scheduleRoute(q)||q.slice().sort((a,b)=>distEmmen(b)-distEmmen(a));
+    if(!q.length)return;
+    const ordered=scheduleRoute(q)||q.sort((a,b)=>distEmmen(b)-distEmmen(a));
     ordered.forEach((k,n)=>{k.driver=d;k.routeOrder=n+1;});
   });
 
-  // Controle: geen kind mag zonder chauffeur eindigen zolang er capaciteit is.
-  const orphans=demoKids.filter(k=>!k.driver);
-  for(const k of orphans){
-    const candidates=available.map(d=>{
-      const q=demoKids.filter(x=>x.driver===d&&active(x));
-      if(q.length>=MAX)return null;
-      const trial=scheduleRoute([...q,k]);
-      return trial?{d,trial}:null;
-    }).filter(Boolean).sort((a,b)=>a.trial.length-b.trial.length);
-    if(candidates.length){
-      k.driver=candidates[0].d;
-      k.routeOrder=candidates[0].trial.findIndex(x=>x.id===k.id)+1;
-    }
-  }
-
-  demoHardPlanVersion='v821';
-  return groups.length;
+  demoHardPlanVersion='v822';
+  return townGroups.length;
 }
 function repairDemoRouteConflictsHard(){
   // V817: echte conflictvrije verdeling. Niet alleen de routevolgorde wijzigen:
@@ -4030,8 +3943,9 @@ startPlannerAutomation();
 // V783: éénmalig echte BAG/PDOK-adressen koppelen aan alle 100 demo-kinderen.
 // Daarna blijven de echte huisadressen en coördinaten vast staan.
 setTimeout(async()=>{
-  if(demoAddressSpreadVersion!=='v805'){
+  if(demoAddressSpreadVersion!=='v822'){
     await geocodeExactDemoAddresses();
+    demoAddressSpreadVersion='v822';
     demoHardPlanVersion='';
     const rebuiltAfterGeocode=repairBuiltInDemoPlanningHard();
     if(rebuiltAfterGeocode)saveState();
@@ -4115,7 +4029,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=821").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=822").catch(()=>{}));}
 </script>
 
 </body>
