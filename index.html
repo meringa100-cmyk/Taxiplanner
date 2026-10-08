@@ -521,12 +521,9 @@ async function geocodeExactDemoAddresses(){
     return;
   }
 
-  // V824: TERUG NAAR DE BEWEZEN STABIELE V777-VERDELING.
-  // Niet 8 kinderen achter elkaar uit één plaats kiezen. We lopen juist
-  // beurt voor beurt door alle plaatsen heen. Daardoor wordt k1, k2, k3...
-  // geografisch over Drenthe verspreid en krijgen routes echte spreiding.
-  const selected=[];
-  const used=new Set();
+  // V824: bewezen stabiele V777-verdeling — beurtelings door alle plaatsen.
+  // Zo komen de demo-adressen geografisch verspreid terecht.
+  const selected=[],used=new Set();
   let round=0;
   while(selected.length<100 && round<100){
     for(const pool of pools){
@@ -542,7 +539,7 @@ async function geocodeExactDemoAddresses(){
   }
 
   if(selected.length<100){
-    console.warn('V822: slechts '+selected.length+' unieke echte adressen gevonden; gebruik gegarandeerde spreiding.');
+    console.warn('V824: slechts '+selected.length+' unieke echte adressen gevonden; gebruik gegarandeerde spreiding.');
     applyGuaranteedDemoHomeSpread();
     return;
   }
@@ -566,7 +563,7 @@ async function geocodeExactDemoAddresses(){
   demoAddressSpreadVersion='v824';
   saveState();
   renderAll();
-  console.log('V824 stable: 100 echte adressen over +new Set(selected.map(a=>a.town)).size+' plaatsen en '+new Set(selected.map(a=>a.street+'|'+a.town)).size+' straten.');
+  console.log('V776: 100 echte adressen over '+new Set(selected.map(a=>a.town)).size+' plaatsen en '+new Set(selected.map(a=>a.street+'|'+a.town)).size+' straten.');
 }
 function demoLocationForKid(k){
   const n=parseInt(String(k?.id||'').slice(1),10);
