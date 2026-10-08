@@ -97,7 +97,7 @@ function startPlannerBridge(){
   updateFromPlanner();
   setInterval(updateFromPlanner,5000);
 }
-window.addEventListener('storage',e=>{if(e.key===PLANNER_STORAGE_KEY)updateFromPlanner()});
+window.addEventListener('storage',e=>{if(e.key===PLANNER_STORAGE_KEY)updateFromPlanner()});\nsetTimeout(startPlannerBridge,800);
 if('BroadcastChannel' in window){try{const bc=new BroadcastChannel('taxi-planner-live');bc.onmessage=()=>updateFromPlanner()}catch(e){}}
 </script>
 </body></html>
