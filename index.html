@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V826</title>
+<title>Taxi Planner V827</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -215,10 +215,10 @@ button[onclick^="chauffeurDelay"]:active{
 .attention-open-list{display:grid;gap:7px}
 .attention-detail-item{margin:0}
 @media(max-width:600px){.attention-open-title{align-items:flex-start;flex-direction:column}}
-</style></head>
+</style><style id="v827-demo-gps-css">.demo-gps-panel{padding:12px;border:1px solid #b9d6f3;border-radius:12px;background:#eef6ff;margin:10px 0}.demo-gps-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #d9e6f2}.demo-gps-row:last-child{border-bottom:0}.demo-gps-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#16a34a;margin-right:6px}</style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V826</h1>
+<h1>🚕 Taxi Planner V827</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1355,6 +1355,13 @@ function moveDriverSelection(step){
 }
 let driverGps={};
 let driverGpsWatch=null;
+let demoGpsTimer=null,demoGpsTick=0,demoGpsRunning=false;
+function demoGpsPositionFor(d){const q=getDriverQueue(d);if(!q.length)return null;const pts=q.map(k=>({lat:Number(k.lat),lon:Number(k.lon)})).filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));if(!pts.length)return null;const step=Math.floor(demoGpsTick/6)%pts.length,next=pts[(step+1)%pts.length],cur=pts[step],f=(demoGpsTick%6)/6;return {lat:cur.lat+(next.lat-cur.lat)*f,lon:cur.lon+(next.lon-cur.lon)*f,accuracy:8,at:Date.now(),demo:true};}
+function demoGpsText(d){const p=driverGps[d];if(!p)return "⚪ Geen positie";const age=Math.max(0,Math.round((Date.now()-p.at)/1000));return (p.demo?"🟢 Demo GPS":"📍 GPS")+" • "+(age<60?age+" sec geleden":Math.round(age/60)+" min geleden")+" • ±"+(p.accuracy||0)+" m";}
+function renderDemoGpsRows(){return driverNames.slice(0,8).map(d=>"<div class=\"demo-gps-row\"><span><span class=\"demo-gps-dot\"></span>"+d+"</span><span>"+demoGpsText(d)+"</span></div>").join("");}
+function updateDemoGPS(){if(!demoGpsRunning)return;demoGpsTick++;driverNames.forEach(d=>{const p=demoGpsPositionFor(d);if(p)driverGps[d]=p;});renderDriver();renderLive();renderParent();const box=document.getElementById("demoGpsRows");if(box)box.innerHTML=renderDemoGpsRows();if(realMap)renderRealMapMarkers();}
+function startDemoGPS(){if(demoGpsRunning)return;demoGpsRunning=true;demoGpsTick=0;updateDemoGPS();demoGpsTimer=setInterval(updateDemoGPS,5000);renderLive();}
+function stopDemoGPS(){demoGpsRunning=false;if(demoGpsTimer){clearInterval(demoGpsTimer);demoGpsTimer=null;}renderLive();}
 function startDriverGPS(){
   if(!navigator.geolocation){alert('GPS wordt niet ondersteund op dit apparaat.');return;}
   if(driverGpsWatch!==null)return;
@@ -1471,7 +1478,7 @@ function renderParent(){
  document.getElementById('parentView').innerHTML=`<div class="card"><h3>${k.name}</h3>
  <p>Ophaaltijd: <b>${k.time}</b></p>
  ${parentDriverChanges[k.id] && parentDriverChanges[k.id].to===k.driver ? '<div class="notice" style="margin:12px 0;border-left:5px solid #d97706;background:#fff7ed"><b>🔔 Belangrijk voor vandaag</b><br>Uw vaste chauffeur <b>'+parentDriverChanges[k.id].from+'</b> is vandaag '+(parentDriverChanges[k.id].reason==='busstoring'?'niet beschikbaar door een busstoring.':'ziek/niet beschikbaar.')+'<br>Uw kind wordt daarom opgehaald door <b>'+k.driver+'</b>.<br><span class="small">Zo kunt u uw kind hierop voorbereiden.</span></div>' : ''}
- <p>Chauffeur: <b>${k.driver}</b></p>
+ <p>Chauffeur: <b>${k.driver}</b></p><div class="demo-gps-panel"><b>📍 Chauffeurpositie</b><br><span class="small">${demoGpsText(k.driver)}</span></div>
  <p>School: <b>${k.school}</b></p><p>Status: <span class="badge">${statusText(k.status)}</span>${k.delay?` <b>⏱️ Vertraging: +${k.delay} min</b>`:''}</p>
  ${active(k)?`<button onclick="parentAbsent('${k.id}')">🚫 Kind afmelden</button>`:''}</div>`;
 }
@@ -1482,7 +1489,7 @@ function renderLive(){
  <div><div class="stat">${activeRides.length}</div><div class="muted">Actieve ritten</div></div>
  <div><div class="stat">${kids.filter(k=>k.status==='picked').length}</div><div class="muted">Onderweg</div></div>
  <div><div class="stat">${kids.filter(k=>k.status==='school').length}</div><div class="muted">Op school</div></div>
- </div><p class="muted">🚌 Wagenpark: ${busNumbers.length} bussen • ✅ ${busNumbers.length-driverNames.filter(d=>isBusUnavailable(d)).length} beschikbaar • ⚠️ ${driverNames.filter(d=>isBusUnavailable(d)).length} in storing</p><h3>Actieve bussen</h3>`+
+ </div><p class="muted">🚌 Wagenpark: ${busNumbers.length} bussen • ✅ ${busNumbers.length-driverNames.filter(d=>isBusUnavailable(d)).length} beschikbaar • ⚠️ ${driverNames.filter(d=>isBusUnavailable(d)).length} in storing</p><h3>Actieve bussen</h3><div class="demo-gps-panel"><b>📡 Demo chauffeur-GPS</b><p class="small muted">Geen echte GPS nodig. Chauffeurs bewegen automatisch over hun route zodat Planner, Ouder en Live Centrum getest kunnen worden.</p><div class="actions"><button class="primary" onclick="startDemoGPS()">▶️ Start demo GPS</button><button onclick="stopDemoGPS()">⏹️ Stop demo GPS</button></div><div id="demoGpsRows" class="small" style="margin-top:8px"></div></div>`+
  activeRides.map(k=>`<div class="row"><b>${k.driver}</b> — ${k.name} — ${statusText(k.status)}${k.delay?` — ⏱️ +${k.delay} min`:''} — ${k.time}</div>`).join('');
 }
 
@@ -1939,6 +1946,8 @@ async function optimizeAllRoutes(){
 async function calculateRealRoutes(){
   if(!realMap || realRouteLoading)return;
   realRouteLoading=true;
+  visibleDrivers.forEach(d=>{const p=driverGps[d];if(!p||!Number.isFinite(p.lat)||!Number.isFinite(p.lon))return;const icon=L.divIcon({className:"",html:'<div title="'+d+'" style="width:42px;height:42px;border-radius:50%;background:#16a34a;color:#fff;border:3px solid #fff;box-shadow:0 2px 8px #0007;display:flex;align-items:center;justify-content:center;font-size:18px">🚕</div>',iconSize:[42,42],iconAnchor:[21,21]});const m=L.marker([p.lat,p.lon],{icon,zIndexOffset:1000}).addTo(realMap);m.bindTooltip("🚕 <b>"+d+"</b><br>"+demoGpsText(d),{direction:"top",sticky:true,className:"taxi-map-label"});m.bindPopup("<b>🚕 "+d+"</b><br>📍 "+demoGpsText(d));mapMarkers.push(m);});
+
   const info=document.getElementById('routeInfo');
   if(info)info.textContent='🛣️ Echte routes worden berekend…';
 
@@ -4077,7 +4086,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=826").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=827").catch(()=>{}));}
 </script>
 
 </body>
