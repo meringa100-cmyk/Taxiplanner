@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V829</title>
+<title>Taxi Planner V829.2</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -1958,7 +1958,6 @@ async function calculateRealRoutes(){
   routeLines.forEach(l=>realMap.removeLayer(l));
   routeLines=[];
 
-  const chosen=select?.value||'ALL';
   const drivers=chosen==='ALL'?driverNames:[chosen];
   let completed=0;
 
