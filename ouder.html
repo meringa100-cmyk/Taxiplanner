@@ -48,10 +48,7 @@ setInterval(()=>{if(!app.classList.contains('hidden'))render();},30000);
 /* Koppeling met Taxi Planner V749-opslag. De ouder ziet uitsluitend het gekoppelde kind. */
 const PLANNER_STORAGE_KEY='taxiPlannerStateV749';
 let linkedKid=null;
-const parentLinks={
-  OUDER001:'k1',OUDER002:'k2',OUDER003:'k3',OUDER004:'k4',OUDER005:'k5',
-  OUDER006:'k6',OUDER007:'k7',OUDER008:'k8',OUDER009:'k9',OUDER010:'k10'
-};
+const parentLinks={};
 function readPlannerState(){
   try{
     const raw=localStorage.getItem(PLANNER_STORAGE_KEY);
@@ -63,8 +60,9 @@ function readPlannerState(){
 function linkedChildFromPlanner(){
   const st=readPlannerState(); if(!st)return null;
   const pid=(sessionStorage.parent||'OUDER001').toUpperCase();
-  const kidId=parentLinks[pid]||pid.replace(/^OUDER/,'k');
-  return st.kids.find(k=>String(k.id)===String(kidId))||null;
+  const explicit=parentLinks[pid];
+  const kid=explicit ? st.kids.find(k=>String(k.id)===String(explicit)) : st.kids.find(k=>String(k.parentId||'').toUpperCase()===pid);
+  return kid||null;
 }
 function minutesToClock(m){
   if(!Number.isFinite(Number(m)))return '';
