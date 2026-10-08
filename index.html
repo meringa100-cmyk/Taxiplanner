@@ -1958,7 +1958,6 @@ async function calculateRealRoutes(){
   routeLines.forEach(l=>realMap.removeLayer(l));
   routeLines=[];
 
-  const select=document.getElementById('mapDriver');
   const chosen=select?.value||'ALL';
   const drivers=chosen==='ALL'?driverNames:[chosen];
   let completed=0;
@@ -4026,7 +4025,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=828").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=829").catch(()=>{}));}
 </script>
 
 </body>
