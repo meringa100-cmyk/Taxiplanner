@@ -1010,6 +1010,8 @@ function seed(){
   const lon=loc.lon+Math.floor(pos/4)*0.00010;
   kids.push({
    id:'k'+(i+1),
+   parentId:'OUDER'+String(i+1).padStart(3,'0'),
+   parentName:'Ouder '+(i+1),
    name:names[i%names.length]+' '+(i+1),
    timeMin,
    time:fmtTime(timeMin),
