@@ -44,4 +44,60 @@ function messagePage(btn){active(btn);document.getElementById('alerts').scrollIn
 function contact(){alert('Hier kan straks rechtstreeks een bericht naar de planning worden gestuurd.');}
 if(sessionStorage.parent)openApp();
 setInterval(()=>{if(!app.classList.contains('hidden'))render();},30000);
-</script></body></html>
+</script><script id="planner-live-bridge">
+/* Koppeling met Taxi Planner V749-opslag. De ouder ziet uitsluitend het gekoppelde kind. */
+const PLANNER_STORAGE_KEY='taxiPlannerStateV749';
+let linkedKid=null;
+const parentLinks={
+  OUDER001:'k1',OUDER002:'k2',OUDER003:'k3',OUDER004:'k4',OUDER005:'k5',
+  OUDER006:'k6',OUDER007:'k7',OUDER008:'k8',OUDER009:'k9',OUDER010:'k10'
+};
+function readPlannerState(){
+  try{
+    const raw=localStorage.getItem(PLANNER_STORAGE_KEY);
+    if(!raw)return null;
+    const st=JSON.parse(raw);
+    return st&&Array.isArray(st.kids)?st:null;
+  }catch(e){return null}
+}
+function linkedChildFromPlanner(){
+  const st=readPlannerState(); if(!st)return null;
+  const pid=(sessionStorage.parent||'OUDER001').toUpperCase();
+  const kidId=parentLinks[pid]||pid.replace(/^OUDER/,'k');
+  return st.kids.find(k=>String(k.id)===String(kidId))||null;
+}
+function minutesToClock(m){
+  if(!Number.isFinite(Number(m)))return '';
+  const n=Math.round(Number(m)); return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0');
+}
+function updateFromPlanner(){
+  const k=linkedChildFromPlanner(); if(!k)return;
+  linkedKid=k;
+  const name=k.name||'Mijn kind', bus=k.bus||k.busNumber||'Onbekende bus', driver=k.driver||'Nog niet toegewezen';
+  const delay=Number(k.delay)||0;
+  childName.textContent=name; profileName.textContent=name;
+  bus.textContent=bus; driverShort.textContent=driver;
+  rideSub.textContent=driver==='Nog niet toegewezen'?'Chauffeur nog niet toegewezen':bus+' is onderweg';
+  statusText.textContent=delay>0?'Vertraagd':(k.status==='absent'?'Afwezig':'Onderweg');
+  if(delay>0){
+    delayBadge.className='status warn'; delayBadge.textContent='+'+delay+' min';
+    alerts.innerHTML='<div class="status warn">⚠️ '+name+' heeft '+delay+' minuten vertraging.</div>';
+  }else{
+    delayBadge.className='status ok'; delayBadge.textContent='Op tijd';
+    alerts.innerHTML='<div class="status ok">✓ Geen actieve vertraging.</div>';
+  }
+  const base=Number(k.timeMin);
+  const etaMin=Number.isFinite(base)?base+delay:null;
+  if(etaMin!==null){eta.textContent=minutesToClock(etaMin);homeTime.textContent=minutesToClock(etaMin)+' verwacht';}
+  updated.textContent=new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
+}
+const originalRender=render;
+render=function(){originalRender();updateFromPlanner()};
+function startPlannerBridge(){
+  updateFromPlanner();
+  setInterval(updateFromPlanner,5000);
+}
+window.addEventListener('storage',e=>{if(e.key===PLANNER_STORAGE_KEY)updateFromPlanner()});
+if('BroadcastChannel' in window){try{const bc=new BroadcastChannel('taxi-planner-live');bc.onmessage=()=>updateFromPlanner()}catch(e){}}
+</script>
+</body></html>
