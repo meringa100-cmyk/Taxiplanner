@@ -1,86 +1,47 @@
 <!doctype html>
 <html lang="nl">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0b6efd">
-<title>Taxi Planner — Ouder-app</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b6efd"><title>Taxi Planner — Ouder-app</title>
 <style>
 :root{--blue:#0b6efd;--dark:#102033;--bg:#f4f7fb;--card:#fff;--muted:#6b7785;--green:#1fa463;--orange:#f59e0b;--red:#dc3545}
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--dark)}
-header{background:linear-gradient(135deg,#0b6efd,#084298);color:#fff;padding:20px 18px 24px;border-radius:0 0 24px 24px;box-shadow:0 4px 18px #0002}
-.top{display:flex;justify-content:space-between;align-items:center;gap:12px}.brand{font-weight:800;font-size:20px}.badge{background:#ffffff22;border:1px solid #ffffff44;padding:7px 10px;border-radius:999px;font-size:12px}
-main{max-width:680px;margin:auto;padding:16px}.card{background:var(--card);border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 3px 14px #18324a12}.title{font-weight:800;font-size:18px;margin-bottom:10px}.muted{color:var(--muted);font-size:13px}
-.login{margin-top:24px}.input{width:100%;padding:14px;border:1px solid #d6dee8;border-radius:12px;font-size:16px;margin:7px 0 10px}.btn{border:0;border-radius:12px;padding:13px 16px;font-weight:750;font-size:15px;cursor:pointer}.primary{background:var(--blue);color:#fff}.secondary{background:#edf3fa;color:#18324a}.danger{background:#fff0f1;color:var(--red)}
-.row{display:flex;justify-content:space-between;align-items:center;gap:12px}.status{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border-radius:999px;font-size:12px;font-weight:750}.ok{background:#e8f7ef;color:#147a48}.warn{background:#fff5df;color:#9a6200}.dot{width:8px;height:8px;border-radius:50%;background:currentColor}.child{font-size:22px;font-weight:850}.big{font-size:32px;font-weight:850}.timeline{border-left:3px solid #d9e7fa;margin:10px 0 0 7px;padding-left:18px}.step{position:relative;margin:16px 0}.step:before{content:"";position:absolute;left:-25px;top:4px;width:10px;height:10px;border-radius:50%;background:var(--blue);border:3px solid #e8f1ff}.map{height:220px;border-radius:16px;background:linear-gradient(135deg,#dceeff,#eef8f1);display:grid;place-items:center;color:#50708d;font-weight:700}.nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #dde5ee;display:flex;justify-content:center;gap:8px;padding:8px calc(8px + env(safe-area-inset-bottom));z-index:10}.nav button{flex:1;max-width:150px;background:transparent;border:0;padding:9px 4px;border-radius:10px;color:#657386}.nav button.active{background:#eaf2ff;color:var(--blue);font-weight:800}.hidden{display:none!important}.notice{border-left:4px solid var(--orange);background:#fff8e8;padding:12px;border-radius:10px;font-size:14px}
-footer{height:74px}
-</style>
-</head>
+header{background:linear-gradient(135deg,#0b6efd,#084298);color:#fff;padding:20px 18px 24px;border-radius:0 0 24px 24px;box-shadow:0 4px 18px #0002}.top{display:flex;justify-content:space-between;align-items:center}.brand{font-weight:850;font-size:20px}.badge{background:#ffffff22;border:1px solid #ffffff44;padding:7px 10px;border-radius:999px;font-size:12px}
+main{max-width:680px;margin:auto;padding:16px}.card{background:#fff;border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 3px 14px #18324a12}.title{font-weight:800;font-size:18px;margin-bottom:10px}.muted{color:var(--muted);font-size:13px}.input{width:100%;padding:14px;border:1px solid #d6dee8;border-radius:12px;font-size:16px;margin:7px 0 10px}.btn{border:0;border-radius:12px;padding:13px 16px;font-weight:750;font-size:15px;cursor:pointer}.primary{background:var(--blue);color:#fff}.secondary{background:#edf3fa;color:#18324a}.danger{background:#fff0f1;color:var(--red)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px}.status{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border-radius:999px;font-size:12px;font-weight:750}.ok{background:#e8f7ef;color:#147a48}.warn{background:#fff5df;color:#9a6200}.red{background:#fff0f1;color:#b42332}.dot{width:8px;height:8px;border-radius:50%;background:currentColor}.child{font-size:22px;font-weight:850}.big{font-size:32px;font-weight:850}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat{background:#f6f9fd;border-radius:14px;padding:13px}.stat b{font-size:18px}.map{height:220px;border-radius:16px;background:linear-gradient(135deg,#dceeff,#eef8f1);position:relative;overflow:hidden;display:grid;place-items:center;color:#50708d;font-weight:700}.route{position:absolute;width:75%;height:3px;background:#0b6efd;transform:rotate(-14deg);opacity:.7}.buspin{position:absolute;background:#0b6efd;color:#fff;border-radius:50%;width:38px;height:38px;display:grid;place-items:center;box-shadow:0 4px 12px #0003}.homepin{position:absolute;background:#1fa463;color:#fff;border-radius:50%;width:32px;height:32px;display:grid;place-items:center;bottom:42px;right:45px}
+.timeline{border-left:3px solid #d9e7fa;margin:10px 0 0 7px;padding-left:18px}.step{position:relative;margin:16px 0}.step:before{content:"";position:absolute;left:-25px;top:4px;width:10px;height:10px;border-radius:50%;background:var(--blue);border:3px solid #e8f1ff}.notice{border-left:4px solid var(--orange);background:#fff8e8;padding:12px;border-radius:10px;font-size:14px}
+.tabs{display:flex;gap:8px;margin-bottom:14px}.tabs button{flex:1;border:0;border-radius:10px;padding:10px;background:#edf3fa;color:#536579;font-weight:700}.tabs button.active{background:#dceaff;color:#075bc7}
+.nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #dde5ee;display:flex;justify-content:center;gap:8px;padding:8px calc(8px + env(safe-area-inset-bottom));z-index:10}.nav button{flex:1;max-width:150px;background:transparent;border:0;padding:9px 4px;border-radius:10px;color:#657386}.nav button.active{background:#eaf2ff;color:var(--blue);font-weight:800}.hidden{display:none!important}footer{height:78px}
+</style></head>
 <body>
-<header>
- <div class="top"><div><div class="brand">🚌 Taxi Planner</div><div style="opacity:.85;font-size:13px">Ouder-app</div></div><span class="badge" id="connection">Demo</span></div>
-</header>
+<header><div class="top"><div><div class="brand">🚌 Taxi Planner</div><div style="opacity:.85;font-size:13px">Ouder-app</div></div><span class="badge" id="connection">● Demo</span></div></header>
 <main>
-<section id="login" class="card login">
- <div class="title">Welkom 👋</div>
- <div class="muted">Log in om de rit van je kind te bekijken.</div>
- <label>Ouder-ID</label>
- <input id="parentId" class="input" placeholder="Bijv. OUDER001" value="OUDER001">
- <label>Code</label>
- <input id="pin" class="input" type="password" placeholder="••••" value="1234">
- <button class="btn primary" style="width:100%" onclick="login()">Inloggen</button>
- <div class="muted" style="margin-top:10px">Demo-account: OUDER001 / 1234</div>
-</section>
-
+<section id="login" class="card" style="margin-top:24px"><div class="title">Welkom 👋</div><div class="muted">Log in om de rit van je kind te bekijken.</div><label>Ouder-ID</label><input id="parentId" class="input" value="OUDER001"><label>Code</label><input id="pin" class="input" type="password" value="1234"><button class="btn primary" style="width:100%" onclick="login()">Inloggen</button><div class="muted" style="margin-top:10px">Demo: OUDER001 / 1234</div></section>
 <section id="app" class="hidden">
- <div class="card">
-  <div class="row"><div><div class="muted">Goedemorgen</div><div class="child" id="childName">Jamie</div></div><span class="status ok"><span class="dot"></span> Rit actief</span></div>
-  <div style="margin-top:15px"><div class="muted">Volgende rit</div><div class="big" id="eta">07:42</div><div class="muted" id="etaText">Verwachte aankomst bij huis</div></div>
- </div>
-
- <div class="card">
-  <div class="title">🚌 Mijn bus</div>
-  <div class="row"><div><b id="bus">Bus 12</b><div class="muted" id="driver">Chauffeur: Bert</div></div><span class="status ok">Onderweg</span></div>
-  <div class="map" style="margin-top:12px">📍 Live buskaart — demo</div>
-  <div class="row" style="margin-top:12px"><span class="muted">Laatste update</span><b id="updated">zojuist</b></div>
- </div>
-
- <div class="card">
-  <div class="title">⏱️ Ritstatus</div>
-  <div class="timeline">
-   <div class="step"><b>Bus vertrokken</b><div class="muted">07:20</div></div>
-   <div class="step"><b>Vorige halte</b><div class="muted">07:35</div></div>
-   <div class="step"><b>Jouw adres</b><div class="muted" id="homeTime">07:42 verwacht</div></div>
-   <div class="step"><b>School</b><div class="muted">08:15 verwacht</div></div>
-  </div>
- </div>
-
- <div class="notice">ℹ️ Dit is nu de demo-koppeling. Zodra de Planner echte ritgegevens doorgeeft, worden bus, chauffeur, tijden, vertraging en locatie automatisch bijgewerkt.</div>
-
- <div class="card">
-  <div class="title">📢 Meldingen</div>
-  <div id="alerts"><div class="muted">Geen nieuwe meldingen.</div></div>
- </div>
-
- <div class="card">
-  <div class="row"><div><b>Hulp nodig?</b><div class="muted">Neem contact op met de planning.</div></div><button class="btn secondary" onclick="alert('Contact met de planning kan hier straks rechtstreeks.')">Contact</button></div>
- </div>
-</section>
-</main>
-<footer></footer>
-<div id="nav" class="nav hidden">
- <button class="active" onclick="showTab('home',this)">🏠<br>Overzicht</button>
- <button onclick="showTab('trip',this)">🚌<br>Rit</button>
- <button onclick="showTab('messages',this)">🔔<br>Meldingen</button>
- <button onclick="logout()">🚪<br>Uitloggen</button>
-</div>
+<div class="card"><div class="row"><div><div class="muted">Goedemorgen</div><div class="child" id="childName">Jamie</div></div><span class="status ok"><span class="dot"></span> Rit actief</span></div><div style="margin-top:15px"><div class="muted" id="nextLabel">Volgende rit</div><div class="big" id="eta">07:42</div><div class="muted">Verwachte aankomst bij huis</div></div></div>
+<div class="card"><div class="title">Vandaag</div><div class="grid"><div class="stat"><div class="muted">🚌 Bus</div><b id="bus">Bus 12</b></div><div class="stat"><div class="muted">👨 Chauffeur</div><b id="driverShort">Bert</b></div><div class="stat"><div class="muted">🏫 School</div><b>08:15</b></div><div class="stat"><div class="muted">📍 Status</div><b id="statusText">Onderweg</b></div></div></div>
+<div class="card"><div class="title">🚌 Live rit</div><div class="tabs"><button class="active" onclick="setRide('heen',this)">Heenreis</button><button onclick="setRide('terug',this)">Terugreis</button></div><div class="row"><div><b id="rideTitle">Naar school</b><div class="muted" id="rideSub">Bus 12 is onderweg</div></div><span class="status ok" id="delayBadge">Op tijd</span></div><div class="map" style="margin-top:12px"><div class="route"></div><div class="buspin" id="buspin">🚌</div><div class="homepin">🏠</div><span>Live kaart — demo</span></div><div class="row" style="margin-top:12px"><span class="muted">Laatste update</span><b id="updated">zojuist</b></div></div>
+<div class="card"><div class="title">⏱️ Ritverloop</div><div class="timeline" id="timeline"><div class="step"><b>Bus vertrokken</b><div class="muted">07:20</div></div><div class="step"><b>Vorige halte</b><div class="muted">07:35</div></div><div class="step"><b>Jouw adres</b><div class="muted" id="homeTime">07:42 verwacht</div></div><div class="step"><b>School</b><div class="muted">08:15 verwacht</div></div></div></div>
+<div class="card"><div class="title">📢 Meldingen</div><div id="alerts"><div class="status ok">✓ Geen nieuwe meldingen</div></div></div>
+<div class="card"><div class="title">👤 Mijn kind</div><div class="grid"><div class="stat"><div class="muted">Naam</div><b id="profileName">Jamie</b></div><div class="stat"><div class="muted">Ouder-ID</div><b id="profileId">OUDER001</b></div></div></div>
+<div class="card"><div class="row"><div><b>Hulp nodig?</b><div class="muted">Neem contact op met de planning.</div></div><button class="btn secondary" onclick="contact()">Contact</button></div></div>
+<div class="notice">ℹ️ Demo-modus. De koppeling met de Planner kan straks bus, chauffeur, route, vertraging en meldingen automatisch doorgeven.</div>
+</section></main><footer></footer>
+<div id="nav" class="nav hidden"><button class="active" onclick="topPage(this)">🏠<br>Overzicht</button><button onclick="tripPage(this)">🚌<br>Rit</button><button onclick="messagePage(this)">🔔<br>Meldingen</button><button onclick="logout()">🚪<br>Uitloggen</button></div>
 <script>
-const demo={name:'Jamie',bus:'Bus 12',driver:'Bert',eta:'07:42'};
-function login(){const p=document.getElementById('parentId').value.trim();const pin=document.getElementById('pin').value.trim();if(!p||!pin)return alert('Vul je ouder-ID en code in.');document.getElementById('login').classList.add('hidden');document.getElementById('app').classList.remove('hidden');document.getElementById('nav').classList.remove('hidden');sessionStorage.parent=p;render();}
+const demo={name:'Jamie',bus:'Bus 12',driver:'Bert',eta:'07:42',delay:0};
+function login(){let p=parentId.value.trim(),pinv=pin.value.trim();if(!p||!pinv)return alert('Vul je ouder-ID en code in.');sessionStorage.parent=p;openApp();}
+function openApp(){loginEl.classList.add('hidden');app.classList.remove('hidden');nav.classList.remove('hidden');profileId.textContent=sessionStorage.parent||'OUDER001';render();}
+const loginEl=document.getElementById('login'),app=document.getElementById('app'),nav=document.getElementById('nav');
 function logout(){sessionStorage.removeItem('parent');location.reload();}
-function render(){document.getElementById('childName').textContent=demo.name;document.getElementById('bus').textContent=demo.bus;document.getElementById('driver').textContent='Chauffeur: '+demo.driver;document.getElementById('eta').textContent=demo.eta;document.getElementById('homeTime').textContent=demo.eta+' verwacht';document.getElementById('updated').textContent=new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});}
-function showTab(tab,btn){document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));btn.classList.add('active');if(tab==='messages')alert('Geen nieuwe meldingen.');if(tab==='trip')document.querySelector('.card:nth-of-type(3)')?.scrollIntoView({behavior:'smooth'});if(tab==='home')scrollTo({top:0,behavior:'smooth'});}
-if(sessionStorage.parent){document.getElementById('login').classList.add('hidden');document.getElementById('app').classList.remove('hidden');document.getElementById('nav').classList.remove('hidden');render();}
-</script>
-</body>
-</html>
+function render(){childName.textContent=demo.name;profileName.textContent=demo.name;bus.textContent=demo.bus;driverShort.textContent=demo.driver;updated.textContent=new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});eta.textContent=demo.eta;homeTime.textContent=demo.eta+' verwacht';if(demo.delay){delayBadge.className='status warn';delayBadge.textContent='+'+demo.delay+' min';statusText.textContent='Vertraagd';alerts.innerHTML='<div class="status warn">⚠️ Rit heeft '+demo.delay+' minuten vertraging</div>';}else{delayBadge.className='status ok';delayBadge.textContent='Op tijd';statusText.textContent='Onderweg';}}
+function setRide(type,btn){document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));btn.classList.add('active');if(type==='terug'){rideTitle.textContent='Naar huis';rideSub.textContent='Terugreis na school';eta.textContent='15:35';nextLabel.textContent='Terugrit';}else{rideTitle.textContent='Naar school';rideSub.textContent='Bus 12 is onderweg';eta.textContent=demo.eta;nextLabel.textContent='Volgende rit';}}
+function active(btn){document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));btn.classList.add('active');}
+function topPage(btn){active(btn);scrollTo({top:0,behavior:'smooth'});}
+function tripPage(btn){active(btn);document.querySelector('.map').scrollIntoView({behavior:'smooth',block:'center'});}
+function messagePage(btn){active(btn);document.getElementById('alerts').scrollIntoView({behavior:'smooth',block:'center'});}
+function contact(){alert('Hier kan straks rechtstreeks een bericht naar de planning worden gestuurd.');}
+if(sessionStorage.parent)openApp();
+setInterval(()=>{if(!app.classList.contains('hidden'))render();},30000);
+</script></body></html>
