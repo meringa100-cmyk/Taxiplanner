@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V864</title>
+<title>Taxi Planner V866</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style><style id="v827-demo-gps-css">.demo-gps-panel{padding:12px;border:1px solid #b9d6f3;border-radius:12px;background:#eef6ff;margin:10px 0}.demo-gps-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #d9e6f2}.demo-gps-row:last-child{border-bottom:0}.demo-gps-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#16a34a;margin-right:6px}</style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V864</h1>
+<h1>🚕 Taxi Planner V866</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -586,12 +586,31 @@ async function geocodeExactDemoAddresses(){
       // allemaal in één blok vallen. Adres en coördinaten blijven één bronrecord.
       const spread=[];
       const remaining=[...addresses];
-      if(remaining.length) spread.push(remaining.splice(Math.floor(remaining.length/2),1)[0]);
       const dist2=(a,b)=>{
         const dx=(a.lon-b.lon)*Math.cos(a.lat*Math.PI/180);
         const dy=a.lat-b.lat;
         return dx*dx+dy*dy;
       };
+      // First pass: pick one real address from each distinct street,
+      // preferring streets that are geographically far from already selected ones.
+      const streetNames=[...new Set(remaining.map(a=>a.street.toLowerCase()))];
+      while(streetNames.length && remaining.length){
+        let bestStreetIndex=0,bestAddressIndex=-1,bestScore=-1;
+        for(let si=0;si<streetNames.length;si++){
+          const candidateIndex=remaining.findIndex(a=>a.street.toLowerCase()===streetNames[si]);
+          if(candidateIndex<0)continue;
+          const candidate=remaining[candidateIndex];
+          let nearest=spread.length?Infinity:0;
+          for(const picked of spread)nearest=Math.min(nearest,dist2(candidate,picked));
+          if(candidateIndex>=0 && (spread.length===0 || nearest>bestScore)){
+            bestScore=nearest;bestStreetIndex=si;bestAddressIndex=candidateIndex;
+          }
+        }
+        if(bestAddressIndex<0)break;
+        spread.push(remaining.splice(bestAddressIndex,1)[0]);
+        streetNames.splice(bestStreetIndex,1);
+      }
+      // Then fill remaining choices with the farthest real address points.
       while(remaining.length){
         let bestIndex=0,bestScore=-1;
         for(let i=0;i<remaining.length;i++){
@@ -4225,15 +4244,14 @@ if(repairedAtStartup||hardRepairedAtStartup||demoConflictRepairs||demoHardPlanRe
 renderAll();
 startPlannerAutomation();
 
-// V864: controleer demo-adressen één voor één tegen PDOK op exact huisnummer.
+// V866: echte BAG-adressen per woonplaats, met voorkeur voor verschillende straten.
 setTimeout(()=>{
-  geocodeBuiltInDemoExactAddresses().then(result=>{
+  geocodeExactDemoAddresses().then(()=>{
     repairBuiltInDemoPlanningHard();
     saveState();
     renderAll();
     if(typeof renderRealMapMarkers==='function')renderRealMapMarkers();
-    console.log('V864 adrescontrole klaar:',result);
-  }).catch(e=>console.warn('Exacte adrescontrole kon niet worden voltooid:',e));
+  }).catch(e=>console.warn('PDOK-adresverdeling kon niet worden voltooid:',e));
 },1200);
 
 // V844: nooit terugvallen op verzonnen adressen of centrum-offsets.
@@ -4321,7 +4339,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=856").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=866").catch(()=>{}));}
 </script>
 
 </body>
