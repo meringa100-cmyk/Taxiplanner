@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V833</title>
+<title>Taxi Planner V834</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style><style id="v827-demo-gps-css">.demo-gps-panel{padding:12px;border:1px solid #b9d6f3;border-radius:12px;background:#eef6ff;margin:10px 0}.demo-gps-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #d9e6f2}.demo-gps-row:last-child{border-bottom:0}.demo-gps-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#16a34a;margin-right:6px}</style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V833</h1>
+<h1>🚕 Taxi Planner V834</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -4006,7 +4006,7 @@ if(repairedAtStartup||hardRepairedAtStartup||demoConflictRepairs||demoHardPlanRe
 renderAll();
 startPlannerAutomation();
 
-// V832: controleer en herstel de adresspreiding ook wanneer een eerdere versie
+// V834: controleer en herstel de adresspreiding ook wanneer een eerdere versie
 // ten onrechte als voltooid is opgeslagen. Vertrouw niet alleen op het versienummer.
 setTimeout(()=>{
   const demo=kids.filter(k=>/^k[0-9]+$/.test(String(k.id))&&Number(k.id.slice(1))>=1&&Number(k.id.slice(1))<=100);
@@ -4014,7 +4014,8 @@ setTimeout(()=>{
   const towns=new Set(demo.map(k=>String(k.demoTown||'').trim()).filter(Boolean));
   const streets=new Set(demo.map(k=>String(k.demoStreet||'').trim()).filter(Boolean));
   const addressesSpread=demo.length>=13&&towns.size>=5&&streets.size>=5&&demo.every(k=>String(k.pickupAddress||k.address||'').includes(','));
-  if(demoAddressSpreadVersion!=='v832'||!addressesSpread){
+  const destinationsValid=demo.every(k=>{const pickup=String(k.pickupAddress||k.address||'').trim().toLowerCase();const school=schoolLocations[k.school];const expected=String(school?.address||k.destination||k.school||'').trim().toLowerCase();return !!expected&&expected!==pickup&&String(k.destinationAddress||'').trim().toLowerCase()===expected;});
+  if(demoAddressSpreadVersion!=='v834'||!addressesSpread||!destinationsValid){
     demo.forEach(k=>{
       delete k.lat; delete k.lon;
       delete k.demoTown; delete k.demoStreet; delete k.demoGroup;
@@ -4028,7 +4029,7 @@ setTimeout(()=>{
     saveState();
     const spreadApplied=applyGuaranteedDemoHomeSpread();
     if(spreadApplied){
-      demoAddressSpreadVersion='v832';
+      demoAddressSpreadVersion='v834';
       demoHardPlanVersion='';
       repairBuiltInDemoPlanningHard();
       saveState();
@@ -4115,7 +4116,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=833").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=834").catch(()=>{}));}
 </script>
 
 </body>
