@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V842</title>
+<title>Taxi Planner V843</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style><style id="v827-demo-gps-css">.demo-gps-panel{padding:12px;border:1px solid #b9d6f3;border-radius:12px;background:#eef6ff;margin:10px 0}.demo-gps-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #d9e6f2}.demo-gps-row:last-child{border-bottom:0}.demo-gps-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#16a34a;margin-right:6px}</style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V842</h1>
+<h1>🚕 Taxi Planner V843</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -461,9 +461,9 @@ function applyGuaranteedDemoHomeSpread(){
     k.destinationAddress=sp?.address||k.destination||k.school||'';
   });
   addressesReady=true;
-  demoAddressSpreadVersion='v842';
+  demoAddressSpreadVersion='v843';
   saveState();
-  console.log('V842 fallback: maximaal acht kinderen per plaats, verspreid over straten.');
+  console.log('V843 fallback: maximaal acht kinderen per plaats, verspreid over straten.');
   return true;
 }
 async function geocodeExactDemoAddresses(){
@@ -530,28 +530,33 @@ async function geocodeExactDemoAddresses(){
     }
   }
 
-  if(pools.length<10){
-    console.warn('V776: slechts '+pools.length+' plaatsen met voldoende echte adressen; gebruik gegarandeerde demo-spreiding.');
-    applyGuaranteedDemoHomeSpread();
+  if(!pools.length){
+    console.warn('V843: PDOK heeft geen echte adreslocaties teruggegeven. Geen verzonnen coördinaten als echte huislocaties gebruiken.');
     return;
   }
 
-  // V842: een chauffeur bedient bij voorkeur één plaats. Binnen die plaats
-  // worden adressen juist over verschillende straten verdeeld.
+  // V843: verdeel echte PDOK-adressen in rondes over de beschikbare plaatsen.
+  // Belangrijk: adres en coördinaten komen uit exact hetzelfde PDOK-resultaat.
+  // Geen vaste centrum-offsets en geen verzonnen huisnummer-coördinaten.
   const selected=[],used=new Set();
   let kidIndex=0;
-  for(const pool of pools){
-    if(kidIndex>=100)break;
-    let addedFromTown=0;
-    for(const addr of pool.addresses){
-      if(kidIndex>=100||addedFromTown>=MAX)break;
+  for(let round=0;kidIndex<100;round++){
+    let addedThisRound=0;
+    for(const pool of pools){
+      const addr=pool.addresses[round];
+      if(!addr)continue;
       const key=(addr.town+'|'+addr.street+'|'+addr.number).toLowerCase();
       if(used.has(key))continue;
       used.add(key);
       selected.push({kid:demoKids[kidIndex],address:addr});
       kidIndex++;
-      addedFromTown++;
+      addedThisRound++;
+      if(kidIndex>=100)break;
     }
+    if(!addedThisRound)break;
+  }
+  if(selected.length<100){
+    console.warn('V843: slechts '+selected.length+' echte, unieke PDOK-adressen beschikbaar. Niet-gepositioneerde kinderen worden niet voorzien van nepcoördinaten.');
   }
   selected.forEach((item,i)=>{
     const k=item.kid||demoKids[i];
@@ -569,10 +574,10 @@ async function geocodeExactDemoAddresses(){
   });
 
   addressesReady=true;
-  demoAddressSpreadVersion='v842';
+  demoAddressSpreadVersion='v843';
   saveState();
   renderAll();
-  console.log('V842: echte adressen verspreid over plaatsen en meerdere straten; groepen blijven per plaats.');
+  console.log('V843: echte adressen verspreid over plaatsen en meerdere straten; groepen blijven per plaats.');
 }
 function demoLocationForKid(k){
   const n=parseInt(String(k?.id||'').slice(1),10);
@@ -3832,7 +3837,7 @@ function find(id){return kids.find(k=>k.id===id)}
 function closeModal(){document.getElementById('modal').classList.add('hidden')}
 document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
 function repairBuiltInDemoPlanningHard(){
-  // V842: chauffeur rijdt bij voorkeur binnen één plaats; kinderen wonen verspreid over verschillende straten.
+  // V843: chauffeur rijdt bij voorkeur binnen één plaats; kinderen wonen verspreid over verschillende straten.
   const demoKids=kids.filter(k=>{
     const n=parseInt(String(k.id).slice(1),10);
     return /^k[0-9]+$/.test(String(k.id)) && Number.isInteger(n) && n>=1 && n<=100 && active(k);
@@ -3890,7 +3895,7 @@ function repairBuiltInDemoPlanningHard(){
     demoKids.filter(k=>k.driver===d).sort((a,b)=>Number(a.timeMin||0)-Number(b.timeMin||0))
       .forEach((k,n)=>k.routeOrder=n+1);
   });
-  demoHardPlanVersion='v842';
+  demoHardPlanVersion='v843';
   return groups.length;
 }
 function repairDemoRouteConflictsHard(){
@@ -3967,7 +3972,7 @@ if(repairedAtStartup||hardRepairedAtStartup||demoConflictRepairs||demoHardPlanRe
 renderAll();
 startPlannerAutomation();
 
-// V842: haal na het opbouwen van de demo altijd echte BAG/PDOK-adrescoördinaten op.
+// V843: haal na het opbouwen van de demo altijd echte BAG/PDOK-adrescoördinaten op.
 // De fallbackpunten zijn alleen tijdelijk; ze mogen niet als huislocatie blijven staan.
 setTimeout(()=>{
   geocodeExactDemoAddresses().then(()=>{
@@ -3978,7 +3983,7 @@ setTimeout(()=>{
   }).catch(e=>console.warn('Exacte demo-adressen konden niet worden bijgewerkt:',e));
 },1200);
 
-// V842: forceer één volledige herstelronde op alle 100 ingebouwde demo-kinderen.
+// V843: forceer één volledige herstelronde op alle 100 ingebouwde demo-kinderen.
 // We vertrouwen niet op oude metadata; iedere demo-rit krijgt opnieuw zijn eigen
 // woonplaats, straat, ophaaladres en coördinaten. Bestemmingen blijven schooladressen.
 setTimeout(()=>{
@@ -3989,7 +3994,7 @@ setTimeout(()=>{
   const addressesSpread=demo.length>=13&&towns.size>=5&&streets.size>=20&&demo.every(k=>String(k.pickupAddress||k.address||'').includes(','));
   const destinationsValid=demo.every(k=>{const pickup=String(k.pickupAddress||k.address||'').trim().toLowerCase();const school=schoolLocations[k.school];const expected=String(school?.address||k.destination||k.school||'').trim().toLowerCase();return !!expected&&expected!==pickup&&String(k.destinationAddress||'').trim().toLowerCase()===expected;});
   const addressesMatchSpread=demo.every(k=>{const pickup=String(k.pickupAddress||k.address||'').trim().toLowerCase();const street=String(k.demoStreet||'').trim().toLowerCase();const town=String(k.demoTown||'').trim().toLowerCase();return !!street&&!!town&&pickup.includes(street)&&pickup.includes(town);});
-  if(demoAddressSpreadVersion!=='v842'||!addressesSpread||!destinationsValid||!addressesMatchSpread){
+  if(demoAddressSpreadVersion!=='v843'||!addressesSpread||!destinationsValid||!addressesMatchSpread){
     demo.forEach(k=>{
       delete k.lat; delete k.lon;
       delete k.demoTown; delete k.demoStreet; delete k.demoGroup;
@@ -4003,7 +4008,7 @@ setTimeout(()=>{
     saveState();
     const spreadApplied=applyGuaranteedDemoHomeSpread();
     if(spreadApplied){
-      demoAddressSpreadVersion='v842';
+      demoAddressSpreadVersion='v843';
       demoHardPlanVersion='';
       repairBuiltInDemoPlanningHard();
       saveState();
@@ -4090,7 +4095,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=842").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=843").catch(()=>{}));}
 </script>
 
 </body>
