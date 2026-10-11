@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V854</title>
+<title>Taxi Planner V855</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style><style id="v827-demo-gps-css">.demo-gps-panel{padding:12px;border:1px solid #b9d6f3;border-radius:12px;background:#eef6ff;margin:10px 0}.demo-gps-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #d9e6f2}.demo-gps-row:last-child{border-bottom:0}.demo-gps-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#16a34a;margin-right:6px}</style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V854</h1>
+<h1>🚕 Taxi Planner V855</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -554,13 +554,14 @@ async function geocodeExactDemoAddresses(){
   }
 
   if(selected.length<100){
-    const msg='⚠️ BAG/PDOK leverde slechts '+selected.length+' unieke adressen op. De demo wordt tijdelijk geografisch gespreid met benaderende voorbeeldpunten; dit zijn geen exacte huislocaties.';
+    const msg='⚠️ BAG/PDOK leverde '+selected.length+' echte adressen op. Die worden gebruikt; alleen adressen die niet gevonden zijn blijven voorlopig benaderingen.';
     console.warn(msg);
     const status=document.getElementById('routeInfo');
-    if(status)status.textContent=msg+' Geen willekeurige kaartpunten getoond.';
-    return;
+    if(status)status.textContent=msg;
   }
 
+  // Gebruik ook gedeeltelijke PDOK-resultaten: één ontbrekend adres mag niet
+  // verhinderen dat tientallen gevonden huislocaties correct worden geplaatst.
   selected.forEach((item,i)=>{
     const k=item.kid||demoKids[i];
     const a=item.address||item;
@@ -577,7 +578,7 @@ async function geocodeExactDemoAddresses(){
   });
 
   addressesReady=true;
-  demoAddressSpreadVersion='v824';
+  demoAddressSpreadVersion='v855';
   saveState();
   renderAll();
   console.log('V776: 100 echte adressen over '+new Set(selected.map(a=>a.town)).size+' plaatsen en '+new Set(selected.map(a=>a.street+'|'+a.town)).size+' straten.');
@@ -4183,7 +4184,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=854").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=855").catch(()=>{}));}
 </script>
 
 </body>
