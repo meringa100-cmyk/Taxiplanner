@@ -475,13 +475,6 @@ async function geocodeExactDemoAddresses(){
   });
   if(demoKids.length<100)return;
 
-  // V844: wis oude demo-adressen en coördinaten eerst.
-  demoKids.forEach(k=>{
-    delete k.lat; delete k.lon;
-    delete k.demoTown; delete k.demoStreet; delete k.demoGroup;
-    delete k.address; delete k.pickupAddress;
-  });
-
   const towns=['Emmen','Coevorden','Hoogeveen','Assen','Meppel','Beilen','Borger','Odoorn','Dalen','Nieuw-Amsterdam','Klazienaveen','Erica','Westerbork'];
 
   async function fetchTownAddresses(town){
@@ -537,34 +530,35 @@ async function geocodeExactDemoAddresses(){
     }
   }
 
-  if(!pools.length){
-    console.warn('V844: PDOK heeft geen echte adreslocaties teruggegeven. Geen verzonnen coördinaten als echte huislocaties gebruiken.');
+  if(pools.length<10){
+    console.warn('V776: slechts '+pools.length+' plaatsen met voldoende echte adressen; gebruik gegarandeerde demo-spreiding.');
+    applyGuaranteedDemoHomeSpread();
     return;
   }
 
-  // V844: verdeel echte PDOK-adressen in rondes over de beschikbare plaatsen.
-  // Belangrijk: adres en coördinaten komen uit exact hetzelfde PDOK-resultaat.
-  // Geen vaste centrum-offsets en geen verzonnen huisnummer-coördinaten.
+  // V824: bewezen stabiele V777-verdeling — beurtelings door alle plaatsen.
+  // Zo komen de demo-adressen geografisch verspreid terecht.
   const selected=[],used=new Set();
-  let kidIndex=0;
-  for(let round=0;kidIndex<100;round++){
-    let addedThisRound=0;
+  let round=0;
+  while(selected.length<100 && round<100){
     for(const pool of pools){
       const addr=pool.addresses[round];
       if(!addr)continue;
       const key=(addr.town+'|'+addr.street+'|'+addr.number).toLowerCase();
       if(used.has(key))continue;
       used.add(key);
-      selected.push({kid:demoKids[kidIndex],address:addr});
-      kidIndex++;
-      addedThisRound++;
-      if(kidIndex>=100)break;
+      selected.push({kid:demoKids[selected.length],address:addr});
+      if(selected.length>=100)break;
     }
-    if(!addedThisRound)break;
+    round++;
   }
+
   if(selected.length<100){
-    console.warn('V844: slechts '+selected.length+' echte, unieke PDOK-adressen beschikbaar. Niet-gepositioneerde kinderen worden niet voorzien van nepcoördinaten.');
+    console.warn('V824: slechts '+selected.length+' unieke echte adressen gevonden; gebruik gegarandeerde spreiding.');
+    applyGuaranteedDemoHomeSpread();
+    return;
   }
+
   selected.forEach((item,i)=>{
     const k=item.kid||demoKids[i];
     const a=item.address||item;
@@ -581,10 +575,10 @@ async function geocodeExactDemoAddresses(){
   });
 
   addressesReady=true;
-  demoAddressSpreadVersion='v844';
+  demoAddressSpreadVersion='v824';
   saveState();
   renderAll();
-  console.log('V844: echte adressen verspreid over plaatsen en meerdere straten; groepen blijven per plaats.');
+  console.log('V776: 100 echte adressen over '+new Set(selected.map(a=>a.town)).size+' plaatsen en '+new Set(selected.map(a=>a.street+'|'+a.town)).size+' straten.');
 }
 function demoLocationForKid(k){
   const n=parseInt(String(k?.id||'').slice(1),10);
