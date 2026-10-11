@@ -1504,16 +1504,16 @@ function renderParent(){
 function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
 function populateParentAccountForm(){
  const sel=document.getElementById('parentManageChild'); if(!sel)return;
- const current=sel.value;
+ const current=sel.value,previous=sel.dataset.loadedFor||'';
  sel.innerHTML=kids.map(k=>`<option value="${k.id}">${escapeHtml(k.name)} · ${escapeHtml(k.parentId||'geen ID')}</option>`).join('');
  if(current && kids.some(k=>k.id===current))sel.value=current;
- loadParentAccountForm();
+ if(previous!==sel.value){sel.dataset.loadedFor=sel.value;loadParentAccountForm();}
 }
 function loadParentAccountForm(){
  const k=kids.find(x=>x.id===document.getElementById('parentManageChild')?.value)||kids[0];if(!k)return;
  document.getElementById('parentManageName').value=k.parentName||'';
  document.getElementById('parentManageId').value=k.parentId||'';
- document.getElementById('parentManagePin').value=k.parentPin||'';
+ document.getElementById('parentManagePin').value=k.parentPin||'1234';
  const m=document.getElementById('parentManageMessage');if(m)m.textContent='';
 }
 function saveParentAccount(){
