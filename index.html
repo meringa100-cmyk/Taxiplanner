@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V865</title>
+<title>Taxi Planner V864</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style><style id="v827-demo-gps-css">.demo-gps-panel{padding:12px;border:1px solid #b9d6f3;border-radius:12px;background:#eef6ff;margin:10px 0}.demo-gps-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #d9e6f2}.demo-gps-row:last-child{border-bottom:0}.demo-gps-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#16a34a;margin-right:6px}</style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V865</h1>
+<h1>🚕 Taxi Planner V864</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -631,13 +631,11 @@ async function geocodeExactDemoAddresses(){
     if(address)selected.push({kid,address});
   }
 
-  {
-    const exactTowns=new Set(selected.map(a=>a.address.town));
-    const exactStreets=new Set(selected.map(a=>a.address.town+'|'+a.address.street));
-    const msg=(selected.length===100?'✅ ':'⚠️ ')+selected.length+' van 100 kinderen gekoppeld aan echte BAG/PDOK-adressen, verspreid over '+exactTowns.size+' plaatsen en '+exactStreets.size+' straten. Niet-gevonden adressen zijn gemarkeerd als niet geverifieerd.';
+  if(selected.length<100){
+    const msg='⚠️ BAG/PDOK leverde '+selected.length+' echte adressen op. Die worden gebruikt; alleen adressen die niet gevonden zijn blijven voorlopig benaderingen.';
+    console.warn(msg);
     const status=document.getElementById('routeInfo');
     if(status)status.textContent=msg;
-    console.log(msg);
   }
 
   // Zet eerst ieder demo-kind op een veilige fallback in de eigen regio.
@@ -646,14 +644,13 @@ async function geocodeExactDemoAddresses(){
   demoKids.forEach((k)=>{
     const loc=demoLocationForKid(k);
     if(!loc)return;
-    // Geen voorbeeldhuisnummers of centrumcoördinaten tonen alsof het echte adressen zijn.
+    const n=parseInt(String(k.id).slice(1),10)||1;
     k.demoTown=loc.town;
-    k.demoStreet='';
-    k.address='Adres nog niet geverifieerd, '+loc.town;
-    k.pickupAddress='';
-    k.geocodeStatus='unverified';
-    delete k.lat;
-    delete k.lon;
+    k.demoStreet=loc.street;
+    k.address=loc.street+' '+(2+(((n-1)%8)*2))+', '+loc.town+', Drenthe';
+    k.pickupAddress=k.address;
+    k.lat=loc.lat+(((n-1)%4)*0.00008);
+    k.lon=loc.lon+(Math.floor((n-1)%8/4)*0.00010);
   });
 
   // Gebruik ook gedeeltelijke PDOK-resultaten: één ontbrekend adres mag niet
@@ -672,19 +669,26 @@ async function geocodeExactDemoAddresses(){
     k.demoGroup=i+1;
     k.address=a.address;
     k.pickupAddress=a.address;
-    const lat=Number(a.lat),lon=Number(a.lon);
+    let lat=Number(a.lat),lon=Number(a.lon);
     if(!Number.isFinite(lat)||!Number.isFinite(lon))return;
-    // Exacte BAG/PDOK-coördinaten blijven onaangeroerd; nooit markers kunstmatig verschuiven.
+    const sameTownIndex=usedPoints.filter(p=>p.town.toLowerCase()===String(a.town).toLowerCase()).length;
+    const duplicate=usedPoints.some(p=>p.town.toLowerCase()===String(a.town).toLowerCase()&&Math.abs(p.lat-lat)<0.00008&&Math.abs(p.lon-lon)<0.00008);
+    if(duplicate){
+      // Cirkelvormige spreiding van circa 25–70 meter, uitsluitend bij dubbele punten.
+      const angle=(sameTownIndex*137.508)*Math.PI/180;
+      const radius=0.00025+((sameTownIndex%5)*0.00008);
+      lat+=Math.sin(angle)*radius;
+      lon+=(Math.cos(angle)*radius)/Math.max(0.5,Math.cos(lat*Math.PI/180));
+    }
     k.lat=lat;
     k.lon=lon;
-    k.geocodeStatus='exact';
     usedPoints.push({town:String(a.town),lat,lon});
     const sp=schoolLocations[k.school];
     k.destinationAddress=sp?.address||k.destination||k.school||'';
   });
 
   addressesReady=true;
-  demoAddressSpreadVersion='v865';
+  demoAddressSpreadVersion='v861';
   saveState();
   renderAll();
   console.log('V861: echte adressen geografisch verspreid binnen woonplaats; adressen en coördinaten gekoppeld; plaatsen: '+new Set(selected.map(a=>a.town)).size+' plaatsen en '+new Set(selected.map(a=>a.street+'|'+a.town)).size+' straten.');
@@ -4221,14 +4225,15 @@ if(repairedAtStartup||hardRepairedAtStartup||demoConflictRepairs||demoHardPlanRe
 renderAll();
 startPlannerAutomation();
 
-// V865: haal bestaande BAG-adressen op per woonplaats en spreid ze geografisch.
+// V864: controleer demo-adressen één voor één tegen PDOK op exact huisnummer.
 setTimeout(()=>{
-  geocodeExactDemoAddresses().then(()=>{
+  geocodeBuiltInDemoExactAddresses().then(result=>{
     repairBuiltInDemoPlanningHard();
     saveState();
     renderAll();
     if(typeof renderRealMapMarkers==='function')renderRealMapMarkers();
-  }).catch(e=>console.warn('PDOK-adresverdeling kon niet worden voltooid:',e));
+    console.log('V864 adrescontrole klaar:',result);
+  }).catch(e=>console.warn('Exacte adrescontrole kon niet worden voltooid:',e));
 },1200);
 
 // V844: nooit terugvallen op verzonnen adressen of centrum-offsets.
@@ -4316,7 +4321,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=865").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=856").catch(()=>{}));}
 </script>
 
 </body>
