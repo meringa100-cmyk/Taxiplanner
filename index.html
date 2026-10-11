@@ -581,6 +581,21 @@ async function geocodeExactDemoAddresses(){
     if(status)status.textContent=msg;
   }
 
+  // Zet eerst ieder demo-kind op een veilige fallback in de eigen regio.
+  // Zo houden kinderen zonder PDOK-hit niet per ongeluk een oud adres uit een
+  // andere plaats. Exact gevonden BAG-adressen overschrijven deze fallback.
+  demoKids.forEach((k)=>{
+    const loc=demoLocationForKid(k);
+    if(!loc)return;
+    const n=parseInt(String(k.id).slice(1),10)||1;
+    k.demoTown=loc.town;
+    k.demoStreet=loc.street;
+    k.address=loc.street+' '+(2+(((n-1)%8)*2))+', '+loc.town+', Drenthe';
+    k.pickupAddress=k.address;
+    k.lat=loc.lat+(((n-1)%4)*0.00008);
+    k.lon=loc.lon+(Math.floor((n-1)%8/4)*0.00010);
+  });
+
   // Gebruik ook gedeeltelijke PDOK-resultaten: één ontbrekend adres mag niet
   // verhinderen dat tientallen gevonden huislocaties correct worden geplaatst.
   selected.forEach((item,i)=>{
