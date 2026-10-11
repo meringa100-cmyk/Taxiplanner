@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V832</title>
+<title>Taxi Planner V833</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -1413,7 +1413,7 @@ function stopDriverGPS(){
 function driverNavigation(id){
   const k=typeof id==='string' ? find(id) : id;
   if(!k)return;
-  const destination=String(k.address||'').trim();
+  const destination=String(k.destinationAddress||k.destination||k.address||'').trim();
   if(!destination){
     alert('Voor dit kind is geen adres beschikbaar.');
     return;
@@ -3545,7 +3545,7 @@ function openDriverDetails(d){
 function openChild(id){
  const k=find(id);if(!k)return;
  document.getElementById('modalBox').innerHTML=`<h2>👦 ${k.name}</h2>
- <p><b>Ophaaltijd:</b> ${k.time}</p><p><b>Ophaaladres:</b> ${k.pickupAddress||k.address||'Onbekend'}</p><p><b>Chauffeur:</b> ${k.driver}</p><p><b>Bestemmingsadres:</b> ${k.address||k.destinationAddress||k.destination||'Onbekend'}${k.destinationCity?', '+k.destinationCity:''}</p><p><b>School/bestemming:</b> ${k.destination||k.school||'Onbekend'}</p>
+ <p><b>Ophaaltijd:</b> ${k.time}</p><p><b>Ophaaladres:</b> ${k.pickupAddress||k.address||'Onbekend'}</p><p><b>Chauffeur:</b> ${k.driver}</p><p><b>Bestemmingsadres:</b> ${k.destinationAddress||k.address||k.destination||'Onbekend'}${k.destinationCity?', '+k.destinationCity:''}</p><p><b>School/bestemming:</b> ${k.destination||k.school||'Onbekend'}</p>
  <p><b>Status:</b> ${statusText(k.status)}</p><p><b>Vaste relatie:</b> ${k.fixed?'Ja':'Nee'}</p>
  <h3>Chauffeurinformatie</h3><p><b>Hoe benaderen:</b> ${k.approach}</p><p><b>Veiligheid:</b> ${k.safety}</p><p><b>Belangrijk:</b> ${k.important}</p>
  <button onclick="editChild('${id}')">✏️ Profiel bewerken</button> <button onclick="closeModal()">Sluiten</button>`;
@@ -3574,7 +3574,7 @@ function childCardHtml(k){
      <span class="arrow">▼</span>
    </button>
    <div class="child-details-v70">
-     <div class="child-meta-v70"><span>🚕 ${k.driver}</span><span>🧭 Route ${Number.isFinite(k.routeOrder)?k.routeOrder:'—'}</span><span>📍 Ophalen: ${displayPickupAddress(k)}</span><span>🏫 Bestemming: ${k.address||k.destination||'Onbekend'}</span><span>➡️ ${k.destination||k.school||'Bestemming onbekend'}</span><span>${k.fixed?'🔒 Vast':'🔄 Vrij planbaar'}</span></div>
+     <div class="child-meta-v70"><span>🚕 ${k.driver}</span><span>🧭 Route ${Number.isFinite(k.routeOrder)?k.routeOrder:'—'}</span><span>📍 Ophalen: ${displayPickupAddress(k)}</span><span>🏫 Bestemming: ${k.destinationAddress||k.address||k.destination||'Onbekend'}</span><span>➡️ ${k.destination||k.school||'Bestemming onbekend'}</span><span>${k.fixed?'🔒 Vast':'🔄 Vrij planbaar'}</span></div>
      <div class="child-info-v70"><b>Benadering:</b> ${k.approach}</div>
      <div class="child-info-v70"><b>Veiligheid:</b> ${k.safety}</div>
      <div class="child-info-v70"><b>Belangrijk:</b> ${k.important}</div>
@@ -3592,7 +3592,7 @@ function editChild(id){
  <p>📍 Ophaaladres</p><input id="ePickup" style="width:100%" value="${k.pickupAddress||k.address||''}">
  <p>🏘️ Plaats ophalen</p><input id="ePickupCity" style="width:100%" value="${k.pickupCity||''}">
  <p>🏫 Bestemming</p><select id="eDestination" style="width:100%" onchange="toggleEditDestination()">${destinationOptions}</select>
- <p>📍 Bestemmingsadres</p><input id="eAddress" style="width:100%" value="${k.address||k.destinationAddress||''}">
+ <p>📍 Bestemmingsadres</p><input id="eAddress" style="width:100%" value="${k.destinationAddress||k.address||''}">
  <p>🏘️ Plaats bestemming</p><input id="eDestinationCity" style="width:100%" value="${k.destinationCity||'Emmen'}">
  <p>Hoe benaderen</p><input id="e1" style="width:100%" value="${k.approach||''}">
  <p>Veiligheid/begeleiding</p><input id="e2" style="width:100%" value="${k.safety||''}">
@@ -3619,8 +3619,9 @@ async function saveChild(id){
  const destination=document.getElementById('eDestination')?.value||k.destination||k.school||'Nieuwe bestemming';
  k.destination=destination;
  k.school=schools.includes(destination)?destination:'Nieuwe bestemming';
- k.address=document.getElementById('eAddress')?.value.trim()||destination;
- k.destinationAddress=k.address;
+ k.destinationAddress=document.getElementById('eAddress')?.value.trim()||schoolLocations[k.school]?.address||destination;
+ // Het legacy-veld address blijft het ophaaladres; bestemming staat apart.
+ k.address=k.pickupAddress||k.address||'';
  k.destinationCity=document.getElementById('eDestinationCity')?.value.trim()||'';
  k.approach=document.getElementById('e1')?.value||'';
  k.safety=document.getElementById('e2')?.value||'';
@@ -3630,7 +3631,7 @@ async function saveChild(id){
  const geo=await geocodePickupAddress(pickupQuery+', Nederland');
  if(geo){k.lat=geo.lat;k.lon=geo.lon;}
 
- const destinationQuery=[k.address,k.destinationCity].filter(Boolean).join(', ');
+ const destinationQuery=[k.destinationAddress,k.destinationCity].filter(Boolean).join(', ');
  const destinationGeo=await geocodeAddress(destinationQuery+', Nederland');
  if(destinationGeo){
    k.destinationLat=destinationGeo.lat;
@@ -4114,7 +4115,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=832").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=833").catch(()=>{}));}
 </script>
 
 </body>
