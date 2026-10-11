@@ -298,9 +298,22 @@ button[onclick^="chauffeurDelay"]:active{
 <section id="parent" class="page">
 <div class="card">
 <h2>👨‍👩‍👧 Ouderportaal</h2>
-<p class="muted">Demo ouderportaal. Een ouder ziet alleen het eigen kind.</p>
+<p class="muted">Bekijk wat een ouder ziet en beheer de gegevens per kind.</p>
 <select id="parentSelect" onchange="renderParent()"></select>
 <div id="parentView"></div>
+</div>
+<div class="card">
+<h2>🔐 Ouderaccounts beheren</h2>
+<p class="muted">Kies een kind en stel de oudernaam, ouder-ID en persoonlijke toegangscode in. De wijzigingen worden in deze planner opgeslagen.</p>
+<div class="grid">
+<div><label for="parentManageChild">Kind</label><select id="parentManageChild" onchange="loadParentAccountForm()"></select></div>
+<div><label for="parentManageName">Naam ouder/verzorger</label><input id="parentManageName" placeholder="Bijv. Jan de Vries"></div>
+<div><label for="parentManageId">Ouder-ID</label><input id="parentManageId" placeholder="Bijv. OUDER001" autocapitalize="characters"></div>
+<div><label for="parentManagePin">Toegangscode (4–8 cijfers)</label><input id="parentManagePin" inputmode="numeric" maxlength="8" placeholder="Bijv. 1234"></div>
+</div>
+<div class="actions" style="margin-top:12px"><button class="primary" onclick="saveParentAccount()">💾 Ouderaccount opslaan</button><button onclick="copyParentLogin()">📋 Kopieer inloggegevens</button></div>
+<div id="parentManageMessage" class="small muted" style="margin-top:10px"></div>
+<p class="small muted">Let op: dit is nog een demo-opslag in de browser. Voor echte accounts op telefoons van ouders is een beveiligde server nodig.</p>
 </div>
 </section>
 
@@ -1012,6 +1025,7 @@ function seed(){
    id:'k'+(i+1),
    parentId:'OUDER'+String(i+1).padStart(3,'0'),
    parentName:'Ouder '+(i+1),
+   parentPin:'1234',
    name:names[i%names.length]+' '+(i+1),
    timeMin,
    time:fmtTime(timeMin),
@@ -1474,15 +1488,49 @@ function driverArriveNext(id){
 function renderParent(){
  const s=document.getElementById('parentSelect');
  const cur=s.value;
- s.innerHTML=kids.slice(0,5).map(k=>`<option value="${k.id}">Demo ouder — ${k.name}${delayForKid(k)?'<div class=\"delay-parent-badge\">⏱️ '+delayForKid(k)+' minuten vertraging</div>':''}</option>`).join('');
+ s.innerHTML=kids.map(k=>`<option value="${k.id}">${escapeHtml(k.parentId||'OUDER?')} — ${escapeHtml(k.name)}</option>`).join('');
  if(cur)s.value=cur;
  const k=kids.find(x=>x.id===s.value)||kids[0];
- document.getElementById('parentView').innerHTML=`<div class="card"><h3>${k.name}</h3>
- <p>Ophaaltijd: <b>${k.time}</b></p>
- ${parentDriverChanges[k.id] && parentDriverChanges[k.id].to===k.driver ? '<div class="notice" style="margin:12px 0;border-left:5px solid #d97706;background:#fff7ed"><b>🔔 Belangrijk voor vandaag</b><br>Uw vaste chauffeur <b>'+parentDriverChanges[k.id].from+'</b> is vandaag '+(parentDriverChanges[k.id].reason==='busstoring'?'niet beschikbaar door een busstoring.':'ziek/niet beschikbaar.')+'<br>Uw kind wordt daarom opgehaald door <b>'+k.driver+'</b>.<br><span class="small">Zo kunt u uw kind hierop voorbereiden.</span></div>' : ''}
- <p>Chauffeur: <b>${k.driver}</b></p><div class="demo-gps-panel"><b>📍 Chauffeurpositie</b><br><span class="small">${demoGpsText(k.driver)}</span></div>
- <p>School: <b>${k.school}</b></p><p>Status: <span class="badge">${statusText(k.status)}</span>${k.delay?` <b>⏱️ Vertraging: +${k.delay} min</b>`:''}</p>
+ if(!k)return;
+ document.getElementById('parentView').innerHTML=`<div class="card"><h3>${escapeHtml(k.name)}</h3>
+ <p>Ouder: <b>${escapeHtml(k.parentName||'Nog niet ingesteld')}</b> · ID: <b>${escapeHtml(k.parentId||'')}</b></p>
+ <p>Ophaaltijd: <b>${escapeHtml(k.time||'Nog niet gepland')}</b></p>
+ ${parentDriverChanges[k.id] && parentDriverChanges[k.id].to===k.driver ? '<div class="notice" style="margin:12px 0;border-left:5px solid #d97706;background:#fff7ed"><b>🔔 Belangrijk voor vandaag</b><br>Uw vaste chauffeur <b>'+escapeHtml(parentDriverChanges[k.id].from)+'</b> is vandaag '+(parentDriverChanges[k.id].reason==='busstoring'?'niet beschikbaar door een busstoring.':'ziek/niet beschikbaar.')+'<br>Uw kind wordt daarom opgehaald door <b>'+escapeHtml(k.driver)+'</b>.<br><span class="small">Zo kunt u uw kind hierop voorbereiden.</span></div>' : ''}
+ <p>Chauffeur: <b>${escapeHtml(k.driver||'Nog niet toegewezen')}</b></p><div class="demo-gps-panel"><b>📍 Chauffeurpositie</b><br><span class="small">${escapeHtml(demoGpsText(k.driver))}</span></div>
+ <p>School: <b>${escapeHtml(k.school||k.destination||'Nog niet ingesteld')}</b></p><p>Status: <span class="badge">${escapeHtml(statusText(k.status))}</span>${k.delay?` <b>⏱️ Vertraging: +${Number(k.delay)} min</b>`:''}</p>
  ${active(k)?`<button onclick="parentAbsent('${k.id}')">🚫 Kind afmelden</button>`:''}</div>`;
+ populateParentAccountForm();
+}
+function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
+function populateParentAccountForm(){
+ const sel=document.getElementById('parentManageChild'); if(!sel)return;
+ const current=sel.value;
+ sel.innerHTML=kids.map(k=>`<option value="${k.id}">${escapeHtml(k.name)} · ${escapeHtml(k.parentId||'geen ID')}</option>`).join('');
+ if(current && kids.some(k=>k.id===current))sel.value=current;
+ loadParentAccountForm();
+}
+function loadParentAccountForm(){
+ const k=kids.find(x=>x.id===document.getElementById('parentManageChild')?.value)||kids[0];if(!k)return;
+ document.getElementById('parentManageName').value=k.parentName||'';
+ document.getElementById('parentManageId').value=k.parentId||'';
+ document.getElementById('parentManagePin').value=k.parentPin||'';
+ const m=document.getElementById('parentManageMessage');if(m)m.textContent='';
+}
+function saveParentAccount(){
+ const k=kids.find(x=>x.id===document.getElementById('parentManageChild')?.value);
+ const name=document.getElementById('parentManageName').value.trim();
+ const id=document.getElementById('parentManageId').value.trim().toUpperCase();
+ const pin=document.getElementById('parentManagePin').value.trim();
+ const msg=document.getElementById('parentManageMessage');
+ if(!k||!name||!/^OUDER[A-Z0-9-]{1,20}$/.test(id)||!/^[0-9]{4,8}$/.test(pin)){msg.textContent='Vul een oudernaam, een uniek ouder-ID (begint met OUDER) en een code van 4–8 cijfers in.';return;}
+ if(kids.some(other=>other.id!==k.id&&String(other.parentId||'').toUpperCase()===id)){msg.textContent='Dit ouder-ID is al gekoppeld aan een ander kind.';return;}
+ k.parentName=name;k.parentId=id;k.parentPin=pin;saveState();renderParent();
+ msg.textContent='Account opgeslagen voor '+name+'. Ouder-ID: '+id+'.';
+}
+function copyParentLogin(){
+ const k=kids.find(x=>x.id===document.getElementById('parentManageChild')?.value);if(!k)return;
+ const value='Ouder-app: https://meringa100-cmyk.github.io/Taxiplanner/ouder.html\nOuder: '+(k.parentName||'Ouder/verzorger')+'\nOuder-ID: '+(k.parentId||'')+'\nToegangscode: '+(k.parentPin||'');
+ if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(value).then(()=>{document.getElementById('parentManageMessage').textContent='Inloggegevens gekopieerd.'}).catch(()=>{prompt('Kopieer de inloggegevens:',value)});}else prompt('Kopieer de inloggegevens:',value);
 }
 
 function renderLive(){
