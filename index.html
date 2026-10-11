@@ -993,6 +993,13 @@ function loadState(){
   const state=JSON.parse(raw);
   if(!state || !Array.isArray(state.kids) || !state.kids.length)return false;
   kids=state.kids;
+  // Migreer bestaande opgeslagen kinderen naar ouderaccounts; oudere browserdata
+  // bevat mogelijk nog geen parentId/parentPin van de nieuwere versie.
+  kids.forEach((k,i)=>{
+    if(!k.parentId)k.parentId='OUDER'+String(i+1).padStart(3,'0');
+    if(!k.parentName)k.parentName='Ouder '+(i+1);
+    if(!k.parentPin)k.parentPin='1234';
+  });
   driverUnavailable=state.driverUnavailable||{};
   busIssues=state.busIssues||{};
   replacementAssignments=state.replacementAssignments||{};
