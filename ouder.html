@@ -40,7 +40,7 @@ function login(){
  const child=st.kids.find(k=>String(k.parentId||'').toUpperCase()===p);
  if(!child)return alert('Ouder-ID niet gevonden. Controleer de gegevens bij Ouderaccounts beheren in de Taxi Planner.');
  if(String(child.parentPin||'1234')!==pinv)return alert('De toegangscode klopt niet.');
- sessionStorage.parent=p;openApp();
+ sessionStorage.parent=p;sessionStorage.parentChildId=String(child.id);openApp();
 }
 function openApp(){loginEl.classList.add('hidden');app.classList.remove('hidden');nav.classList.remove('hidden');const account=linkedChildFromPlanner();profileId.textContent=account?(account.parentName||'Ouder')+' · '+(sessionStorage.parent||'OUDER001'):(sessionStorage.parent||'OUDER001');render();}
 const loginEl=document.getElementById('login'),app=document.getElementById('app'),nav=document.getElementById('nav');
