@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V866</title>
+<title>Taxi Planner V868</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -1849,8 +1849,9 @@ function coordForDriverStop(driverIndex, stopIndex){
 }
 
 function coordForKid(k, driverIndex, stopIndex){
-  // Niet gevonden adres? Geen verzonnen plaatscoördinaat op de kaart tonen.
-  if(k && k.geocodeStatus==='unverified') return null;
+  // V868: in de ingebouwde DEMO houden we ritten zichtbaar met een
+  // plaatsniveau-benadering wanneer PDOK geen exact adres teruggeeft.
+  // Dit is geen huisnauwkeurige locatie; de adresstatus blijft onverified.
   // Exacte BAG/PDOK-coördinaten gaan altijd vóór elke demo-fallback.
   if(k && Number.isFinite(k.lon) && Number.isFinite(k.lat)) return [k.lon,k.lat];
 
@@ -4241,7 +4242,7 @@ if(repairedAtStartup||hardRepairedAtStartup||demoConflictRepairs||demoHardPlanRe
 renderAll();
 startPlannerAutomation();
 
-// V866: echte BAG-adressen per woonplaats, met voorkeur voor verschillende straten. Bewaar deze spreiding; de oude normalisatie zette kinderen terug op groepsadressen.
+// V868: routes zichtbaar houden bij ontbrekende BAG-adressen, met voorkeur voor verschillende straten. Bewaar deze spreiding; de oude normalisatie zette kinderen terug op groepsadressen.
 setTimeout(()=>{
   geocodeExactDemoAddresses().then(()=>{
     // Geen oude groepsreparatie na geocoderen: die kan woonadressen overschrijven.
@@ -4336,7 +4337,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=866").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=868").catch(()=>{}));}
 </script>
 
 </body>
