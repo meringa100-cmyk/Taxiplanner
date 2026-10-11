@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V847</title>
+<title>Taxi Planner V848</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style><style id="v827-demo-gps-css">.demo-gps-panel{padding:12px;border:1px solid #b9d6f3;border-radius:12px;background:#eef6ff;margin:10px 0}.demo-gps-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #d9e6f2}.demo-gps-row:last-child{border-bottom:0}.demo-gps-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#16a34a;margin-right:6px}</style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V847</h1>
+<h1>🚕 Taxi Planner V848</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -534,8 +534,9 @@ async function geocodeExactDemoAddresses(){
   }
 
   if(pools.length<10){
-    const msg='⚠️ BAG/PDOK leverde nog onvoldoende echte adressen op ('+pools.length+' van '+towns.length+' plaatsen). Bestaande adressen en routes zijn niet overschreven.';
+    const msg='⚠️ BAG/PDOK leverde onvoldoende adressen op ('+pools.length+' van '+towns.length+' plaatsen). De demo wordt tijdelijk geografisch gespreid met benaderende voorbeeldpunten; dit zijn geen exacte huislocaties.';
     console.warn(msg);
+    applyGuaranteedDemoHomeSpread();
     const status=document.getElementById('routeInfo');
     if(status)status.textContent=msg;
     return;
@@ -559,8 +560,9 @@ async function geocodeExactDemoAddresses(){
   }
 
   if(selected.length<100){
-    const msg='⚠️ BAG/PDOK leverde slechts '+selected.length+' unieke echte adressen op. Bestaande adressen en routes zijn niet overschreven.';
+    const msg='⚠️ BAG/PDOK leverde slechts '+selected.length+' unieke adressen op. De demo wordt tijdelijk geografisch gespreid met benaderende voorbeeldpunten; dit zijn geen exacte huislocaties.';
     console.warn(msg);
+    applyGuaranteedDemoHomeSpread();
     const status=document.getElementById('routeInfo');
     if(status)status.textContent=msg;
     return;
@@ -4151,7 +4153,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=847").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=848").catch(()=>{}));}
 </script>
 
 </body>
