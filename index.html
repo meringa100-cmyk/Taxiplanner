@@ -1552,17 +1552,24 @@ function copyParentLogin(){
 }
 
 function renderLive(){
- const activeRides=kids.filter(active).sort((a,b)=>a.timeMin-b.timeMin);
- const driverCards=driverNames.map(d=>{
-   const assigned=activeRides.filter(k=>k.driver===d).sort((a,b)=>(a.routeOrder||999)-(b.routeOrder||999)||(a.timeMin||0)-(b.timeMin||0));
-   const issue=isBusUnavailable(d);
-   return `<div class="row"><b>🚌 ${busForDriver(d)} — ${d}</b><div class="small">${issue?'⚠️ Busstoring': '✅ Chauffeur beschikbaar'} • ${assigned.length}/${MAX} actieve kinderen</div>${assigned.length?assigned.map(k=>`<div class="small" style="margin-top:5px">👦 ${k.name} — ${statusText(k.status)} — 🕐 ${k.time||''}<br>📍 Ophalen: ${displayPickupAddress(k)}</div>`).join(''):'<div class="small muted" style="margin-top:5px">Geen actieve ritten toegewezen</div>'}</div>`;
- }).join('');
- document.getElementById('liveView').innerHTML=`<div class="grid">
- <div><div class="stat">${activeRides.length}</div><div class="muted">Actieve ritten</div></div>
- <div><div class="stat">${kids.filter(k=>k.status==='picked').length}</div><div class="muted">Onderweg</div></div>
- <div><div class="stat">${kids.filter(k=>k.status==='school').length}</div><div class="muted">Op school</div></div>
- </div><p class="muted">🚌 Wagenpark: ${busNumbers.length} bussen • ✅ ${busNumbers.length-driverNames.filter(d=>isBusUnavailable(d)).length} beschikbaar • ⚠️ ${driverNames.filter(d=>isBusUnavailable(d)).length} in storing</p><h3>Actieve bussen en chauffeurs</h3><div class="demo-gps-panel"><b>📡 Demo chauffeur-GPS</b><p class="small muted">Geen echte GPS nodig. Chauffeurs bewegen automatisch over hun route zodat Planner, Ouder en Live Centrum getest kunnen worden.</p><div class="actions"><button class="primary" onclick="startDemoGPS()">▶️ Start demo GPS</button><button onclick="stopDemoGPS()">⏹️ Stop demo GPS</button></div><div id="demoGpsRows" class="small" style="margin-top:8px"></div></div>${driverCards}`;
+ const host=document.getElementById('liveView');
+ if(!host)return;
+ try{
+   const activeRides=kids.filter(k=>k && (k.status==='waiting'||k.status==='picked')).sort((a,b)=>(Number(a.timeMin)||0)-(Number(b.timeMin)||0));
+   const driverCards=driverNames.map(d=>{
+     const assigned=activeRides.filter(k=>k.driver===d).sort((a,b)=>(Number(a.routeOrder)||999)-(Number(b.routeOrder)||999)||(Number(a.timeMin)||0)-(Number(b.timeMin)||0));
+     const issue=!!(busIssues&&busIssues[d]);
+     const children=assigned.map(k=>{
+       const address=String(k.pickupAddress||k.address||'Ophaaladres niet beschikbaar');
+       return '<div class="small" style="margin-top:5px">👦 '+String(k.name||'Kind')+' — '+String(statusText(k.status)||k.status||'Onbekend')+' — 🕐 '+String(k.time||'')+'<br>📍 Ophalen: '+address+'</div>';
+     }).join('');
+     return '<div class="row"><b>🚌 '+busForDriver(d)+' — '+d+'</b><div class="small">'+(issue?'⚠️ Busstoring':'✅ Chauffeur beschikbaar')+' • '+assigned.length+'/'+MAX+' actieve kinderen</div>'+(children||'<div class="small muted" style="margin-top:5px">Geen actieve ritten toegewezen</div>')+'</div>';
+   }).join('');
+   host.innerHTML='<div class="grid"><div><div class="stat">'+activeRides.length+'</div><div class="muted">Actieve ritten</div></div><div><div class="stat">'+kids.filter(k=>k&&k.status==='picked').length+'</div><div class="muted">Onderweg</div></div><div><div class="stat">'+kids.filter(k=>k&&k.status==='school').length+'</div><div class="muted">Op school</div></div></div><p class="muted">🚌 Wagenpark: '+busNumbers.length+' bussen • ✅ '+(busNumbers.length-driverNames.filter(d=>busIssues&&busIssues[d]).length)+' beschikbaar • ⚠️ '+driverNames.filter(d=>busIssues&&busIssues[d]).length+' in storing</p><h3>Alle chauffeurs en bussen</h3><div class="demo-gps-panel"><b>📡 Demo chauffeur-GPS</b><p class="small muted">Geen echte GPS nodig. Chauffeurs bewegen automatisch over hun route zodat Planner, Ouder en Live Centrum getest kunnen worden.</p><div class="actions"><button class="primary" onclick="startDemoGPS()">▶️ Start demo GPS</button><button onclick="stopDemoGPS()">⏹️ Stop demo GPS</button></div><div id="demoGpsRows" class="small" style="margin-top:8px"></div></div>'+driverCards;
+ }catch(err){
+   console.error('Live Centrum fout:',err);
+   host.innerHTML='<h3>Alle chauffeurs en bussen</h3>'+driverNames.map(d=>'<div class="row"><b>🚌 '+busForDriver(d)+' — '+d+'</b></div>').join('')+'<p class="small muted">De chauffeurspresentatie is hersteld; er trad een fout op bij het laden van ritdetails.</p>';
+ }
 }
 
 
