@@ -418,50 +418,46 @@ function applyGuaranteedDemoHomeSpread(){
   }).sort((a,b)=>Number(String(a.id).slice(1))-Number(String(b.id).slice(1)));
   if(!demoKids.length)return false;
 
-  // Demo-adressen: eerst acht kinderen per straat/woonplaats, daarna de volgende straat.
-  // Dit zijn herkenbare demo-adressen en geen garantie op echte huisnummercoördinaten.
-  const homes=[
-    {town:'Emmen',street:'Laan van de Marel',lat:52.7884433,lon:6.9365105},
-    {town:'Coevorden',street:'Stationsstraat',lat:52.6643544,lon:6.7363784},
-    {town:'Hoogeveen',street:'Hoofdstraat',lat:52.729056,lon:6.477155},
-    {town:'Assen',street:'Rolderstraat',lat:52.9910,lon:6.5630},
-    {town:'Meppel',street:'Stationsweg',lat:52.6927470,lon:6.1914540},
-    {town:'Beilen',street:'Brinkstraat',lat:52.8640,lon:6.5150},
-    {town:'Borger',street:'Hoofdstraat',lat:52.9263192,lon:6.7902882},
-    {town:'Odoorn',street:'Valtherweg',lat:52.8503613,lon:6.8504359},
-    {town:'Dalen',street:'Hoofdstraat',lat:52.7000,lon:6.7550},
-    {town:'Nieuw-Amsterdam',street:'Vaart NZ',lat:52.7100,lon:6.8550},
-    {town:'Klazienaveen',street:'Langestraat',lat:52.7240,lon:6.9900},
-    {town:'Erica',street:'Verlengde Vaart NZ',lat:52.7119677,lon:6.9057844},
-    {town:'Westerbork',street:'Hoofdstraat',lat:52.8500,lon:6.6080}
+  // Fallback: maximaal acht kinderen per plaats, verspreid over meerdere straten.
+  // Dit zijn voorbeeldadressen; bij een werkende PDOK-verbinding worden ze vervangen
+  // door echte adresresultaten binnen dezelfde plaats.
+  const places=[
+    {town:'Emmen',lat:52.78844,lon:6.93651,streets:['Laan van de Marel','Boslaan','Hondsrugweg','Weerdingerstraat','Angelsloërdijk','Minister Kanstraat']},
+    {town:'Coevorden',lat:52.66435,lon:6.73638,streets:['Stationsstraat','Krimweg','Poppenharelaan','Friesestraat','Aleida Kramersingel','Van Heutszsingel']},
+    {town:'Hoogeveen',lat:52.72906,lon:6.47716,streets:['Hoofdstraat','Pesserstraat','Het Haagje','Schutstraat','Griendtsveenweg','Wolfsbosstraat']},
+    {town:'Assen',lat:52.9910,lon:6.5630,streets:['Rolderstraat','Balkenweg','Graswijk','Thorbeckelaan','Delft','Nijlandstraat']},
+    {town:'Meppel',lat:52.69275,lon:6.19145,streets:['Stationsweg','Hoofdstraat','Woldstraat','Oosterboerweg','Rembrandtlaan','Zuideinde']},
+    {town:'Beilen',lat:52.8640,lon:6.5150,streets:['Brinkstraat','Dambroek','Ettenstraat','Esweg','Wilhelminastraat','Sportlaan']},
+    {town:'Borger',lat:52.92632,lon:6.79029,streets:['Hoofdstraat','Koesteeg','Rolderstraat','Westdorperstraat','Burgemeester Drijberstraat','Torénlaan']},
+    {town:'Odoorn',lat:52.85036,lon:6.85044,streets:['Valtherweg','Hoofdstraat','Boshof','Langhieten','Hondsruglaan','Exloërweg']},
+    {town:'Dalen',lat:52.7000,lon:6.7550,streets:['Hoofdstraat','Emmerweg','Kleine Veld','Westerwijk','Molenwijk','Achterloo']},
+    {town:'Nieuw-Amsterdam',lat:52.7100,lon:6.8550,streets:['Vaart NZ','Vaart ZZ','Industrieweg','Veilingstraat','Sportlaan','Zijtak OZ']},
+    {town:'Klazienaveen',lat:52.7240,lon:6.9900,streets:['Langestraat','Kruidenlaan','Meridiaan','Planeet','Antares','Van Echtenskanaal NZ']},
+    {town:'Erica',lat:52.71197,lon:6.90578,streets:['Verlengde Vaart NZ','Ericasestraat','Heidebloemstraat','Peelstraat','Tuindorp','Vaart ZZ']},
+    {town:'Westerbork',lat:52.8500,lon:6.6080,streets:['Hoofdstraat','Oosteinde','Beilerstraat','De Noesten','Wilhelminastraat','Burgemeester Gualthérie van Weezelplein']}
   ];
-
   demoKids.forEach((k,i)=>{
     const groupIndex=Math.floor(i/MAX);
-    const base=homes[groupIndex%homes.length];
-    const within=i%MAX;
-    const houseNumber=2+within*2;
-    // Kleine spreiding op dezelfde straat zodat markers niet exact samenvallen.
-    const latOffset=(within-3.5)*0.00012;
-    const lonOffset=(within-3.5)*0.00016;
-    k.demoTown=base.town;
-    k.demoStreet=base.street;
+    const pos=i%MAX;
+    const place=places[groupIndex%places.length];
+    const street=place.streets[(pos*5+Math.floor(pos/2))%place.streets.length];
+    const number=2+pos*2;
+    k.demoTown=place.town;
+    k.demoStreet=street;
     k.demoGroup=groupIndex+1;
-    k.address=base.street+' '+houseNumber+', '+base.town;
+    k.address=street+' '+number+', '+place.town;
     k.pickupAddress=k.address;
-    k.lat=base.lat+latOffset;
-    k.lon=base.lon+lonOffset;
+    k.lat=place.lat+(pos-3.5)*0.00010;
+    k.lon=place.lon+(pos-3.5)*0.00013;
     const sp=schoolLocations[k.school];
     k.destinationAddress=sp?.address||k.destination||k.school||'';
   });
-
   addressesReady=true;
   demoAddressSpreadVersion='v838';
   saveState();
-  console.log('V838: demo-kinderen gegroepeerd in blokken van maximaal acht per straat.');
+  console.log('V838 fallback: maximaal acht kinderen per plaats, verspreid over straten.');
   return true;
 }
-
 async function geocodeExactDemoAddresses(){
   // V776: robuuste PDOK-adresverzameling. Geen q=*; eerst bekende
   // Locatieserver-query's, daarna in JavaScript exact op woonplaats filteren.
@@ -3258,12 +3254,18 @@ function resetDemo(){
  demoAddressSpreadVersion='';
  demoPlanningSpreadLocked=false;
  seed();
- // Behoud de vaste groepen van maximaal acht kinderen per straat; geocoding
- // achteraf zou deze straatindeling weer door elkaar kunnen halen.
  applyGuaranteedDemoHomeSpread();
  repairBuiltInDemoPlanningHard();
  saveState();
  renderAll();
+ // Probeer daarna echte BAG/PDOK-adressen op te halen; maximaal acht adressen
+ // per plaats en de planning wordt opnieuw per plaats gegroepeerd.
+ setTimeout(async()=>{
+   await geocodeExactDemoAddresses();
+   repairBuiltInDemoPlanningHard();
+   saveState();
+   renderAll();
+ },250);
 }
 function pickup(id){const k=find(id);if(k){k.status='picked';renderAll()}}
 
