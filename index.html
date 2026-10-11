@@ -1484,7 +1484,7 @@ function renderDriver(){
    </div>
    <div class="driver-queue-v71">
      <b>Volgende kinderen</b>
-     ${upcoming.length?upcoming.map(k=>`<div class="driver-queue-item-v71" onclick="setDriverKid('${k.id}')"><b>${k.time}</b> — ${k.name} · ${k.address}</div>`).join(''):'<div class="small" style="margin-top:7px">Dit is de laatste open rit.</div>'}
+     ${upcoming.length?upcoming.map(k=>`<div class="driver-queue-item-v71" onclick="setDriverKid('${k.id}')"><b>${k.time}</b> — ${k.name} · ${displayPickupAddress(k)||'Ophaaladres niet beschikbaar'}</div>`).join(''):'<div class="small" style="margin-top:7px">Dit is de laatste open rit.</div>'}
    </div>
  </div>`;
 }
