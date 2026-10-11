@@ -478,7 +478,10 @@ async function geocodeExactDemoAddresses(){
   const towns=['Emmen','Coevorden','Hoogeveen','Assen','Meppel','Beilen','Borger','Odoorn','Dalen','Nieuw-Amsterdam','Klazienaveen','Erica','Westerbork'];
 
   async function fetchTownAddresses(town){
-    const queries=[town,'straat '+town,'weg '+town];
+    // Zoek expliciet op woonplaatsnaam én met vrije zoektermen.
+    // De vrije zoekterm alleen kan door relevantiesortering te weinig adressen
+    // uit kleinere plaatsen teruggeven.
+    const queries=['woonplaatsnaam:'+town,town,'straat '+town,'weg '+town];
     const all=[], seen=new Set();
     for(const q of queries){
       try{
@@ -486,10 +489,10 @@ async function geocodeExactDemoAddresses(){
           q,
           fq:'type:adres',
           fl:'weergavenaam,type,straatnaam,woonplaatsnaam,huisnummer,centroide_ll,centroid_ll',
-          rows:'500'
+          rows:'1000'
         });
         const res=await fetch('https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?'+params.toString(),{headers:{'Accept':'application/json'}});
-        if(!res.ok)continue;
+        if(!res.ok){console.warn('PDOK HTTP '+res.status+' voor '+town+' ('+q+')');continue;}
         const data=await res.json();
         const docs=Array.isArray(data?.response?.docs)?data.response.docs:[];
         for(const x of docs){
@@ -531,8 +534,10 @@ async function geocodeExactDemoAddresses(){
   }
 
   if(pools.length<10){
-    console.warn('V776: slechts '+pools.length+' plaatsen met voldoende echte adressen; gebruik gegarandeerde demo-spreiding.');
-    applyGuaranteedDemoHomeSpread();
+    const msg='⚠️ BAG/PDOK leverde nog onvoldoende echte adressen op ('+pools.length+' van '+towns.length+' plaatsen). Bestaande adressen en routes zijn niet overschreven.';
+    console.warn(msg);
+    const status=document.getElementById('routeInfo');
+    if(status)status.textContent=msg;
     return;
   }
 
@@ -554,8 +559,10 @@ async function geocodeExactDemoAddresses(){
   }
 
   if(selected.length<100){
-    console.warn('V824: slechts '+selected.length+' unieke echte adressen gevonden; gebruik gegarandeerde spreiding.');
-    applyGuaranteedDemoHomeSpread();
+    const msg='⚠️ BAG/PDOK leverde slechts '+selected.length+' unieke echte adressen op. Bestaande adressen en routes zijn niet overschreven.';
+    console.warn(msg);
+    const status=document.getElementById('routeInfo');
+    if(status)status.textContent=msg;
     return;
   }
 
