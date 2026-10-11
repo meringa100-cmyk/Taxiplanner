@@ -44,7 +44,7 @@ function login(){
 }
 function openApp(){loginEl.classList.add('hidden');app.classList.remove('hidden');nav.classList.remove('hidden');const account=linkedChildFromPlanner();profileId.textContent=account?(account.parentName||'Ouder')+' · '+(sessionStorage.parent||'OUDER001'):(sessionStorage.parent||'OUDER001');render();}
 const loginEl=document.getElementById('login'),app=document.getElementById('app'),nav=document.getElementById('nav');
-function logout(){sessionStorage.removeItem('parent');location.reload();}
+function logout(){sessionStorage.removeItem('parent');sessionStorage.removeItem('parentChildId');location.reload();}
 function render(){childName.textContent=demo.name;profileName.textContent=demo.name;bus.textContent=demo.bus;driverShort.textContent=demo.driver;updated.textContent=new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});eta.textContent=demo.eta;homeTime.textContent=demo.eta+' volgens planning';if(demo.delay){delayBadge.className='status warn';delayBadge.textContent='+'+demo.delay+' min';statusText.textContent='Vertraagd';alerts.innerHTML='<div class="status warn">⚠️ Rit heeft '+demo.delay+' minuten vertraging</div>';}else{delayBadge.className='status ok';delayBadge.textContent='Op tijd';statusText.textContent='Onderweg';}}
 function setRide(type,btn){document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));btn.classList.add('active');if(type==='terug'){rideTitle.textContent='Naar huis';rideSub.textContent='Terugreis na school';eta.textContent='15:35';nextLabel.textContent='Geplande terugrit';document.getElementById('etaCaption').textContent='Demo-tijd voor de terugrit';}else{rideTitle.textContent='Naar school';rideSub.textContent='Bus 12 is onderweg';eta.textContent=demo.eta;nextLabel.textContent='Geplande ophaaltijd';document.getElementById('etaCaption').textContent='Ophaaltijd volgens de planning';}}
 function active(btn){document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));btn.classList.add('active');}
@@ -70,8 +70,14 @@ function readPlannerState(){
 function linkedChildFromPlanner(){
   const st=readPlannerState(); if(!st)return null;
   const pid=(sessionStorage.parent||'OUDER001').toUpperCase();
+  const savedKidId=sessionStorage.parentChildId;
+  // Exacte kind-ID heeft voorrang, maar alleen zolang het ouder-ID nog bij dat kind hoort.
+  if(savedKidId){
+    const savedKid=st.kids.find(k=>String(k.id)===String(savedKidId));
+    if(savedKid && String(savedKid.parentId||'').toUpperCase()===pid)return savedKid;
+  }
   const explicit=parentLinks[pid];
-  const kid=explicit ? st.kids.find(k=>String(k.id)===String(explicit)) : st.kids.find(k=>String(k.parentId||'').toUpperCase()===pid);
+  const kid=explicit ? st.kids.find(k=>String(k.id)===String(explicit)&&String(k.parentId||'').toUpperCase()===pid) : st.kids.find(k=>String(k.parentId||'').toUpperCase()===pid);
   return kid||null;
 }
 function minutesToClock(m){
