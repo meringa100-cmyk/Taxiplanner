@@ -1693,15 +1693,21 @@ function coordForDriverStop(driverIndex, stopIndex){
 }
 
 function coordForKid(k, driverIndex, stopIndex){
-  // Exact BAG/PDOK-adres gaat altijd vóór een straatfallback.
-  // De route moet naar het daadwerkelijke huispunt rijden.
+  // Exacte BAG/PDOK-coördinaten gaan altijd vóór elke demo-fallback.
   if(k && Number.isFinite(k.lon) && Number.isFinite(k.lat)) return [k.lon,k.lat];
-  // Demo-kinderen zonder echte geocode mogen niet op een verzonnen plek staan.
-  if(k && /^k[0-9]+$/.test(String(k.id))) return null;
+
+  // Als PDOK tijdelijk geen adrescoördinaten teruggeeft, gebruik dan een
+  // herkenbare, stabiele benaderingspositie per demo-kind. Zo blijven de
+  // gekozen chauffeur, diens stops en route zichtbaar op de kaart. Dit is
+  // nadrukkelijk géén huisnauwkeurige locatie.
   const demoLoc=demoLocationForKid(k);
-  if(demoLoc) return [demoLoc.lon,demoLoc.lat];
-  // Demo-coördinaten zijn stabiel per kind, zodat een route-optimalisatie
-  // niet zelf de ligging van een kind verandert wanneer de volgorde wijzigt.
+  if(demoLoc){
+    const n=parseInt(String(k.id).slice(1),10)||stopIndex||0;
+    const col=(n%4)-1.5;
+    const row=(Math.floor(n/4)%4)-1.5;
+    return [demoLoc.lon+col*0.0025,demoLoc.lat+row*0.0018];
+  }
+
   const n=k && k.id ? (parseInt(String(k.id).replace(/\D/g,''),10)||0) : stopIndex;
   return realRoadPoints[(driverIndex*3+n)%realRoadPoints.length];
 }
@@ -2167,8 +2173,9 @@ function renderRealMapMarkers(){
     ? kids.filter(active)
     : getDriverQueue(chosen);
   const selectedPoints=selectedKids
-    .filter(k=>Number.isFinite(k.lat)&&Number.isFinite(k.lon))
-    .map(k=>[k.lat,k.lon]);
+    .map((k,i)=>coordForKid(k,driverNames.indexOf(k.driver),i))
+    .filter(p=>Array.isArray(p)&&Number.isFinite(p[0])&&Number.isFinite(p[1]))
+    .map(p=>[p[1],p[0]]);
   // Eindpunten van de ritten zijn echte schoolpunten en worden apart
   // zichtbaar gemaakt op de kaart.
   selectedKids.forEach(k=>{
