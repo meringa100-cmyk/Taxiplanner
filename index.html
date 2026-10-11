@@ -3264,12 +3264,12 @@ function resetDemo(){
  demoAddressSpreadVersion='';
  demoPlanningSpreadLocked=false;
  seed();
- // Reset zet eerst een veilige fallback neer en haalt daarna echte BAG/PDOK-adressen op.
+ // Behoud de vaste groepen van maximaal acht kinderen per straat; geocoding
+ // achteraf zou deze straatindeling weer door elkaar kunnen halen.
  applyGuaranteedDemoHomeSpread();
+ repairBuiltInDemoPlanningHard();
+ saveState();
  renderAll();
- setTimeout(async()=>{
-   await geocodeExactDemoAddresses();
- },200);
 }
 function pickup(id){const k=find(id);if(k){k.status='picked';renderAll()}}
 
