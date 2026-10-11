@@ -31,8 +31,17 @@ main{max-width:680px;margin:auto;padding:16px}.card{background:#fff;border-radiu
 <div id="nav" class="nav hidden"><button class="active" onclick="topPage(this)">🏠<br>Overzicht</button><button onclick="tripPage(this)">🚌<br>Rit</button><button onclick="messagePage(this)">🔔<br>Meldingen</button><button onclick="logout()">🚪<br>Uitloggen</button></div>
 <script>
 const demo={name:'Jamie',bus:'Bus 12',driver:'Bert',eta:'07:42',delay:0};
-function login(){let p=parentId.value.trim(),pinv=pin.value.trim();if(!p||!pinv)return alert('Vul je ouder-ID en code in.');sessionStorage.parent=p;openApp();}
-function openApp(){loginEl.classList.add('hidden');app.classList.remove('hidden');nav.classList.remove('hidden');profileId.textContent=sessionStorage.parent||'OUDER001';render();}
+function login(){
+ const p=parentId.value.trim().toUpperCase(),pinv=pin.value.trim();
+ if(!p||!pinv)return alert('Vul je ouder-ID en code in.');
+ const st=readPlannerState();
+ if(!st)return alert('De Taxi Planner-gegevens zijn nog niet beschikbaar in deze browser. Open eerst de Planner op dit apparaat en probeer opnieuw.');
+ const child=st.kids.find(k=>String(k.parentId||'').toUpperCase()===p);
+ if(!child)return alert('Ouder-ID niet gevonden. Controleer de gegevens bij Ouderaccounts beheren in de Taxi Planner.');
+ if(String(child.parentPin||'1234')!==pinv)return alert('De toegangscode klopt niet.');
+ sessionStorage.parent=p;openApp();
+}
+function openApp(){loginEl.classList.add('hidden');app.classList.remove('hidden');nav.classList.remove('hidden');const account=linkedChildFromPlanner();profileId.textContent=account?(account.parentName||'Ouder')+' · '+(sessionStorage.parent||'OUDER001'):(sessionStorage.parent||'OUDER001');render();}
 const loginEl=document.getElementById('login'),app=document.getElementById('app'),nav=document.getElementById('nav');
 function logout(){sessionStorage.removeItem('parent');location.reload();}
 function render(){childName.textContent=demo.name;profileName.textContent=demo.name;bus.textContent=demo.bus;driverShort.textContent=demo.driver;updated.textContent=new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});eta.textContent=demo.eta;homeTime.textContent=demo.eta+' verwacht';if(demo.delay){delayBadge.className='status warn';delayBadge.textContent='+'+demo.delay+' min';statusText.textContent='Vertraagd';alerts.innerHTML='<div class="status warn">⚠️ Rit heeft '+demo.delay+' minuten vertraging</div>';}else{delayBadge.className='status ok';delayBadge.textContent='Op tijd';statusText.textContent='Onderweg';}}
@@ -69,12 +78,16 @@ function minutesToClock(m){
   const n=Math.round(Number(m)); return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0');
 }
 function updateFromPlanner(){
-  const k=linkedChildFromPlanner(); if(!k)return;
+  const k=linkedChildFromPlanner();
+  if(!k){
+    alerts.innerHTML='<div class="status warn">⚠️ Geen kind gekoppeld aan dit ouderaccount. Controleer het ouder-ID in de Taxi Planner.</div>';
+    return;
+  }
   linkedKid=k;
-  const name=k.name||'Mijn kind', bus=k.bus||k.busNumber||'Onbekende bus', driver=k.driver||'Nog niet toegewezen';
+  const name=k.name||'Mijn kind', busName=k.bus||k.busNumber||k.driver||'Bus nog niet toegewezen', driver=k.driver||'Nog niet toegewezen';
   const delay=Number(k.delay)||0;
   childName.textContent=name; profileName.textContent=name;
-  bus.textContent=bus; driverShort.textContent=driver;
+  document.getElementById('bus').textContent=busName; driverShort.textContent=driver;
   rideSub.textContent=driver==='Nog niet toegewezen'?'Chauffeur nog niet toegewezen':bus+' is onderweg';
   statusText.textContent=delay>0?'Vertraagd':(k.status==='absent'?'Afwezig':'Onderweg');
   if(delay>0){
