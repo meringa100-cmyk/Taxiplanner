@@ -88,7 +88,7 @@ function updateFromPlanner(){
   const delay=Number(k.delay)||0;
   childName.textContent=name; profileName.textContent=name;
   document.getElementById('bus').textContent=busName; driverShort.textContent=driver;
-  rideSub.textContent=driver==='Nog niet toegewezen'?'Chauffeur nog niet toegewezen':bus+' is onderweg';
+  rideSub.textContent=driver==='Nog niet toegewezen'?'Chauffeur nog niet toegewezen':busName+' is onderweg';
   statusText.textContent=delay>0?'Vertraagd':(k.status==='absent'?'Afwezig':'Onderweg');
   if(delay>0){
     delayBadge.className='status warn'; delayBadge.textContent='+'+delay+' min';
