@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V850</title>
+<title>Taxi Planner V851</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style><style id="v827-demo-gps-css">.demo-gps-panel{padding:12px;border:1px solid #b9d6f3;border-radius:12px;background:#eef6ff;margin:10px 0}.demo-gps-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #d9e6f2}.demo-gps-row:last-child{border-bottom:0}.demo-gps-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#16a34a;margin-right:6px}</style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V850</h1>
+<h1>🚕 Taxi Planner V851</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -2109,16 +2109,19 @@ async function calculateRealRoutes(){
       if(rides.length<1)continue;
 
       // De kaart volgt exact de routevolgorde die de planner heeft berekend.
-      const ordered=rides;
       const driverIndex=driverNames.indexOf(d);
-      const routeCoords=ordered.map((k,i)=>coordForKid(k,driverIndex,i));
+      // Gebruik alleen stops met echte geldige coördinaten; null-punten mogen
+      // de routeberekening niet laten crashen of een chauffeur verbergen.
+      const ordered=rides.filter(k=>Number.isFinite(k.lat)&&Number.isFinite(k.lon));
+      if(!ordered.length)continue;
+      const routeCoords=ordered.map(k=>[k.lon,k.lat]);
       const first=ordered[0];
       const last=ordered[ordered.length-1];
       const school=schoolPoint(last);
-      // De route begint bij de eerste ophaalstop en eindigt bij de school.
       if(school && Number.isFinite(school.lat)&&Number.isFinite(school.lon)){
         routeCoords.push([school.lon,school.lat]);
       }
+      if(routeCoords.length<2)continue;
 
       const route=await osrmRoute(routeCoords);
       const line=L.geoJSON(route.geometry,{style:{weight:6,opacity:.85}});
@@ -2184,6 +2187,8 @@ function renderRealMapMarkers(){
     // over het echte wegennet getekend.
     rides.forEach((assigned,i)=>{
       const p=coordForKid(assigned,driverNames.indexOf(d),i);
+      // Geen kaartmarker op niet-geocodeerde of ongeldige coördinaten.
+      if(!Array.isArray(p)||p.length<2||!Number.isFinite(p[0])||!Number.isFinite(p[1]))return;
       let latlon=[p[1],p[0]];
 
             const color=assigned.status==='picked'?'#d97706':'#1769aa';
@@ -4150,7 +4155,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=850").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=851").catch(()=>{}));}
 </script>
 
 </body>
