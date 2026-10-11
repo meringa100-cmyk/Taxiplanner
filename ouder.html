@@ -75,8 +75,11 @@ function linkedChildFromPlanner(){
   return kid||null;
 }
 function minutesToClock(m){
-  if(!Number.isFinite(Number(m)))return '';
-  const n=Math.round(Number(m)); return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0');
+  if(m===null||m===undefined||m==='')return '';
+  if(typeof m==='string' && /^\\d{1,2}:\\d{2}$/.test(m.trim()))return m.trim();
+  const value=Number(m); if(!Number.isFinite(value))return '';
+  const n=((Math.round(value)%1440)+1440)%1440;
+  return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0');
 }
 function updateFromPlanner(){
   const k=linkedChildFromPlanner();
