@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V856</title>
+<title>Taxi Planner V857</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -549,24 +549,29 @@ async function geocodeExactDemoAddresses(){
     }
   }
 
-  // V849: ook met minder dan tien beschikbare plaatsen eerst alle echte BAG-adressen benutten.
-  // Het aantal plaatsen alleen is geen reden om naar benaderende kaartpunten terug te vallen.
-
-  // V824: bewezen stabiele V777-verdeling — beurtelings door alle plaatsen.
-  // Zo komen de demo-adressen geografisch verspreid terecht.
-  const selected=[],used=new Set();
-  let round=0;
-  while(selected.length<100 && round<100){
-    for(const pool of pools){
-      const addr=pool.addresses[round];
-      if(!addr)continue;
-      const key=(addr.town+'|'+addr.street+'|'+addr.number).toLowerCase();
+  // V857: wijs adressen toe binnen de regio van het kind.
+  // De oude globale rondgang zette kinderen van één chauffeur verspreid
+  // over heel Drenthe. Elke groep van acht hoort bij de plaats uit
+  // demoLocationForKid; gebruik alleen adressen uit diezelfde woonplaats.
+  const selected=[],used=new Set(),poolByTown=new Map(pools.map(p=>[p.town.toLowerCase(),p]));
+  const nextByTown=new Map();
+  for(const kid of demoKids){
+    const preferred=demoLocationForKid(kid);
+    const town=String(preferred?.town||'').toLowerCase();
+    const pool=poolByTown.get(town);
+    if(!pool)continue;
+    let address=null;
+    let cursor=nextByTown.get(town)||0;
+    while(cursor<pool.addresses.length){
+      const candidate=pool.addresses[cursor++];
+      const key=(candidate.town+'|'+candidate.street+'|'+candidate.number).toLowerCase();
       if(used.has(key))continue;
       used.add(key);
-      selected.push({kid:demoKids[selected.length],address:addr});
-      if(selected.length>=100)break;
+      address=candidate;
+      break;
     }
-    round++;
+    nextByTown.set(town,cursor);
+    if(address)selected.push({kid,address});
   }
 
   if(selected.length<100){
@@ -594,10 +599,10 @@ async function geocodeExactDemoAddresses(){
   });
 
   addressesReady=true;
-  demoAddressSpreadVersion='v856';
+  demoAddressSpreadVersion='v857';
   saveState();
   renderAll();
-  console.log('V776: 100 echte adressen over '+new Set(selected.map(a=>a.town)).size+' plaatsen en '+new Set(selected.map(a=>a.street+'|'+a.town)).size+' straten.');
+  console.log('V857: adressen binnen toegewezen regio; echte adressen over '+new Set(selected.map(a=>a.town)).size+' plaatsen en '+new Set(selected.map(a=>a.street+'|'+a.town)).size+' straten.');
 }
 function demoLocationForKid(k){
   const n=parseInt(String(k?.id||'').slice(1),10);
