@@ -1040,6 +1040,25 @@ function loadState(){
   demoCounter=Number(state.demoCounter)||101;
   demoAddressSpreadVersion=state.demoAddressSpreadVersion||'';
   demoPlanningSpreadLocked=Boolean(state.demoPlanningSpreadLocked);
+
+  // V844 gebruikte tijdelijk voorbeeldadressen met centrum-offsets.
+  // Die mogen niet blijven staan alsof het echte huislocaties zijn.
+  // Wis uitsluitend die herkenbare fallbackversie; de BAG/PDOK-ophaalactie
+  // vult de echte adres- en coördinatenparen daarna opnieuw aan.
+  if(demoAddressSpreadVersion==='v844'){
+    kids.forEach(k=>{
+      if(/^k(?:[1-9]|[1-9][0-9]|100)$/.test(String(k.id||''))){
+        k.address='';
+        k.pickupAddress='';
+        k.demoStreet='';
+        k.demoTown='';
+        k.lat=NaN;
+        k.lon=NaN;
+      }
+    });
+    demoAddressSpreadVersion='';
+    addressesReady=false;
+  }
   normalizeBuiltInDemo();
   addressesReady=kids.length>0 && kids.every(k=>Number.isFinite(k.lat)&&Number.isFinite(k.lon));
   return true;
@@ -3625,13 +3644,8 @@ function displayPickupAddress(k){
   }
   const raw=String(candidate||'Ophaaladres niet beschikbaar').trim();
   if(raw==='Ophaaladres niet beschikbaar')return raw;
-  if(/^k\d+$/.test(String(k?.id||'')) && !/\b\d+[a-zA-Z]?\b/.test(raw)){
-    const n=Number(String(k.id).slice(1));
-    const nr=2+((n*2)%58);
-    const parts=raw.split(',').map(x=>x.trim()).filter(Boolean);
-    if(parts.length>=2)return parts[0]+' '+nr+', '+parts.slice(1).join(', ');
-    return raw+' '+nr;
-  }
+  // Toon exact het opgeslagen adres; verzin nooit een huisnummer dat
+  // niet bij de coördinaten uit de adresbron hoort.
   return raw;
 }
 function childCardHtml(k){
