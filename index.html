@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V863</title>
+<title>Taxi Planner V864</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style><style id="v827-demo-gps-css">.demo-gps-panel{padding:12px;border:1px solid #b9d6f3;border-radius:12px;background:#eef6ff;margin:10px 0}.demo-gps-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #d9e6f2}.demo-gps-row:last-child{border-bottom:0}.demo-gps-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#16a34a;margin-right:6px}</style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V863</h1>
+<h1>🚕 Taxi Planner V864</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -482,6 +482,52 @@ function applyGuaranteedDemoHomeSpread(){
   console.log('V844 fallback: maximaal acht kinderen per plaats, verspreid over straten.');
   return true;
 }
+async function geocodeBuiltInDemoExactAddresses(){
+  // V864: geocodeer elk demo-adres individueel op exact straat + huisnummer + woonplaats.
+  // Niet langer een algemene lijst met adressen uit een hele plaats verdelen over kinderen.
+  const demoKids=kids.filter(k=>/^k(?:[1-9]|[1-9][0-9]|100)$/.test(String(k.id||'')))
+    .sort((a,b)=>Number(a.id.slice(1))-Number(b.id.slice(1)));
+  if(demoKids.length!==100)return {matched:0,total:demoKids.length};
+  const byTown=new Map(exactDemoAddresses.map(x=>[x.town.toLowerCase(),x]));
+  let matched=0, cursor=0;
+  async function worker(){
+    while(cursor<demoKids.length){
+      const k=demoKids[cursor++];
+      const n=Number(k.id.slice(1));
+      const group=Math.floor((n-1)/8);
+      const pos=(n-1)%8;
+      const loc=drentheDemoLocations[group%drentheDemoLocations.length];
+      const spec=byTown.get(String(loc.town).toLowerCase());
+      if(!spec)continue;
+      const house=spec.numbers[pos];
+      const hit=await pdokAddress(spec.street,spec.town,house);
+      if(hit && Number.isFinite(hit.lat)&&Number.isFinite(hit.lon)){
+        k.address=hit.address;
+        k.pickupAddress=hit.address;
+        k.demoTown=spec.town;
+        k.demoStreet=spec.street;
+        k.lat=hit.lat;
+        k.lon=hit.lon;
+        k.geocodeStatus='exact';
+        matched++;
+      }else{
+        // Niet doen alsof een plaatscentrum een exact huisadres is.
+        k.geocodeStatus='unverified';
+        delete k.lat;
+        delete k.lon;
+      }
+    }
+  }
+  await Promise.all(Array.from({length:5},()=>worker()));
+  addressesReady=matched>0;
+  demoAddressSpreadVersion='v864';
+  saveState();
+  const status=document.getElementById('routeInfo');
+  if(status)status.textContent='📍 Exacte adrescontrole: '+matched+' van '+demoKids.length+' demo-adressen gevonden in PDOK. Onbevestigde adressen krijgen geen verzonnen huiscoördinaten.';
+  console.log('V864 exact address audit:',matched,'/',demoKids.length);
+  return {matched,total:demoKids.length};
+}
+
 async function geocodeExactDemoAddresses(){
   // V776: robuuste PDOK-adresverzameling. Geen q=*; eerst bekende
   // Locatieserver-query's, daarna in JavaScript exact op woonplaats filteren.
@@ -4179,15 +4225,15 @@ if(repairedAtStartup||hardRepairedAtStartup||demoConflictRepairs||demoHardPlanRe
 renderAll();
 startPlannerAutomation();
 
-// V863: probeer exacte PDOK-adressen op te halen zonder eerst alle opgeslagen
-// coördinaten te wissen. Zo blijft de kaart bruikbaar als de geocoder niet reageert.
+// V864: controleer demo-adressen één voor één tegen PDOK op exact huisnummer.
 setTimeout(()=>{
-  geocodeExactDemoAddresses().then(()=>{
+  geocodeBuiltInDemoExactAddresses().then(result=>{
     repairBuiltInDemoPlanningHard();
     saveState();
     renderAll();
     if(typeof renderRealMapMarkers==='function')renderRealMapMarkers();
-  }).catch(e=>console.warn('Exacte demo-adressen konden niet worden bijgewerkt:',e));
+    console.log('V864 adrescontrole klaar:',result);
+  }).catch(e=>console.warn('Exacte adrescontrole kon niet worden voltooid:',e));
 },1200);
 
 // V844: nooit terugvallen op verzonnen adressen of centrum-offsets.
