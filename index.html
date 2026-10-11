@@ -1004,6 +1004,26 @@ function loadState(){
     if(!k.parentId)k.parentId='OUDER'+String(i+1).padStart(3,'0');
     if(!k.parentName)k.parentName='Ouder '+(i+1);
     if(!k.parentPin)k.parentPin='1234';
+    // V753: herstel ontbrekende ophaaladressen in opgeslagen demo-ritten.
+    const bad=v=>v==null || /^(undefined|null|nan|)$/i.test(String(v).trim());
+    if(/^k\d+$/i.test(String(k.id||'')) && bad(k.pickupAddress) && bad(k.address)){
+      const n=Math.max(1,Number(String(k.id).slice(1))||i+1);
+      const loc=drentheDemoLocations[Math.floor((n-1)/8)%drentheDemoLocations.length];
+      if(loc){
+        const house=2+(((n-1)%8)*2);
+        k.address=loc.street+' '+house+', '+loc.town+', Drenthe';
+        k.pickupAddress=k.address;
+        if(!Number.isFinite(k.lat))k.lat=loc.lat+(((n-1)%4)*0.00008);
+        if(!Number.isFinite(k.lon))k.lon=loc.lon+(Math.floor((n-1)%8/4)*0.00010);
+      }
+    } else {
+      if(bad(k.pickupAddress)&&!bad(k.address))k.pickupAddress=k.address;
+      if(bad(k.address)&&!bad(k.pickupAddress))k.address=k.pickupAddress;
+    }
+    if(bad(k.destinationAddress)){
+      const school=k.school||k.destination||'';
+      k.destinationAddress=schoolLocations[school]?.address||school||'Bestemming onbekend';
+    }
   });
   driverUnavailable=state.driverUnavailable||{};
   busIssues=state.busIssues||{};
