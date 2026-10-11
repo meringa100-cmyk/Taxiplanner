@@ -32,7 +32,8 @@ main{max-width:680px;margin:auto;padding:16px}.card{background:#fff;border-radiu
 <script>
 const demo={name:'Jamie',bus:'Bus 12',driver:'Bert',eta:'07:42',delay:0};
 function login(){
- const p=parentId.value.trim().toUpperCase(),pinv=pin.value.trim();
+ const p=document.getElementById('parentId').value.trim().toUpperCase();
+ const pinv=document.getElementById('pin').value.trim();
  if(!p||!pinv)return alert('Vul je ouder-ID en code in.');
  const st=readPlannerState();
  if(!st)return alert('De Taxi Planner-gegevens zijn nog niet beschikbaar in deze browser. Open eerst de Planner op dit apparaat en probeer opnieuw.');
