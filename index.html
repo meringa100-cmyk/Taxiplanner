@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V861</title>
+<title>Taxi Planner V862</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style><style id="v827-demo-gps-css">.demo-gps-panel{padding:12px;border:1px solid #b9d6f3;border-radius:12px;background:#eef6ff;margin:10px 0}.demo-gps-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #d9e6f2}.demo-gps-row:last-child{border-bottom:0}.demo-gps-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#16a34a;margin-right:6px}</style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V861</h1>
+<h1>🚕 Taxi Planner V862</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1792,20 +1792,10 @@ function coordForKid(k, driverIndex, stopIndex){
   // Exacte BAG/PDOK-coördinaten gaan altijd vóór elke demo-fallback.
   if(k && Number.isFinite(k.lon) && Number.isFinite(k.lat)) return [k.lon,k.lat];
 
-  // Als PDOK tijdelijk geen adrescoördinaten teruggeeft, gebruik dan een
-  // herkenbare, stabiele benaderingspositie per demo-kind. Zo blijven de
-  // gekozen chauffeur, diens stops en route zichtbaar op de kaart. Dit is
-  // nadrukkelijk géén huisnauwkeurige locatie.
-  const demoLoc=demoLocationForKid(k);
-  if(demoLoc){
-    const n=parseInt(String(k.id).slice(1),10)||stopIndex||0;
-    const col=(n%4)-1.5;
-    const row=(Math.floor(n/4)%4)-1.5;
-    return [demoLoc.lon+col*0.0025,demoLoc.lat+row*0.0018];
-  }
-
-  const n=k && k.id ? (parseInt(String(k.id).replace(/\D/g,''),10)||0) : stopIndex;
-  return realRoadPoints[(driverIndex*3+n)%realRoadPoints.length];
+  // V862: nooit een fictief punt tekenen alsof het een woonadres is.
+  // Zonder echte geocodeerde coördinaten blijft deze stop ongepositioneerd;
+  // het adres moet eerst succesvol worden gekoppeld aan een echte kaartlocatie.
+  return null;
 }
 
 async function osrmRoute(coords){
@@ -2311,8 +2301,7 @@ function renderRealMapMarkers(){
       const p=coordForKid(assigned,driverNames.indexOf(d),i);
       // Bij ontbrekende echte BAG-coördinaten tonen we tijdelijk een herkenbare demo-positie,
       // zodat chauffeur en route zichtbaar blijven. Deze positie is niet huisnauwkeurig.
-      const point=Array.isArray(p)&&p.length>=2&&Number.isFinite(p[0])&&Number.isFinite(p[1])
-        ? p : (demoLocationForKid(assigned)?[demoLocationForKid(assigned).lon,demoLocationForKid(assigned).lat]:null);
+      const point=Array.isArray(p)&&p.length>=2&&Number.isFinite(p[0])&&Number.isFinite(p[1]) ? p : null;
       if(!point)return;
       let latlon=[point[1],point[0]];
       // V860: plaats de marker altijd op de werkelijke geocodeerde coördinaat.
