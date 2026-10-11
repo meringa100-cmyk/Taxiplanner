@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V831</title>
+<title>Taxi Planner V832</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -416,7 +416,7 @@ function applyGuaranteedDemoHomeSpread(){
     const n=parseInt(String(k.id).slice(1),10);
     return /^k[0-9]+$/.test(String(k.id)) && Number.isInteger(n) && n>=1 && n<=100;
   });
-  if(demoKids.length<100)return false;
+  if(!demoKids.length)return false;
 
   // Gegarandeerde demo-thuispunten. Deze zijn bewust verspreid over
   // verschillende plaatsen en straten, zodat overlappende markers
@@ -4005,31 +4005,38 @@ if(repairedAtStartup||hardRepairedAtStartup||demoConflictRepairs||demoHardPlanRe
 renderAll();
 startPlannerAutomation();
 
-// V828: direct gegarandeerde spreiding over meerdere plaatsen en straten.
- // Niet wachten op externe geocoding: zo blijft de plankaart nooit op één straat hangen.
- setTimeout(()=>{
-   if(demoAddressSpreadVersion!=='v828'){
-     const demo=kids.filter(k=>/^k[0-9]+$/.test(String(k.id))&&Number(k.id.slice(1))>=1&&Number(k.id.slice(1))<=100);
-     demo.forEach(k=>{
-       delete k.lat; delete k.lon;
-       delete k.demoTown; delete k.demoStreet; delete k.demoGroup;
-       delete k.address; delete k.pickupAddress;
-       k.driver='';
-       k.routeOrder=0;
-     });
-     demoAddressSpreadVersion='pending';
-     demoHardPlanVersion='';
-     demoPlanningSpreadLocked=false;
-     saveState();
-     applyGuaranteedDemoHomeSpread();
-     demoAddressSpreadVersion='v828';
-     demoHardPlanVersion='';
-     const rebuiltAfterSpread=repairBuiltInDemoPlanningHard();
-     if(rebuiltAfterSpread)saveState();
-     saveState();
-     renderAll();
-   }
- },700);</script>
+// V832: controleer en herstel de adresspreiding ook wanneer een eerdere versie
+// ten onrechte als voltooid is opgeslagen. Vertrouw niet alleen op het versienummer.
+setTimeout(()=>{
+  const demo=kids.filter(k=>/^k[0-9]+$/.test(String(k.id))&&Number(k.id.slice(1))>=1&&Number(k.id.slice(1))<=100);
+  if(!demo.length)return;
+  const towns=new Set(demo.map(k=>String(k.demoTown||'').trim()).filter(Boolean));
+  const streets=new Set(demo.map(k=>String(k.demoStreet||'').trim()).filter(Boolean));
+  const addressesSpread=demo.length>=13&&towns.size>=5&&streets.size>=5&&demo.every(k=>String(k.pickupAddress||k.address||'').includes(','));
+  if(demoAddressSpreadVersion!=='v832'||!addressesSpread){
+    demo.forEach(k=>{
+      delete k.lat; delete k.lon;
+      delete k.demoTown; delete k.demoStreet; delete k.demoGroup;
+      delete k.address; delete k.pickupAddress;
+      k.driver='';
+      k.routeOrder=0;
+    });
+    demoAddressSpreadVersion='pending';
+    demoHardPlanVersion='';
+    demoPlanningSpreadLocked=false;
+    saveState();
+    const spreadApplied=applyGuaranteedDemoHomeSpread();
+    if(spreadApplied){
+      demoAddressSpreadVersion='v832';
+      demoHardPlanVersion='';
+      repairBuiltInDemoPlanningHard();
+      saveState();
+    }else{
+      console.warn('Adresherstel niet voltooid; wordt bij volgende start opnieuw geprobeerd.');
+    }
+    renderAll();
+  }
+},700);</script>
 
 
 
@@ -4107,7 +4114,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=831").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=832").catch(()=>{}));}
 </script>
 
 </body>
