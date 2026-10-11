@@ -538,13 +538,15 @@ async function geocodeExactDemoAddresses(){
   let kidIndex=0;
   for(const pool of pools){
     if(kidIndex>=100)break;
+    let addedFromTown=0;
     for(const addr of pool.addresses){
-      if(kidIndex>=100)break;
+      if(kidIndex>=100||addedFromTown>=MAX)break;
       const key=(addr.town+'|'+addr.street+'|'+addr.number).toLowerCase();
       if(used.has(key))continue;
       used.add(key);
       selected.push({kid:demoKids[kidIndex],address:addr});
       kidIndex++;
+      addedFromTown++;
     }
   }
   selected.forEach((item,i)=>{
