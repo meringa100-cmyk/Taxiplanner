@@ -1045,6 +1045,30 @@ function loadState(){
   // liet de demo tijdelijk zonder verspreide ophaalpunten starten wanneer
   // PDOK niet direct antwoordde.
   normalizeBuiltInDemo();
+
+  // V848 herstel: eerdere adresreparatie kan demoTown en chauffeurstoewijzing
+  // hebben leeggemaakt. Herstel alleen ontbrekende demo-velden; laat bestaande
+  // geldige adressen en coördinaten ongemoeid.
+  const demoKids=kids.filter(k=>/^k(?:[1-9]|[1-9][0-9]|100)$/.test(String(k.id||'')))
+    .sort((a,b)=>Number(String(a.id).slice(1))-Number(String(b.id).slice(1)));
+  if(demoKids.length===100){
+    demoKids.forEach((k,i)=>{
+      const group=Math.floor(i/8), pos=i%8;
+      const loc=drentheDemoLocations[group%drentheDemoLocations.length];
+      if(!k.demoTown)k.demoTown=loc.town;
+      if(!k.demoStreet)k.demoStreet=loc.street;
+      if(!Number.isFinite(k.lat))k.lat=loc.lat+(pos%4)*0.00008;
+      if(!Number.isFinite(k.lon))k.lon=loc.lon+Math.floor(pos/4)*0.00010;
+      if(!k.address || /^(undefined|null|nan)$/i.test(String(k.address).trim())){
+        k.address=loc.street+', '+loc.town+', Drenthe';
+      }
+      if(!k.pickupAddress || /^(undefined|null|nan)$/i.test(String(k.pickupAddress).trim())){
+        k.pickupAddress=k.address;
+      }
+      if(!k.driver || !driverNames.includes(k.driver))k.driver=driverNames[group%driverNames.length];
+      if(!Number.isFinite(Number(k.routeOrder)) || Number(k.routeOrder)<1)k.routeOrder=pos+1;
+    });
+  }
   addressesReady=kids.length>0 && kids.every(k=>Number.isFinite(k.lat)&&Number.isFinite(k.lon));
   return true;
  }catch(e){
