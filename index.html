@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V855</title>
+<title>Taxi Planner V856</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style><style id="v827-demo-gps-css">.demo-gps-panel{padding:12px;border:1px solid #b9d6f3;border-radius:12px;background:#eef6ff;margin:10px 0}.demo-gps-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #d9e6f2}.demo-gps-row:last-child{border-bottom:0}.demo-gps-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#16a34a;margin-right:6px}</style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V855</h1>
+<h1>🚕 Taxi Planner V856</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -296,11 +296,27 @@ button[onclick^="chauffeurDelay"]:active{
 </section>
 
 <section id="parent" class="page">
-<div class="card">
-<h2>👨‍👩‍👧 Ouderportaal</h2>
-<p class="muted">Bekijk wat een ouder ziet en beheer de gegevens per kind.</p>
-<select id="parentSelect" onchange="renderParent()"></select>
+<div class="card" id="parentLoginCard">
+<h2>🔐 Inloggen als ouder/verzorger</h2>
+<p class="muted">Log in met uw persoonlijke ouder-ID en toegangscode. Na inloggen ziet u alleen de gegevens van uw eigen kind.</p>
+<div class="grid">
+<div><label for="parentLoginId">Ouder-ID</label><input id="parentLoginId" placeholder="Bijv. OUDER001" autocapitalize="characters" autocomplete="username"></div>
+<div><label for="parentLoginPin">Toegangscode</label><input id="parentLoginPin" inputmode="numeric" maxlength="8" type="password" placeholder="4–8 cijfers" autocomplete="current-password"></div>
+</div>
+<div class="actions" style="margin-top:12px"><button class="primary" onclick="parentLogin()">🔓 Inloggen</button><button onclick="parentLogout()">Uitloggen</button></div>
+<div id="parentLoginMessage" class="small" style="margin-top:8px" aria-live="polite"></div>
+</div>
+<div class="card" id="parentPortalCard" style="display:none">
+<h2>👨‍👩‍👧 Mijn ouderportaal</h2>
+<p class="muted">U bent ingelogd. Alleen gegevens van het gekoppelde kind worden getoond.</p>
 <div id="parentView"></div>
+<button onclick="parentLogout()">🔒 Uitloggen</button>
+</div>
+<div class="card" id="parentAdminPreview">
+<h2>👀 Voorbeeld bekijken / ouderaccounts beheren</h2>
+<p class="muted">Voor de plannerbeheerder: selecteer een kind om het ouderportaal te bekijken of de inloggegevens in te stellen.</p>
+<select id="parentSelect" onchange="renderParent()"></select>
+<div id="parentAdminView"></div>
 </div>
 <div class="card">
 <h2>🔐 Ouderaccounts beheren</h2>
@@ -578,7 +594,7 @@ async function geocodeExactDemoAddresses(){
   });
 
   addressesReady=true;
-  demoAddressSpreadVersion='v855';
+  demoAddressSpreadVersion='v856';
   saveState();
   renderAll();
   console.log('V776: 100 echte adressen over '+new Set(selected.map(a=>a.town)).size+' plaatsen en '+new Set(selected.map(a=>a.street+'|'+a.town)).size+' straten.');
@@ -1548,21 +1564,52 @@ function driverArriveNext(id){
  else delete driverSelectedKid[d];
  renderAll();
 }
+let loggedInParentKidId=null;
+function parentLogin(){
+ const id=String(document.getElementById('parentLoginId')?.value||'').trim().toUpperCase();
+ const pin=String(document.getElementById('parentLoginPin')?.value||'').trim();
+ const msg=document.getElementById('parentLoginMessage');
+ const k=kids.find(x=>String(x.parentId||'').trim().toUpperCase()===id && String(x.parentPin||'')===pin);
+ if(!id||!pin||!k){if(msg)msg.textContent='Ouder-ID of toegangscode klopt niet. Controleer uw gegevens.';return;}
+ loggedInParentKidId=k.id;
+ if(msg)msg.textContent='Welkom. U bent ingelogd.';
+ document.getElementById('parentLoginCard').style.display='none';
+ document.getElementById('parentPortalCard').style.display='block';
+ document.getElementById('parentAdminPreview').style.display='none';
+ renderParent();
+}
+function parentLogout(){
+ loggedInParentKidId=null;
+ const id=document.getElementById('parentLoginId');if(id)id.value='';
+ const pin=document.getElementById('parentLoginPin');if(pin)pin.value='';
+ const msg=document.getElementById('parentLoginMessage');if(msg)msg.textContent='U bent uitgelogd.';
+ document.getElementById('parentLoginCard').style.display='block';
+ document.getElementById('parentPortalCard').style.display='none';
+ document.getElementById('parentAdminPreview').style.display='block';
+ const view=document.getElementById('parentView');if(view)view.innerHTML='';
+}
 function renderParent(){
+ const logged=loggedInParentKidId ? kids.find(x=>x.id===loggedInParentKidId) : null;
  const s=document.getElementById('parentSelect');
- const cur=s.value;
- s.innerHTML=kids.map(k=>`<option value="${k.id}">${escapeHtml(k.parentId||'OUDER?')} — ${escapeHtml(k.name)}</option>`).join('');
- if(cur)s.value=cur;
- const k=kids.find(x=>x.id===s.value)||kids[0];
+ let k=logged;
+ if(!logged){
+   if(!s)return;
+   const cur=s.value;
+   s.innerHTML=kids.map(k=>`<option value="${k.id}">${escapeHtml(k.parentId||'OUDER?')} — ${escapeHtml(k.name)}</option>`).join('');
+   if(cur)s.value=cur;
+   k=kids.find(x=>x.id===s.value)||kids[0];
+ }
  if(!k)return;
- document.getElementById('parentView').innerHTML=`<div class="card"><h3>${escapeHtml(k.name)}</h3>
+ const target=logged?document.getElementById('parentView'):document.getElementById('parentAdminView');
+ if(!target)return;
+ target.innerHTML=`<div class="card"><h3>${escapeHtml(k.name)}</h3>
  <p>Ouder: <b>${escapeHtml(k.parentName||'Nog niet ingesteld')}</b> · ID: <b>${escapeHtml(k.parentId||'')}</b></p>
  <p>Ophaaltijd: <b>${escapeHtml(k.time||'Nog niet gepland')}</b></p>
  ${parentDriverChanges[k.id] && parentDriverChanges[k.id].to===k.driver ? '<div class="notice" style="margin:12px 0;border-left:5px solid #d97706;background:#fff7ed"><b>🔔 Belangrijk voor vandaag</b><br>Uw vaste chauffeur <b>'+escapeHtml(parentDriverChanges[k.id].from)+'</b> is vandaag '+(parentDriverChanges[k.id].reason==='busstoring'?'niet beschikbaar door een busstoring.':'ziek/niet beschikbaar.')+'<br>Uw kind wordt daarom opgehaald door <b>'+escapeHtml(k.driver)+'</b>.<br><span class="small">Zo kunt u uw kind hierop voorbereiden.</span></div>' : ''}
  <p>Chauffeur: <b>${escapeHtml(k.driver||'Nog niet toegewezen')}</b></p><div class="demo-gps-panel"><b>📍 Chauffeurpositie</b><br><span class="small">${escapeHtml(demoGpsText(k.driver))}</span></div>
  <p>School: <b>${escapeHtml(k.school||k.destination||'Nog niet ingesteld')}</b></p><p>Status: <span class="badge">${escapeHtml(statusText(k.status))}</span>${k.delay?` <b>⏱️ Vertraging: +${Number(k.delay)} min</b>`:''}</p>
  ${active(k)?`<button onclick="parentAbsent('${k.id}')">🚫 Kind afmelden</button>`:''}</div>`;
- populateParentAccountForm();
+ if(!logged)populateParentAccountForm();
 }
 function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
 function populateParentAccountForm(){
@@ -4184,7 +4231,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=855").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=856").catch(()=>{}));}
 </script>
 
 </body>
