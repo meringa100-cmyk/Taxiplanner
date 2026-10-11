@@ -631,11 +631,13 @@ async function geocodeExactDemoAddresses(){
     if(address)selected.push({kid,address});
   }
 
-  if(selected.length<100){
-    const msg='⚠️ BAG/PDOK leverde '+selected.length+' echte adressen op. Die worden gebruikt; alleen adressen die niet gevonden zijn blijven voorlopig benaderingen.';
-    console.warn(msg);
+  {
+    const exactTowns=new Set(selected.map(a=>a.address.town));
+    const exactStreets=new Set(selected.map(a=>a.address.town+'|'+a.address.street));
+    const msg=(selected.length===100?'✅ ':'⚠️ ')+selected.length+' van 100 kinderen gekoppeld aan echte BAG/PDOK-adressen, verspreid over '+exactTowns.size+' plaatsen en '+exactStreets.size+' straten. Niet-gevonden adressen zijn gemarkeerd als niet geverifieerd.';
     const status=document.getElementById('routeInfo');
     if(status)status.textContent=msg;
+    console.log(msg);
   }
 
   // Zet eerst ieder demo-kind op een veilige fallback in de eigen regio.
@@ -1831,7 +1833,6 @@ function coordForDriverStop(driverIndex, stopIndex){
 function coordForKid(k, driverIndex, stopIndex){
   // Exacte BAG/PDOK-coördinaten gaan altijd vóór elke demo-fallback.
   if(k && Number.isFinite(k.lon) && Number.isFinite(k.lat)) return [k.lon,k.lat];
-  if(k && k.geocodeStatus==='unverified') return null;
 
   // V863: houd demo-ritten zichtbaar als geocodering nog geen resultaat geeft.
   // Dit is alleen een plaatsniveau-benadering, nooit een exact huispunt.
