@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style><style id="v827-demo-gps-css">.demo-gps-panel{padding:12px;border:1px solid #b9d6f3;border-radius:12px;background:#eef6ff;margin:10px 0}.demo-gps-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #d9e6f2}.demo-gps-row:last-child{border-bottom:0}.demo-gps-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#16a34a;margin-right:6px}</style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V864</h1>
+<h1>🚕 Taxi Planner V865</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -4221,15 +4221,14 @@ if(repairedAtStartup||hardRepairedAtStartup||demoConflictRepairs||demoHardPlanRe
 renderAll();
 startPlannerAutomation();
 
-// V864: controleer demo-adressen één voor één tegen PDOK op exact huisnummer.
+// V865: haal bestaande BAG-adressen op per woonplaats en spreid ze geografisch.
 setTimeout(()=>{
-  geocodeBuiltInDemoExactAddresses().then(result=>{
+  geocodeExactDemoAddresses().then(()=>{
     repairBuiltInDemoPlanningHard();
     saveState();
     renderAll();
     if(typeof renderRealMapMarkers==='function')renderRealMapMarkers();
-    console.log('V864 adrescontrole klaar:',result);
-  }).catch(e=>console.warn('Exacte adrescontrole kon niet worden voltooid:',e));
+  }).catch(e=>console.warn('PDOK-adresverdeling kon niet worden voltooid:',e));
 },1200);
 
 // V844: nooit terugvallen op verzonnen adressen of centrum-offsets.
