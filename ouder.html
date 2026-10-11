@@ -17,7 +17,7 @@ main{max-width:680px;margin:auto;padding:16px}.card{background:#fff;border-radiu
 <body>
 <header><div class="top"><div><div class="brand">🚌 Taxi Planner</div><div style="opacity:.85;font-size:13px">Ouder-app</div></div><span class="badge" id="connection">● Demo</span></div></header>
 <main>
-<section id="login" class="card" style="margin-top:24px"><div class="title">Welkom 👋</div><div class="muted">Log in om de rit van je kind te bekijken.</div><label>Ouder-ID</label><input id="parentId" class="input" value="OUDER001"><label>Code</label><input id="pin" class="input" type="password" value="1234"><button class="btn primary" style="width:100%" onclick="login()">Inloggen</button><div class="muted" style="margin-top:10px">Demo: OUDER001 / 1234</div></section>
+<section id="login" class="card" style="margin-top:24px"><div class="title">Welkom 👋</div><div class="muted">Log in om de rit van je kind te bekijken.</div><label>Ouder-ID</label><input id="parentId" class="input" value="OUDER027"><label>Code</label><input id="pin" class="input" type="password" value="1234"><button class="btn primary" style="width:100%" onclick="login()">Inloggen</button><div class="muted" style="margin-top:10px">Demo-account Luca 27: OUDER027 / 1234</div></section>
 <section id="app" class="hidden">
 <div class="card"><div class="row"><div><div class="muted">Goedemorgen</div><div class="child" id="childName">Jamie</div></div><span class="status ok"><span class="dot"></span> Rit actief</span></div><div style="margin-top:15px"><div class="muted" id="nextLabel">Geplande ophaaltijd</div><div class="big" id="eta">07:00</div><div class="muted" id="etaCaption">Ophaaltijd volgens de planning</div></div></div>
 <div class="card"><div class="title">Vandaag</div><div class="grid"><div class="stat"><div class="muted">🚌 Bus</div><b id="bus">Bus 12</b></div><div class="stat"><div class="muted">👨 Chauffeur</div><b id="driverShort">Bert</b></div><div class="stat"><div class="muted">🏫 School</div><b>08:15</b></div><div class="stat"><div class="muted">📍 Status</div><b id="statusText">Onderweg</b></div></div></div>
@@ -52,7 +52,7 @@ function topPage(btn){active(btn);scrollTo({top:0,behavior:'smooth'});}
 function tripPage(btn){active(btn);document.querySelector('.map').scrollIntoView({behavior:'smooth',block:'center'});}
 function messagePage(btn){active(btn);document.getElementById('alerts').scrollIntoView({behavior:'smooth',block:'center'});}
 function contact(){alert('Hier kan straks rechtstreeks een bericht naar de planning worden gestuurd.');}
-if(sessionStorage.parent)openApp();
+if(sessionStorage.parent && sessionStorage.parentChildId)openApp();
 setInterval(()=>{if(!app.classList.contains('hidden'))render();},30000);
 </script><script id="planner-live-bridge">
 /* Koppeling met Taxi Planner V749-opslag. De ouder ziet uitsluitend het gekoppelde kind. */
