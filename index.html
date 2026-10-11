@@ -3589,8 +3589,15 @@ function toggleChildCard(id){
  if(el) el.classList.toggle('open');
 }
 function displayPickupAddress(k){
-  const raw=String(k?.pickupAddress||k?.address||'Onbekend').trim();
-  if(raw==='Onbekend')return raw;
+  const validAddress=v=>v!=null && !/^(undefined|null|nan|)$/i.test(String(v).trim());
+  let candidate=validAddress(k?.pickupAddress)?k.pickupAddress:(validAddress(k?.address)?k.address:'');
+  if(!candidate && /^k\d+$/i.test(String(k?.id||''))){
+    const n=Number(String(k.id).slice(1));
+    const loc=drentheDemoLocations[Math.floor(Math.max(0,n-1)/8)%drentheDemoLocations.length];
+    if(loc)candidate=loc.street+', '+loc.town+', Drenthe';
+  }
+  const raw=String(candidate||'Ophaaladres niet beschikbaar').trim();
+  if(raw==='Ophaaladres niet beschikbaar')return raw;
   if(/^k\d+$/.test(String(k?.id||'')) && !/\b\d+[a-zA-Z]?\b/.test(raw)){
     const n=Number(String(k.id).slice(1));
     const nr=2+((n*2)%58);
