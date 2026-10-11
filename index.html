@@ -651,25 +651,20 @@ async function geocodeExactDemoAddresses(){
   }
 
   if(selected.length<100){
-    const msg='⚠️ BAG/PDOK leverde '+selected.length+' echte adressen op. Die worden gebruikt; alleen adressen die niet gevonden zijn blijven voorlopig benaderingen.';
+    const msg='⚠️ BAG/PDOK vond '+selected.length+' van de 100 demo-adressen exact. Niet gevonden kinderen worden niet op een verzonnen plek gezet.';
     console.warn(msg);
     const status=document.getElementById('routeInfo');
     if(status)status.textContent=msg;
   }
 
-  // Zet eerst ieder demo-kind op een veilige fallback in de eigen regio.
-  // Zo houden kinderen zonder PDOK-hit niet per ongeluk een oud adres uit een
-  // andere plaats. Exact gevonden BAG-adressen overschrijven deze fallback.
-  demoKids.forEach((k)=>{
-    const loc=demoLocationForKid(k);
-    if(!loc)return;
-    const n=parseInt(String(k.id).slice(1),10)||1;
-    k.demoTown=loc.town;
-    k.demoStreet=loc.street;
-    k.address=loc.street+' '+(2+(((n-1)%8)*2))+', '+loc.town+', Drenthe';
-    k.pickupAddress=k.address;
-    k.lat=loc.lat+(((n-1)%4)*0.00008);
-    k.lon=loc.lon+(Math.floor((n-1)%8/4)*0.00010);
+  // Eerst oude benaderingen wissen. Kinderen zonder exacte PDOK-hit mogen
+  // niet terugvallen op een centrumcoördinaat of een verzonnen straat.
+  demoKids.forEach(k=>{
+    k.geocodeStatus='unverified';
+    k.demoStreet='';
+    k.pickupAddress='';
+    delete k.lat;
+    delete k.lon;
   });
 
   // Gebruik ook gedeeltelijke PDOK-resultaten: één ontbrekend adres mag niet
@@ -710,7 +705,7 @@ async function geocodeExactDemoAddresses(){
   demoAddressSpreadVersion='v866';
   saveState();
   renderAll();
-  console.log('V866: echte adressen geografisch verspreid binnen woonplaats; adressen en coördinaten gekoppeld; plaatsen: '+new Set(selected.map(a=>a.town)).size+' plaatsen en '+new Set(selected.map(a=>a.street+'|'+a.town)).size+' straten.');
+  console.log('V866: exacte BAG-adressen gebruikt; ontbrekende adressen blijven ongepositioneerd; adressen en coördinaten gekoppeld; plaatsen: '+new Set(selected.map(a=>a.town)).size+' plaatsen en '+new Set(selected.map(a=>a.street+'|'+a.town)).size+' straten.');
 }
 function demoLocationForKid(k){
   const n=parseInt(String(k?.id||'').slice(1),10);
@@ -1854,6 +1849,8 @@ function coordForDriverStop(driverIndex, stopIndex){
 }
 
 function coordForKid(k, driverIndex, stopIndex){
+  // Niet gevonden adres? Geen verzonnen plaatscoördinaat op de kaart tonen.
+  if(k && k.geocodeStatus==='unverified') return null;
   // Exacte BAG/PDOK-coördinaten gaan altijd vóór elke demo-fallback.
   if(k && Number.isFinite(k.lon) && Number.isFinite(k.lat)) return [k.lon,k.lat];
 
