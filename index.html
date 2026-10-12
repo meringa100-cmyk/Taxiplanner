@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V875</title>
+<title>Taxi Planner V876</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style><style id="v827-demo-gps-css">.demo-gps-panel{padding:12px;border:1px solid #b9d6f3;border-radius:12px;background:#eef6ff;margin:10px 0}.demo-gps-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #d9e6f2}.demo-gps-row:last-child{border-bottom:0}.demo-gps-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#16a34a;margin-right:6px}</style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V875</h1>
+<h1>🚕 Taxi Planner V876</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -529,7 +529,7 @@ async function geocodeBuiltInDemoExactAddresses(){
 }
 
 async function geocodeExactDemoAddresses(){
-  // V875: selecteer per woonplaats maximaal acht unieke BAG-adressen die zo ver mogelijk uit elkaar liggen; gebruik ook kleinere pools als PDOK minder dan acht teruggeeft.
+  // V876: selecteer per woonplaats maximaal acht unieke BAG-adressen die zo ver mogelijk uit elkaar liggen; gebruik ook kleinere pools als PDOK minder dan acht teruggeeft.
   // Alleen echte adresrecords; nooit coördinaten kunstmatig verschuiven.
   const demoKids=kids.filter(k=>{
     const n=parseInt(String(k.id).slice(1),10);
@@ -691,7 +691,7 @@ async function geocodeExactDemoAddresses(){
   demoAddressSpreadVersion='v875';
   saveState();
   renderAll();
-  console.log('V875: echte BAG-adressen per woonplaats zo ver mogelijk verspreid; adressen en coördinaten blijven gekoppeld; plaatsen: '+new Set(selected.map(a=>a.town)).size+' plaatsen en '+new Set(selected.map(a=>a.street+'|'+a.town)).size+' straten.');
+  console.log('V876: echte BAG-adressen per woonplaats zo ver mogelijk verspreid; adressen en coördinaten blijven gekoppeld; plaatsen: '+new Set(selected.map(a=>a.town)).size+' plaatsen en '+new Set(selected.map(a=>a.street+'|'+a.town)).size+' straten.');
 }
 function demoLocationForKid(k){
   const n=parseInt(String(k?.id||'').slice(1),10);
@@ -1513,7 +1513,7 @@ function renderPlanning(){
   const planning=document.getElementById('planning');
   if(!planning)return;
 
-  // V875: groepeer ritten per chauffeur; routes staan standaard ingeklapt.
+  // V876: groepeer ritten per chauffeur; routes staan standaard ingeklapt.
   const groups=new Map();
   arr.forEach(k=>{
     const driver=(k.driver&&String(k.driver).trim())?String(k.driver).trim():'⚠️ Zonder chauffeur';
@@ -1783,7 +1783,7 @@ function renderLive(){
        '<span class="collapsible-arrow">▼</span></button>'+
        '<div class="collapsible-content" style="padding:10px">'+
        (children||'<div class="small muted" style="margin-top:5px">Geen actieve ritten toegewezen</div>')+
-       (assigned.length?'<div class="actions"><button onclick="showDriverLiveRoute(\''+d.replace(/'/g,"\\\'")+'\')">🗺️ Bekijk route op kaart</button></div>':'')+
+       (assigned.length?'<div class="actions"><button onclick="showDriverLiveRoute(\''+d.replace(/'/g,"\\'")+'\')">🗺️ Bekijk route op kaart</button></div>':'')+
        '</div></section>';
    }).join('');
    host.innerHTML='<div class="grid"><div><div class="stat">'+activeRides.length+'</div><div class="muted">Actieve ritten</div></div><div><div class="stat">'+kids.filter(k=>k&&k.status==='picked').length+'</div><div class="muted">Onderweg</div></div><div><div class="stat">'+kids.filter(k=>k&&k.status==='school').length+'</div><div class="muted">Op school</div></div></div><p class="muted">🚌 Wagenpark: '+busNumbers.length+' bussen • ✅ '+(busNumbers.length-driverNames.filter(d=>busIssues&&busIssues[d]).length)+' beschikbaar • ⚠️ '+driverNames.filter(d=>busIssues&&busIssues[d]).length+' in storing</p><h3>Alle chauffeurs en bussen</h3><div class="demo-gps-panel"><b>📡 Demo chauffeur-GPS</b><p class="small muted">Geen echte GPS nodig. Chauffeurs bewegen automatisch over hun route zodat Planner, Ouder en Live Centrum getest kunnen worden.</p><div class="actions"><button class="primary" onclick="startDemoGPS()">▶️ Start demo GPS</button><button onclick="stopDemoGPS()">⏹️ Stop demo GPS</button></div><div id="demoGpsRows" class="small" style="margin-top:8px"></div></div>'+driverCards;
@@ -4355,7 +4355,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=875").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=876").catch(()=>{}));}
 </script>
 
 </body>
