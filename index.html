@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V884</title>
+<title>Taxi Planner V885</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -249,12 +249,13 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 .dashboard-metric-wait{background:#f7f9fb}
 .dashboard-metric-route{background:#eef6ff;border-color:#b9d6f3}
 .dashboard-metric-done{background:#eef8ef;border-color:#b8d8bc}
+.daystart-clickable{cursor:pointer;border-style:dashed}.daystart-clickable:hover,.daystart-clickable:focus{background:#eef6ff;border-color:#1769aa;outline:2px solid #b9d6f3}
 </style>
 
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V884</h1>
+<h1>🚕 Taxi Planner V885</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1514,6 +1515,25 @@ async function runDayStartCheck(){
     (summary||'<div class="daystart-item">✅ Geen problemen gevonden.</div>')+
     '<p class="small muted" style="margin-bottom:0">Details blijven beschikbaar in de planning per chauffeur.</p>'+
   '</div>';
+
+  // V885: maak bestaande detailregels veilig aanklikbaar via event listeners.
+  // Geen inline onclick-HTML: zo blijft de rest van de planner intact.
+  box.querySelectorAll('.daystart-item.daystart-detail').forEach(item=>{
+    const raw=item.textContent.replace(/^\\s*↳\\s*/, '').trim();
+    const child=kids.find(k=>raw.startsWith(String(k.name||'Naam onbekend')));
+    const driver=driverNames.find(d=>raw.includes(d));
+    if(!child&&!driver)return;
+    item.classList.add('daystart-clickable');
+    item.setAttribute('role','button');
+    item.setAttribute('tabindex','0');
+    item.setAttribute('title',child?'Klik om het kindprofiel te openen':'Klik om de chauffeurdetails te openen');
+    const open=()=>{
+      if(child){editChild(child.id);document.getElementById('modal')?.classList.remove('hidden');}
+      else if(driver){showPage('planner',document.querySelector('nav .tab'));openDriverDetails(driver);}
+    };
+    item.addEventListener('click',open);
+    item.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open();}});
+  });
 }
 
 function renderDashboard(){
