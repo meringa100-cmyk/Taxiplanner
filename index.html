@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V878</title>
+<title>Taxi Planner V879</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -110,6 +110,21 @@ button[onclick^="chauffeurDelay"]:active{
   text-align:left;
 }
 .collapsible-header:hover{background:#edf1f5}
+
+/* V879: compacte, duidelijke inklapbare chauffeur- en busgroepen */
+details.collapsible-section>summary.collapsible-header{list-style:none;gap:12px;min-height:64px}
+details.collapsible-section>summary.collapsible-header::-webkit-details-marker{display:none}
+details.collapsible-section>summary.collapsible-header::marker{content:""}
+details.collapsible-section[open]>.collapsible-content{display:block}
+details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transform:rotate(180deg)}
+.planning-driver-route,.live-bus-route{box-shadow:0 1px 3px rgba(23,50,77,.07)}
+.planning-driver-route>.collapsible-header,.live-bus-route>.collapsible-header{border-radius:11px;color:#17324d}
+.planning-driver-route[open]>.collapsible-header,.live-bus-route[open]>.collapsible-header{border-radius:11px 11px 0 0;border-bottom:1px solid #d9dee7}
+#planning>.muted{padding:8px 10px;background:#f5f7fa;border-radius:8px}
+#planning .planning-driver-route .collapsible-content{padding:8px}
+#planning .planning-driver-route .collapsible-content>.card{margin:8px 0}
+#planning .planning-driver-route .collapsible-content .actions{gap:8px}
+
 .collapsible-arrow{transition:transform .2s ease;font-size:14px}
 .collapsible-section.open .collapsible-arrow{transform:rotate(180deg)}
 .collapsible-content{display:none;padding:0}
@@ -218,7 +233,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style><style id="v827-demo-gps-css">.demo-gps-panel{padding:12px;border:1px solid #b9d6f3;border-radius:12px;background:#eef6ff;margin:10px 0}.demo-gps-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #d9e6f2}.demo-gps-row:last-child{border-bottom:0}.demo-gps-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#16a34a;margin-right:6px}</style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V878</h1>
+<h1>🚕 Taxi Planner V879</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -529,7 +544,7 @@ async function geocodeBuiltInDemoExactAddresses(){
 }
 
 async function geocodeExactDemoAddresses(){
-  // V878: selecteer per woonplaats maximaal acht unieke BAG-adressen die zo ver mogelijk uit elkaar liggen; gebruik ook kleinere pools als PDOK minder dan acht teruggeeft.
+  // V879: selecteer per woonplaats maximaal acht unieke BAG-adressen die zo ver mogelijk uit elkaar liggen; gebruik ook kleinere pools als PDOK minder dan acht teruggeeft.
   // Alleen echte adresrecords; nooit coördinaten kunstmatig verschuiven.
   const demoKids=kids.filter(k=>{
     const n=parseInt(String(k.id).slice(1),10);
@@ -690,7 +705,7 @@ async function geocodeExactDemoAddresses(){
   demoAddressSpreadVersion='v877';
   saveState();
   renderAll();
-  console.log('V878: echte BAG-adressen per woonplaats zo ver mogelijk verspreid; adressen en coördinaten blijven gekoppeld; plaatsen: '+new Set(selected.map(a=>a.town)).size+' plaatsen en '+new Set(selected.map(a=>a.street+'|'+a.town)).size+' straten.');
+  console.log('V879: echte BAG-adressen per woonplaats zo ver mogelijk verspreid; adressen en coördinaten blijven gekoppeld; plaatsen: '+new Set(selected.map(a=>a.town)).size+' plaatsen en '+new Set(selected.map(a=>a.street+'|'+a.town)).size+' straten.');
 }
 function demoLocationForKid(k){
   const n=parseInt(String(k?.id||'').slice(1),10);
@@ -1512,7 +1527,7 @@ function renderPlanning(){
   const planning=document.getElementById('planning');
   if(!planning)return;
 
-  // V878: groepeer ritten per chauffeur; routes staan standaard ingeklapt.
+  // V879: groepeer ritten per chauffeur; routes staan standaard ingeklapt.
   const groups=new Map();
   arr.forEach(k=>{
     const driver=(k.driver&&String(k.driver).trim())?String(k.driver).trim():'⚠️ Zonder chauffeur';
@@ -4351,7 +4366,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=878").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=879").catch(()=>{}));}
 </script>
 
 </body>
