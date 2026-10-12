@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V880</title>
+<title>Taxi Planner V881</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -240,6 +240,15 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 .driver-overview-full{background:#fff7df;color:#755600}
 .driver-overview-bad{background:#fff0f0;color:#9b111e}
 @media(max-width:520px){.driver-overview-row{align-items:flex-start}.driver-overview-status{white-space:normal;text-align:center;max-width:115px}}
+</style>
+
+<style id="v881-dashboard-status-css">
+.dashboard-metric{padding:12px;border:1px solid #d9dee7;border-radius:11px;background:#fff;min-width:0}
+.dashboard-metric .stat{font-size:25px;line-height:1.25;margin-bottom:3px}
+.dashboard-metric-warn{background:#fff7df;border-color:#e6c96a}
+.dashboard-metric-wait{background:#f7f9fb}
+.dashboard-metric-route{background:#eef6ff;border-color:#b9d6f3}
+.dashboard-metric-done{background:#eef8ef;border-color:#b8d8bc}
 </style>
 
 </head>
@@ -1513,10 +1522,13 @@ function renderDashboard(){
  const alerts=kids.filter(k=>k.status==='absent'||k.status==='loose'||(Number(k.delay)>0&&active(k))||!k.driver&&active(k)).length
   +driverNames.filter(d=>isDriverUnavailable(d)||isBusUnavailable(d)||(!isDriverUnavailable(d)&&!isBusUnavailable(d)&&load(d)>=MAX)).length;
  document.getElementById('dashboard').innerHTML=
- `<div><div class="stat">${activeDrivers}</div><div class="muted">Actieve chauffeurs</div></div>
- <div><div class="stat">${kids.length}</div><div class="muted">Kinderen vandaag</div></div>
- <div><div class="stat">${Math.max(...driverNames.map(load))}/8</div><div class="muted">Volste bus</div></div>
- <div><div class="stat">${alerts}</div><div class="muted">Open meldingen</div></div>`;
+ `<div class="dashboard-metric"><div class="stat">${activeDrivers}</div><div class="muted">Actieve chauffeurs</div></div>
+ <div class="dashboard-metric"><div class="stat">${kids.length}</div><div class="muted">Kinderen vandaag</div></div>
+ <div class="dashboard-metric"><div class="stat">${Math.max(...driverNames.map(load))}/${MAX}</div><div class="muted">Volste bus</div></div>
+ <div class="dashboard-metric ${alerts?'dashboard-metric-warn':''}"><div class="stat">${alerts}</div><div class="muted">Open meldingen</div></div>
+ <div class="dashboard-metric dashboard-metric-wait"><div class="stat">${waiting}</div><div class="muted">Wachtend</div></div>
+ <div class="dashboard-metric dashboard-metric-route"><div class="stat">${underway}</div><div class="muted">Onderweg</div></div>
+ <div class="dashboard-metric dashboard-metric-done"><div class="stat">${school}</div><div class="muted">Op school</div></div>`;
 
  const q=(document.getElementById('driverSearch')?.value||'').toLowerCase();
  document.getElementById('driverList').innerHTML=driverNames.filter(d=>d.toLowerCase().includes(q)).map(d=>{
@@ -4383,7 +4395,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=880").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=881").catch(()=>{}));}
 </script>
 
 </body>
