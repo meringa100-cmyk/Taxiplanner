@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V876</title>
+<title>Taxi Planner V877</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style><style id="v827-demo-gps-css">.demo-gps-panel{padding:12px;border:1px solid #b9d6f3;border-radius:12px;background:#eef6ff;margin:10px 0}.demo-gps-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #d9e6f2}.demo-gps-row:last-child{border-bottom:0}.demo-gps-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#16a34a;margin-right:6px}</style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V876</h1>
+<h1>🚕 Taxi Planner V877</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -529,7 +529,7 @@ async function geocodeBuiltInDemoExactAddresses(){
 }
 
 async function geocodeExactDemoAddresses(){
-  // V876: selecteer per woonplaats maximaal acht unieke BAG-adressen die zo ver mogelijk uit elkaar liggen; gebruik ook kleinere pools als PDOK minder dan acht teruggeeft.
+  // V877: selecteer per woonplaats maximaal acht unieke BAG-adressen die zo ver mogelijk uit elkaar liggen; gebruik ook kleinere pools als PDOK minder dan acht teruggeeft.
   // Alleen echte adresrecords; nooit coördinaten kunstmatig verschuiven.
   const demoKids=kids.filter(k=>{
     const n=parseInt(String(k.id).slice(1),10);
@@ -540,39 +540,38 @@ async function geocodeExactDemoAddresses(){
   const towns=['Emmen','Coevorden','Hoogeveen','Assen','Meppel','Beilen','Borger','Odoorn','Dalen','Nieuw-Amsterdam','Klazienaveen','Erica','Westerbork'];
 
   async function fetchTownAddresses(town){
-    // Zoek expliciet op woonplaatsnaam én met vrije zoektermen.
-    // De vrije zoekterm alleen kan door relevantiesortering te weinig adressen
-    // uit kleinere plaatsen teruggeven.
-    const queries=['woonplaatsnaam:'+town,'woonplaatsnaam:'+town+' AND type:adres',town];
-    const all=[], seen=new Set();
-    for(const q of queries){
-      try{
-        const params=new URLSearchParams({
-          q,
-          fq:'type:adres',
-          fl:'weergavenaam,type,straatnaam,woonplaatsnaam,huisnummer,centroide_ll,centroid_ll',
-          rows:'1000',
-          start:'0'
-        });
-        const res=await fetch('https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?'+params.toString(),{headers:{'Accept':'application/json'}});
-        if(!res.ok){console.warn('PDOK HTTP '+res.status+' voor '+town+' ('+q+')');continue;}
-        const data=await res.json();
-        const docs=Array.isArray(data?.response?.docs)?data.response.docs:[];
-        for(const x of docs){
-          if(String(x.type||'').toLowerCase()!=='adres')continue;
-          if(String(x.woonplaatsnaam||'').trim().toLowerCase()!==town.toLowerCase())continue;
-          const street=String(x.straatnaam||'').trim();
-          const nr=String(x.huisnummer||'').trim();
-          const point=String(x.centroide_ll||x.centroid_ll||'');
-          if(!street||!nr||!point.includes('POINT('))continue;
-          const raw=point.replace('POINT(','').replace(')','').trim().split(/\s+/).map(Number);
-          if(raw.length!==2||!Number.isFinite(raw[0])||!Number.isFinite(raw[1]))continue;
-          const key=(street+'|'+nr).toLowerCase();
-          if(seen.has(key))continue;
-          seen.add(key);
-          all.push({town,street,number:nr,address:x.weergavenaam||street+' '+nr+', '+town,lat:raw[1],lon:raw[0]});
-        }
-      }catch(e){console.warn('PDOK '+town,e);}
+    const streetMap={
+      Emmen:['Laan van de Marel','Boslaan','Hondsrugweg','Weerdingerstraat','Angelsloërdijk','Minister Kanstraat','Laan van het Kinholt','Eendenveld'],
+      Coevorden:['Stationsstraat','Krimweg','Poppenharelaan','Friesestraat','Aleida Kramersingel','Van Heutszsingel','Nieuwe Dijk','Klooster'],
+      Hoogeveen:['Hoofdstraat','Pesserstraat','Het Haagje','Schutstraat','Griendtsveenweg','Wolfsbosstraat','Alteveerstraat','Zuidwoldigerweg'],
+      Assen:['Rolderstraat','Balkenweg','Graswijk','Thorbeckelaan','Delft','Nijlandstraat','Europaweg','Peelo'],
+      Meppel:['Stationsweg','Hoofdstraat','Woldstraat','Oosterboerweg','Rembrandtlaan','Zuideinde','Prinsengracht','Berggierslanden'],
+      Beilen:['Brinkstraat','Dambroek','Ettenstraat','Esweg','Wilhelminastraat','Sportlaan','Hekstraat','De Omloop'],
+      Borger:['Hoofdstraat','Koesteeg','Rolderstraat','Westdorperstraat','Burgemeester Drijberstraat','Torenlaan','Hunebedstraat','Nuisveen'],
+      Odoorn:['Valtherweg','Hoofdstraat','Boshof','Langhieten','Hondsruglaan','Exloerweg','Odoornerstraat','Oosterveld'],
+      Dalen:['Hoofdstraat','Emmerweg','Kleine Veld','Westerwijk','Molenwijk','Achterloo','Burgemeester Wesselingstraat','Vliers'],
+      'Nieuw-Amsterdam':['Vaart NZ','Vaart ZZ','Industrieweg','Veilingstraat','Sportlaan','Zijtak OZ','Boerdijk','Ringlaan'],
+      Klazienaveen:['Langestraat','Kruidenlaan','Meridiaan','Planeet','Antares','Van Echtenskanaal NZ','Koriander','Doorndistel'],
+      Erica:['Verlengde Vaart NZ','Ericasestraat','Heidebloemstraat','Peelstraat','Tuindorp','Vaart ZZ','Pannekoekendijk','Dennenlaan'],
+      Westerbork:['Hoofdstraat','Oosteinde','Beilerstraat','De Noesten','Wilhelminastraat','Burgemeester Gualthérie van Weezelplein','Zandhoeklaan','Sleutelbloem']
+    };
+    const streets=streetMap[town]||[town];
+    const all=[],seen=new Set();
+    const numbers=[2,10,20,30,40,50,60,70,80,90,100,110,120,130,140,150];
+    // Geocodeer echte huisnummers per verschillende straat; geen fictieve offsets.
+    for(const street of streets){
+      let hit=null;
+      for(const number of numbers){
+        hit=await pdokAddress(street,town,number);
+        if(hit)break;
+      }
+      if(!hit)continue;
+      const key=hit.address.toLowerCase();
+      if(seen.has(key))continue;
+      seen.add(key);
+      const match=hit.address.match(/\\s(\\d+[a-zA-Z]?)\\s*,/);
+      all.push({town,street,number:match?match[1]:'',address:hit.address,lat:hit.lat,lon:hit.lon});
+      if(all.length>=8)break;
     }
     return all;
   }
@@ -688,10 +687,10 @@ async function geocodeExactDemoAddresses(){
   });
 
   addressesReady=true;
-  demoAddressSpreadVersion='v875';
+  demoAddressSpreadVersion='v877';
   saveState();
   renderAll();
-  console.log('V876: echte BAG-adressen per woonplaats zo ver mogelijk verspreid; adressen en coördinaten blijven gekoppeld; plaatsen: '+new Set(selected.map(a=>a.town)).size+' plaatsen en '+new Set(selected.map(a=>a.street+'|'+a.town)).size+' straten.');
+  console.log('V877: echte BAG-adressen per woonplaats zo ver mogelijk verspreid; adressen en coördinaten blijven gekoppeld; plaatsen: '+new Set(selected.map(a=>a.town)).size+' plaatsen en '+new Set(selected.map(a=>a.street+'|'+a.town)).size+' straten.');
 }
 function demoLocationForKid(k){
   const n=parseInt(String(k?.id||'').slice(1),10);
@@ -1513,7 +1512,7 @@ function renderPlanning(){
   const planning=document.getElementById('planning');
   if(!planning)return;
 
-  // V876: groepeer ritten per chauffeur; routes staan standaard ingeklapt.
+  // V877: groepeer ritten per chauffeur; routes staan standaard ingeklapt.
   const groups=new Map();
   arr.forEach(k=>{
     const driver=(k.driver&&String(k.driver).trim())?String(k.driver).trim():'⚠️ Zonder chauffeur';
@@ -4355,7 +4354,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=876").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=877").catch(()=>{}));}
 </script>
 
 </body>
