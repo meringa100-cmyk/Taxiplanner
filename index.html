@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V870</title>
+<title>Taxi Planner V871</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -218,7 +218,7 @@ button[onclick^="chauffeurDelay"]:active{
 </style><style id="v827-demo-gps-css">.demo-gps-panel{padding:12px;border:1px solid #b9d6f3;border-radius:12px;background:#eef6ff;margin:10px 0}.demo-gps-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #d9e6f2}.demo-gps-row:last-child{border-bottom:0}.demo-gps-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#16a34a;margin-right:6px}</style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V870</h1>
+<h1>🚕 Taxi Planner V871</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1503,19 +1503,43 @@ function renderDashboard(){
 }
 
 function renderPlanning(){
- const q=(document.getElementById('rideSearch')?.value||'').toLowerCase();
- const f=document.getElementById('rideFilter')?.value||'all';
- const arr=kids.filter(k=>{
-  const txt=(k.name+' '+(k.school||'')+' '+(k.destination||'')+' '+(k.driver||'')+' '+(k.address||'')).toLowerCase();
-  return (!q||txt.includes(q))&&(f==='all'||k.status===f);
- }).sort((a,b)=>a.timeMin-b.timeMin);
+  const q=(document.getElementById('rideSearch')?.value||'').toLowerCase();
+  const f=document.getElementById('rideFilter')?.value||'all';
+  const arr=kids.filter(k=>{
+   const txt=(k.name+' '+(k.school||'')+' '+(k.destination||'')+' '+(k.driver||'')+' '+(k.address||'')+' '+(k.pickupAddress||'')).toLowerCase();
+   return (!q||txt.includes(q))&&(f==='all'||k.status===f);
+  });
 
- const planning=document.getElementById('planning');
- if(!planning)return;
+  const planning=document.getElementById('planning');
+  if(!planning)return;
 
- const header='<p class="muted">'+arr.length+' ritten • tik op een kind om de extra informatie uit te klappen</p>';
- const cards=arr.map(k=>childCardHtml(k)).join('');
- planning.innerHTML=header+(cards||'<p>Geen ritten.</p>');
+  // V871: groepeer ritten per chauffeur; routes staan standaard ingeklapt.
+  const groups=new Map();
+  arr.forEach(k=>{
+    const driver=(k.driver&&String(k.driver).trim())?String(k.driver).trim():'⚠️ Zonder chauffeur';
+    if(!groups.has(driver))groups.set(driver,[]);
+    groups.get(driver).push(k);
+  });
+  const orderedDrivers=[
+    ...driverNames.filter(d=>groups.has(d)),
+    ...[...groups.keys()].filter(d=>!driverNames.includes(d)).sort((a,b)=>a.localeCompare(b,'nl'))
+  ];
+  const cards=orderedDrivers.map((driver,index)=>{
+    const rides=groups.get(driver).sort((a,b)=>{
+      const ao=Number.isFinite(a.routeOrder)?a.routeOrder:9999;
+      const bo=Number.isFinite(b.routeOrder)?b.routeOrder:9999;
+      return ao-bo || a.timeMin-b.timeMin;
+    });
+    const id='planningDriverRoute'+index;
+    const routeLabel=driver==='⚠️ Zonder chauffeur'?'⚠️ Zonder chauffeur':'🚕 '+driver;
+    return '<section class="collapsible-section planning-driver-route" style="margin:10px 0">'+
+      '<button type="button" class="collapsible-header" onclick="toggleCollapsible(\''+id+'\')">'+
+      '<span>'+routeLabel+'<br><small style="font-weight:400">'+rides.length+' rit'+(rides.length===1?'':'ten')+' • '+rides.filter(k=>k.status==='waiting'||k.status==='picked').length+' actief</small></span>'+
+      '<span class="collapsible-arrow">▼</span></button>'+
+      '<div class="collapsible-content">'+rides.map(k=>childCardHtml(k)).join('')+'</div></section>';
+  }).join('');
+  planning.innerHTML='<p class="muted">'+arr.length+' ritten • '+orderedDrivers.length+' chauffeurs/routes • klik op een chauffeur om de ritten te tonen</p>'+
+    (cards||'<p>Geen ritten gevonden.</p>');
 }
 let driverSelectedKid={};
 function getDriverQueue(d){
@@ -4323,7 +4347,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=870").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=871").catch(()=>{}));}
 </script>
 
 </body>
