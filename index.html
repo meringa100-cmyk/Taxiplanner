@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V894</h1>
+<h1>🚕 Taxi Planner V893</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1504,13 +1504,13 @@ async function runDayStartCheck(){
     detail:p.detail,
     advice:advisorAdvice[p.title]||'Controleer dit punt in de planning voordat de rit wordt uitgevoerd.'
   }));
-  const advisorHtml='<div class="priority-list-v887" id="smartAdvisorV894" style="margin-top:14px;border-top:1px solid var(--border,#d9dee7);padding-top:12px">'+
+  const advisorHtml='<div class="priority-list-v887" style="margin-top:14px;border-top:1px solid var(--border,#d9dee7);padding-top:12px">'+
     '<h3>🧠 Slimme planningsadviseur</h3>'+
     (advisorItems.length
-      ? '<p class="small muted">Bekijk eerst een proefvoorstel. De huidige planning blijft staan totdat je het voorstel zelf accepteert.</p>'+
+      ? '<p class="small muted">Dit zijn de eerste aanbevolen acties op basis van de huidige controle. Er wordt niets automatisch gewijzigd.</p>'+
         advisorItems.map((item,i)=>'<div style="padding:10px 0;border-bottom:1px solid var(--border,#d9dee7)"><b>'+(i+1)+'. '+escapeAdvisorText(item.title)+' — '+escapeAdvisorText(item.detail)+'</b><div style="margin-top:4px">'+escapeAdvisorText(item.advice)+'</div></div>').join('')
       : '<div class="daystart-item">✅ Geen harde planningsproblemen gevonden. Controleer voor vertrek nog de actuele aanwezigheid, adressen en verkeerssituatie.</div>')+
-    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button type="button" id="advisorPreviewButtonV894">🧪 Bereken verbeteringsvoorstel</button></div><div id="advisorProposalBoxV894"></div></div>';
+    '</div>';
 
   const priorityHtml=priorities.length
     ? '<div class="priority-list-v887"><h3>🚦 Wat eerst aandacht nodig heeft</h3>'+priorities.map((p,i)=>'<button type="button" class="priority-action-v887 priority-rank-'+p.rank+'" data-priority-index="'+i+'"><span class="priority-number-v887">'+(i+1)+'</span><span class="priority-copy-v887"><b>'+p.icon+' '+p.title+'</b><small>'+p.detail+'</small></span><span class="priority-arrow-v887">Open ›</span></button>').join('')+'</div>'
@@ -1582,80 +1582,6 @@ async function runDayStartCheck(){
       }
     });
   });
-
-
-  const previewButtonV894=document.getElementById('advisorPreviewButtonV894');
-  if(previewButtonV894)previewButtonV894.addEventListener('click',previewAdvisorPlanV894);
-
-  // V894: bereken een AI-voorstel tijdelijk en herstel de bestaande planning.
-  // Alleen na expliciet akkoord wordt het voorstel opgeslagen.
-  if(typeof window.__advisorProposalV894==='undefined')window.__advisorProposalV894=null;
-  window.previewAdvisorPlanV894=function(){
-    const btn=document.getElementById('advisorPreviewButtonV894');
-    if(btn){btn.disabled=true;btn.textContent='⏳ Voorstel berekenen…';}
-    const original=JSON.parse(JSON.stringify(kids));
-    const scoreBefore=planningScore();
-    const lockBefore=demoPlanningSpreadLocked;
-    const previousBefore=typeof previousPlan!=='undefined'?JSON.parse(JSON.stringify(previousPlan)):null;
-    const hardBefore=typeof demoHardPlanVersion!=='undefined'?demoHardPlanVersion:null;
-    try{
-      runAI(true);
-      window.__advisorProposalV894={
-        base:original,
-        candidate:JSON.parse(JSON.stringify(kids)),
-        before:scoreBefore,
-        after:planningScore(),
-        lockAfter:demoPlanningSpreadLocked
-      };
-    }catch(err){
-      window.__advisorProposalV894=null;
-    }
-    kids=original;
-    demoPlanningSpreadLocked=lockBefore;
-    if(typeof previousPlan!=='undefined'&&previousBefore)previousPlan=previousBefore;
-    if(typeof demoHardPlanVersion!=='undefined'&&hardBefore!==null)demoHardPlanVersion=hardBefore;
-    saveState();renderAll();runDayStartCheck();
-    const panel=document.getElementById('advisorProposalBoxV894');
-    const proposal=window.__advisorProposalV894;
-    if(!panel)return;
-    if(!proposal){
-      panel.innerHTML='<div class="daystart-item">⚠️ Voorstel kon niet worden berekend. De oorspronkelijke planning is behouden.</div>';
-    }else{
-      const good=proposal.after.score<=proposal.before.score;
-      panel.innerHTML='<div class="daystart-result '+(good?'daystart-ok':'daystart-warn')+'" style="margin-top:10px"><b>🧪 Voorstel — '+(good?'geen slechtere totaalscore':'niet beter dan de huidige planning')+'</b>'+
-        '<div>Score: '+Math.round(proposal.before.score)+' → '+Math.round(proposal.after.score)+'</div>'+
-        '<div>Te lange routes: '+proposal.before.longRoutes+' → '+proposal.after.longRoutes+' · Tijdconflicten: '+proposal.before.conflicts+' → '+proposal.after.conflicts+'</div>'+
-        '<div>Schooldeadlineproblemen: '+proposal.before.deadlineLate+' → '+proposal.after.deadlineLate+' · Zonder chauffeur: '+proposal.before.unassigned+' → '+proposal.after.unassigned+' · Overvolle bussen: '+proposal.before.overloaded+' → '+proposal.after.overloaded+'</div>'+
-        '<p class="small muted">De bestaande planning is nog niet gewijzigd.</p>'+
-        (good?'<button type="button" id="advisorAcceptV894">✅ Voorstel accepteren</button> ':'')+
-        '<button type="button" id="advisorRejectV894">↩️ Voorstel verwerpen</button></div>';
-      document.getElementById('advisorAcceptV894')?.addEventListener('click',acceptAdvisorPlanV894);
-      document.getElementById('advisorRejectV894')?.addEventListener('click',rejectAdvisorPlanV894);
-    }
-    if(btn){btn.disabled=false;btn.textContent='🧪 Opnieuw berekenen';}
-  };
-  window.acceptAdvisorPlanV894=function(){
-    const p=window.__advisorProposalV894;
-    if(!p)return;
-    if(JSON.stringify(kids)!==JSON.stringify(p.base)){
-      window.__advisorProposalV894=null;
-      const panel=document.getElementById('advisorProposalBoxV894');
-      if(panel)panel.innerHTML='<div class="daystart-item">⚠️ De planning is intussen veranderd. Bereken eerst een nieuw voorstel.</div>';
-      return;
-    }
-    if(p.after.score>p.before.score){rejectAdvisorPlanV894();return;}
-    kids=JSON.parse(JSON.stringify(p.candidate));
-    demoPlanningSpreadLocked=p.lockAfter;
-    window.__advisorProposalV894=null;
-    saveState();renderAll();runDayStartCheck();
-    const panel=document.getElementById('advisorProposalBoxV894');
-    if(panel)panel.innerHTML='<div class="daystart-item">✅ Voorstel geaccepteerd en opgeslagen. Controleer de planning nog even.</div>';
-  };
-  window.rejectAdvisorPlanV894=function(){
-    window.__advisorProposalV894=null;
-    const panel=document.getElementById('advisorProposalBoxV894');
-    if(panel)panel.innerHTML='<div class="daystart-item">↩️ Voorstel verworpen. De oorspronkelijke planning blijft behouden.</div>';
-  };
 
   // V885: maak bestaande detailregels veilig aanklikbaar via event listeners.
   // Geen inline onclick-HTML: zo blijft de rest van de planner intact.
@@ -4571,7 +4497,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=894").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=893").catch(()=>{}));}
 </script>
 
 
