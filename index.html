@@ -1607,11 +1607,82 @@ async function runDayStartCheck(){
     '</div>'+
     priorityHtml+
     advisorHtml+
+    '<div id="routeFocusV895" style="margin-top:14px"></div>'+
     (summary||'<div class="daystart-item">✅ Geen problemen gevonden.</div>')+
     '<p class="small muted" style="margin-bottom:0">Details blijven beschikbaar in de planning per chauffeur.</p>'+
   '</div>';
 
   // V887: koppel prioriteitsknoppen aan bestaande profiel- en chauffeurschermen.
+  // V895: routegerichte aandachtspagina. Alleen lezen; opent bestaande detailschermen.
+  const routeFocusBox=box.querySelector('#routeFocusV895');
+  if(routeFocusBox){
+    const relevantDrivers=driverNames.filter(d=>
+      broken.includes(d)||unavailable.includes(d)||overloaded.includes(d)||
+      routeProblems.includes(d)||longRoutes.includes(d)||deadlineProblems.some(k=>k.driver===d)
+    );
+    const addText=(parent,tag,textValue,style)=>{
+      const node=document.createElement(tag);
+      node.textContent=String(textValue??'');
+      if(style)node.style.cssText=style;
+      parent.appendChild(node);
+      return node;
+    };
+    const addButton=(parent,label,handler)=>{
+      const button=document.createElement('button');
+      button.type='button';button.textContent=label;
+      button.style.cssText='margin:6px 6px 0 0;padding:7px 10px;cursor:pointer';
+      button.addEventListener('click',handler);
+      parent.appendChild(button);
+    };
+    addText(routeFocusBox,'h3','🧭 Routegerichte aandachtspagina','margin:0 0 8px');
+    addText(routeFocusBox,'p','Per chauffeur staan bezetting, routetijd en gevonden aandachtspunten bij elkaar. Bekijk de details voordat je iets aanpast.','margin:0 0 10px;font-size:.92em;color:var(--muted,#5d6875)');
+    if(!relevantDrivers.length && !deadlineProblems.length && !unassigned.length){
+      addText(routeFocusBox,'div','✅ Geen routes die extra aandacht vragen.','padding:10px;border-radius:8px;background:#eef8ef');
+    }
+    relevantDrivers.forEach(d=>{
+      const di=driverNames.indexOf(d);
+      const rides=kids.filter(k=>k.driver===d&&active(k)).sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+      const minutes=Math.round(routeDurationEstimate(rides,di));
+      const limit=routeLimitForRides(rides);
+      const driverConflicts=routeConflictDetails.filter(x=>x.driver===d);
+      const driverDeadlines=deadlineProblems.filter(k=>k.driver===d);
+      const notes=[];
+      if(broken.includes(d))notes.push('🚌 Busstoring: '+(busIssues[d]?.reason||'reden niet ingevuld'));
+      if(unavailable.includes(d))notes.push('👨‍✈️ Chauffeur niet beschikbaar');
+      if(overloaded.includes(d))notes.push('🔴 Capaciteit overschreden: '+load(d)+'/'+MAX);
+      if(driverConflicts.length)notes.push('🚦 '+driverConflicts.length+' tijdconflict(en)');
+      if(longRoutes.includes(d))notes.push('⏱️ Route '+minutes+' min bij maximum '+limit+' min');
+      if(driverDeadlines.length)notes.push('🏫 '+driverDeadlines.length+' kind(eren) met mogelijke schooldeadlineproblemen');
+      const card=document.createElement('div');
+      card.style.cssText='border:1px solid var(--border,#d9dee7);border-left:4px solid '+(broken.includes(d)||unavailable.includes(d)||overloaded.includes(d)||longRoutes.includes(d)||driverConflicts.length||driverDeadlines.length?'#c62828':'#d9dee7')+';border-radius:9px;padding:10px;margin:8px 0';
+      addText(card,'b','🚕 '+d+' · '+load(d)+'/'+MAX+' actieve kinderen');
+      addText(card,'div','Bus: '+busForDriver(d)+' · '+(isBusUnavailable(d)?'storing':'beschikbaar')+' · geschatte routetijd: '+minutes+' min / '+limit+' min','margin-top:4px;font-size:.92em');
+      notes.forEach(note=>addText(card,'div',note,'margin-top:4px;font-size:.92em'));
+      driverConflicts.slice(0,3).forEach(issue=>{
+        addText(card,'div',(issue.prev.name||'Vorige rit')+' ('+(issue.prev.time||fmtTime(issue.prev.timeMin||0))+') → '+(issue.cur.name||'volgende rit')+' ('+(issue.cur.time||fmtTime(issue.cur.timeMin||0))+'): '+Math.round(issue.gap)+' min ruimte / '+Math.round(issue.travel)+' min geschatte reistijd.','margin-top:5px;font-size:.9em');
+      });
+      addButton(card,'Bekijk chauffeur',()=>{showPage('planner',document.querySelector('nav .tab'));openDriverDetails(d);});
+      routeFocusBox.appendChild(card);
+    });
+    [...new Map(deadlineProblems.map(k=>[k.id,k])).values()].forEach(k=>{
+      const card=document.createElement('div');
+      card.style.cssText='border:1px solid #e5b85c;border-left:4px solid #c88719;border-radius:9px;padding:10px;margin:8px 0';
+      const arrival=schoolArrivalMinutes(k);
+      addText(card,'b','🏫 Controleer aankomst: '+(k.name||'Naam onbekend'));
+      addText(card,'div','Chauffeur: '+(k.driver||'geen chauffeur')+' · school: '+(k.school||k.destination||'onbekend')+' · berekende aankomst '+fmtTime(arrival)+' · deadline 08:30','margin-top:4px;font-size:.92em');
+      addButton(card,'Bekijk kind',()=>{const kid=find(k.id);if(kid){editChild(kid.id);document.getElementById('modal')?.classList.remove('hidden');}});
+      routeFocusBox.appendChild(card);
+    });
+    unassigned.forEach(k=>{
+      const card=document.createElement('div');
+      card.style.cssText='border:1px solid #e5b85c;border-left:4px solid #c88719;border-radius:9px;padding:10px;margin:8px 0';
+      addText(card,'b','⚠️ Rit zonder chauffeur: '+(k.name||'Naam onbekend'));
+      addText(card,'div',(k.school||k.destination||'bestemming onbekend')+' · ophaaltijd '+(k.time||fmtTime(k.timeMin||0)),'margin-top:4px;font-size:.92em');
+      addButton(card,'Bekijk kind',()=>{const kid=find(k.id);if(kid){editChild(kid.id);document.getElementById('modal')?.classList.remove('hidden');}});
+      routeFocusBox.appendChild(card);
+    });
+  }
+
   box.querySelectorAll('.priority-action-v887').forEach(button=>{
     button.addEventListener('click',()=>{
       const p=priorities[Number(button.dataset.priorityIndex)];
