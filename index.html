@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V893</h1>
+<h1>🚕 Taxi Planner V894</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1504,13 +1504,13 @@ async function runDayStartCheck(){
     detail:p.detail,
     advice:advisorAdvice[p.title]||'Controleer dit punt in de planning voordat de rit wordt uitgevoerd.'
   }));
-  const advisorHtml='<div class="priority-list-v887" style="margin-top:14px;border-top:1px solid var(--border,#d9dee7);padding-top:12px">'+
+  const advisorHtml='<div class="priority-list-v887" id="smartAdvisorV894" style="margin-top:14px;border-top:1px solid var(--border,#d9dee7);padding-top:12px">'+
     '<h3>🧠 Slimme planningsadviseur</h3>'+
     (advisorItems.length
-      ? '<p class="small muted">Dit zijn de eerste aanbevolen acties op basis van de huidige controle. Er wordt niets automatisch gewijzigd.</p>'+
+      ? '<p class="small muted">Bekijk eerst een proefvoorstel. De huidige planning blijft staan totdat je het voorstel zelf accepteert.</p>'+
         advisorItems.map((item,i)=>'<div style="padding:10px 0;border-bottom:1px solid var(--border,#d9dee7)"><b>'+(i+1)+'. '+escapeAdvisorText(item.title)+' — '+escapeAdvisorText(item.detail)+'</b><div style="margin-top:4px">'+escapeAdvisorText(item.advice)+'</div></div>').join('')
       : '<div class="daystart-item">✅ Geen harde planningsproblemen gevonden. Controleer voor vertrek nog de actuele aanwezigheid, adressen en verkeerssituatie.</div>')+
-    '</div>';
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button type="button" id="advisorPreviewButtonV894">🧪 Bereken verbeteringsvoorstel</button></div><div id="advisorProposalBoxV894"></div></div>';
 
   const priorityHtml=priorities.length
     ? '<div class="priority-list-v887"><h3>🚦 Wat eerst aandacht nodig heeft</h3>'+priorities.map((p,i)=>'<button type="button" class="priority-action-v887 priority-rank-'+p.rank+'" data-priority-index="'+i+'"><span class="priority-number-v887">'+(i+1)+'</span><span class="priority-copy-v887"><b>'+p.icon+' '+p.title+'</b><small>'+p.detail+'</small></span><span class="priority-arrow-v887">Open ›</span></button>').join('')+'</div>'
