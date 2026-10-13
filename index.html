@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V890</h1>
+<h1>🚕 Taxi Planner V891</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -278,7 +278,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 
 <main>
 <section id="planner" class="page active"><div id="plannerDelayAlerts"></div>
-<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Planner Dashboard</h2><div class="actions"><button type="button" id="runDayStartCheckButton" onclick="window.runDayStartCheckV890()">🔎 Controleer planning</button><button class="primary" onclick="runAIAndCheck()">🤖 AI plannen & controleren</button></div></div><div id="dashboard" class="grid" style="margin-top:12px"></div><div id="dayStartCheck"></div></div>
+<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Planner Dashboard</h2><div class="actions"><button type="button" id="runDayStartCheckButton" onclick="runDayStartCheck()">🔎 Controleer planning</button><button class="primary" onclick="runAIAndCheck()">🤖 AI plannen & controleren</button></div></div><div id="dashboard" class="grid" style="margin-top:12px"></div><div id="dayStartCheck"></div></div>
 
 <div class="card">
   <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
@@ -4470,7 +4470,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=890").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=891").catch(()=>{}));}
 </script>
 
 
