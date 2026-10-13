@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V886</title>
+<title>Taxi Planner V887</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -250,12 +250,22 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 .dashboard-metric-route{background:#eef6ff;border-color:#b9d6f3}
 .dashboard-metric-done{background:#eef8ef;border-color:#b8d8bc}
 .daystart-clickable{cursor:pointer;border-style:dashed}.daystart-clickable:hover,.daystart-clickable:focus{background:#eef6ff;border-color:#1769aa;outline:2px solid #b9d6f3}
+.priority-list-v887{margin:14px 0;padding:13px;border:1px solid #d9dee7;border-radius:12px;background:#fff}
+.priority-list-v887 h3{margin:0 0 10px}
+.priority-action-v887{width:100%;display:flex;align-items:center;gap:10px;text-align:left;margin:7px 0;padding:11px;border:1px solid #d9dee7;background:#fff;border-radius:10px;color:#18222d}
+.priority-action-v887:hover,.priority-action-v887:focus{background:#eef6ff;border-color:#1769aa;outline:2px solid #b9d6f3}
+.priority-number-v887{display:flex;align-items:center;justify-content:center;flex:0 0 30px;height:30px;border-radius:50%;background:#17324d;color:#fff;font-weight:800}
+.priority-copy-v887{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px}
+.priority-copy-v887 small{font-size:12px;color:#637080;white-space:normal}
+.priority-arrow-v887{font-size:12px;font-weight:700;color:#1769aa;white-space:nowrap}
+.priority-rank-1{border-left:4px solid #b42318}.priority-rank-2,.priority-rank-3{border-left:4px solid #d97706}.priority-rank-4,.priority-rank-5,.priority-rank-6,.priority-rank-7{border-left:4px solid #1769aa}
+.priority-all-clear-v887{padding:13px;border:1px solid #b8d8bc;border-radius:12px;background:#eef8ef}.priority-all-clear-v887 div{margin-top:4px;color:#42664a}
 </style>
 
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V886</h1>
+<h1>🚕 Taxi Planner V887</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1466,6 +1476,20 @@ async function runDayStartCheck(){
   const totalRouteIssues=routeProblems.length+longRoutes.length+deadlineProblems.length;
   const totalIssues=unavailable.length+broken.length+unassigned.length+overloaded.length+totalRouteIssues;
 
+  // V887: concrete actielijst, gesorteerd op urgentie.
+  const priorities=[];
+  broken.forEach(d=>priorities.push({rank:1,icon:'🚌',title:'Busstoring',detail:d+' · controleer vervanging',kind:'driver',value:d}));
+  unavailable.filter(d=>!broken.includes(d)).forEach(d=>priorities.push({rank:2,icon:'👨‍✈️',title:'Chauffeur niet beschikbaar',detail:d,kind:'driver',value:d}));
+  unassigned.forEach(k=>priorities.push({rank:3,icon:'⚠️',title:'Rit zonder chauffeur',detail:(k.name||'Naam onbekend')+' · '+(k.school||k.destination||'bestemming onbekend'),kind:'child',value:k.id}));
+  overloaded.forEach(d=>priorities.push({rank:4,icon:'🔴',title:'Bus boven capaciteit',detail:d+' · '+load(d)+'/'+MAX+' kinderen',kind:'driver',value:d}));
+  [...new Set(routeProblems)].forEach(d=>priorities.push({rank:5,icon:'🛣️',title:'Routeconflict',detail:d,kind:'driver',value:d}));
+  longRoutes.forEach(d=>{const di=driverNames.indexOf(d);const q=kids.filter(k=>k.driver===d&&active(k));priorities.push({rank:6,icon:'⏱️',title:'Route te lang',detail:d+' · '+Math.round(routeDurationEstimate(q,di))+' min',kind:'driver',value:d});});
+  [...new Map(deadlineProblems.map(k=>[k.id,k])).values()].forEach(k=>priorities.push({rank:7,icon:'🏫',title:'Schooldeadline controleren',detail:(k.name||'Naam onbekend')+' · '+(k.driver||'geen chauffeur'),kind:'child',value:k.id}));
+  priorities.sort((a,b)=>a.rank-b.rank||a.detail.localeCompare(b.detail,'nl'));
+  const priorityHtml=priorities.length
+    ? '<div class="priority-list-v887"><h3>🚦 Wat eerst aandacht nodig heeft</h3>'+priorities.map((p,i)=>'<button type="button" class="priority-action-v887 priority-rank-'+p.rank+'" data-priority-index="'+i+'"><span class="priority-number-v887">'+(i+1)+'</span><span class="priority-copy-v887"><b>'+p.icon+' '+p.title+'</b><small>'+p.detail+'</small></span><span class="priority-arrow-v887">Open ›</span></button>').join('')+'</div>'
+    : '<div class="priority-list-v887 priority-all-clear-v887"><b>✅ Geen open acties gevonden</b><div>De dagstartcontrole bevat momenteel geen aandachtspunten.</div></div>';
+
   const status=totalIssues?'daystart-warn':'daystart-ok';
 
   let summary='';
@@ -1512,9 +1536,25 @@ async function runDayStartCheck(){
       '<div class="daystart-stat '+(unassigned.length?'daystart-danger':'')+'"><b>'+unassigned.length+'</b><small>Zonder chauffeur</small></div>'+
       '<div class="daystart-stat '+(totalRouteIssues?'daystart-danger':'')+'"><b>'+totalRouteIssues+'</b><small>Routeproblemen</small></div>'+
     '</div>'+
+    priorityHtml+
     (summary||'<div class="daystart-item">✅ Geen problemen gevonden.</div>')+
     '<p class="small muted" style="margin-bottom:0">Details blijven beschikbaar in de planning per chauffeur.</p>'+
   '</div>';
+
+  // V887: koppel prioriteitsknoppen aan bestaande profiel- en chauffeurschermen.
+  box.querySelectorAll('.priority-action-v887').forEach(button=>{
+    button.addEventListener('click',()=>{
+      const p=priorities[Number(button.dataset.priorityIndex)];
+      if(!p)return;
+      if(p.kind==='child'){
+        const kid=find(p.value);
+        if(kid){editChild(kid.id);document.getElementById('modal')?.classList.remove('hidden');}
+      }else if(p.kind==='driver'){
+        showPage('planner',document.querySelector('nav .tab'));
+        openDriverDetails(p.value);
+      }
+    });
+  });
 
   // V885: maak bestaande detailregels veilig aanklikbaar via event listeners.
   // Geen inline onclick-HTML: zo blijft de rest van de planner intact.
