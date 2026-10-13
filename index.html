@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V885</title>
+<title>Taxi Planner V886</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -255,7 +255,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V885</h1>
+<h1>🚕 Taxi Planner V886</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1547,11 +1547,24 @@ function renderDashboard(){
  `<div class="dashboard-metric"><div class="stat">${activeDrivers}</div><div class="muted">Actieve chauffeurs</div></div>
  <div class="dashboard-metric"><div class="stat">${kids.length}</div><div class="muted">Kinderen vandaag</div></div>
  <div class="dashboard-metric"><div class="stat">${Math.max(...driverNames.map(load))}/${MAX}</div><div class="muted">Volste bus</div></div>
- <div class="dashboard-metric ${alerts?'dashboard-metric-warn':''}"><div class="stat">${alerts}</div><div class="muted">Open meldingen</div></div>
+ <div id="dashboardOpenAlerts" class="dashboard-metric ${alerts?'dashboard-metric-warn':''}"><div class="stat">${alerts}</div><div class="muted">Open meldingen</div></div>
  <div class="dashboard-metric dashboard-metric-wait"><div class="stat">${waiting}</div><div class="muted">Wachtend</div></div>
  <div class="dashboard-metric dashboard-metric-route"><div class="stat">${underway}</div><div class="muted">Onderweg</div></div>
  <div class="dashboard-metric dashboard-metric-done"><div class="stat">${school}</div><div class="muted">Op school</div></div>`;
 
+ const alertMetric=document.getElementById('dashboardOpenAlerts');
+ if(alertMetric){
+   alertMetric.style.cursor='pointer';
+   alertMetric.setAttribute('role','button');
+   alertMetric.setAttribute('tabindex','0');
+   alertMetric.setAttribute('title','Klik om de dagstartcontrole te openen');
+   const openAlerts=()=>{
+     runDayStartCheck();
+     setTimeout(()=>document.getElementById('dayStartCheck')?.scrollIntoView({behavior:'smooth',block:'start'}),50);
+   };
+   alertMetric.onclick=openAlerts;
+   alertMetric.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openAlerts();}};
+ }
  const q=(document.getElementById('driverSearch')?.value||'').toLowerCase();
  document.getElementById('driverList').innerHTML=driverNames.filter(d=>d.toLowerCase().includes(q)).map(d=>{
   const unavailable=isDriverUnavailable(d)||isBusUnavailable(d);
