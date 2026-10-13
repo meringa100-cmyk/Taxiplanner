@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V904</title>
+<title>Taxi Planner V905</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V904</h1>
+<h1>🚕 Taxi Planner V905</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1369,10 +1369,13 @@ function renderMorningCockpitV901(){
   const unavailable=driverNames.filter(d=>isDriverUnavailable(d));
   const broken=reportedBusIssueDrivers();
   const overloaded=driverNames.filter(d=>load(d)>MAX);
-  const brokenDetails=broken.map(d=>{const issue=busIssues[d]||{};const affected=kids.filter(k=>k.driver===d&&k.status!=='school'&&k.status!=='absent'&&k.status!=='loose');return {driver:d,bus:issue.bus||busForDriver(d),reason:issue.reason||'Storing gemeld',affected:affected.length,children:affected.map(k=>k.name||'Naam onbekend')};});
+  const brokenDetails=broken.map(d=>{
+    const issue=busIssues[d]||{};
+    const affected=kids.filter(k=>k.driver===d&&k.status!=='school'&&k.status!=='absent'&&k.status!=='loose');
+    return {driver:d,bus:issue.bus||busForDriver(d),reason:issue.reason||'Storing gemeld',affected:affected.length,children:affected.map(k=>k.name||'Naam onbekend')};
+  });
   let conflictCount=0;
-  const longRoutes=[];
-  const lateKids=[];
+  const longRoutes=[],lateKids=[];
   const conflictDrivers=new Set();
   driverNames.forEach((d,di)=>{
     const q=kids.filter(k=>k.driver===d&&active(k)).sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
@@ -1392,12 +1395,18 @@ function renderMorningCockpitV901(){
   const stats=[
     {icon:'👦',label:'Kinderen ingepland',value:assigned.length+'/'+activeKids.length,detail:unassigned.length?unassigned.length+' zonder chauffeur':'Alle actieve ritten toegewezen',bad:unassigned.length>0},
     {icon:'👨‍✈️',label:'Chauffeurs beschikbaar',value:availableDrivers.length+'/'+driverNames.length,detail:unavailable.length?unavailable.length+' niet beschikbaar':'Geen chauffeurs als afwezig gemeld',bad:unavailable.length>0},
-    {icon:'🚌',label:'Busstoringen',value:String(broken.length),detail:broken.length?broken.map(d=>busForDriver(d)).join(', '):'Geen storing gemeld',bad:broken.length>0},
+    {icon:'🚌',label:'Busstoringen',value:String(broken.length),detail:broken.length?broken.map(d=>busIssues[d]?.bus||busForDriver(d)).join(', '):'Geen storing gemeld',bad:broken.length>0},
     {icon:'🛣️',label:'Routes met aandacht',value:String(routeDrivers.size),detail:conflictCount+' tijdconflict(en) · '+longRoutes.length+' te lang · '+uniqueLate.length+' schooldeadlineprobleem/-problemen',bad:routeDrivers.size>0}
   ];
   const esc=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const breakdownPanel=brokenDetails.length
-    ? '<div style="margin-top:12px;padding:12px;border:1px solid #efb4b4;border-radius:11px;background:#fff5f5"><h3 style="margin:0 0 8px">🚌 Busstoringen — details</h3>'+brokenDetails.map(x=>'<div class="row" style="background:#fff;border-color:#efb4b4"><b>🚌 '+esc(x.bus)+'</b> · '+esc(x.driver)+'<div class="small muted" style="margin-top:4px">Storing: '+esc(x.reason)+'</div><div style="margin-top:4px"><b>'+x.affected+'</b> betrokken kind(eren)</div>'+(x.children.length?'<div class="small" style="margin-top:5px">Kinderen: '+x.children.map(esc).join(', ')+'</div>':'<div class="small muted" style="margin-top:5px">Geen actieve kinderen meer op deze bus; ritten zijn mogelijk al herverdeeld.</div>')+'<div class="small muted" style="margin-top:8px">Open het wagenpark hieronder voor de chauffeurdetails.</div>'+
+    ? '<div style="margin-top:12px;padding:12px;border:1px solid #efb4b4;border-radius:11px;background:#fff5f5"><h3 style="margin:0 0 8px">🚌 Busstoringen — details</h3>'+brokenDetails.map(x=>'<div class="row" style="background:#fff;border-color:#efb4b4"><b>🚌 '+esc(x.bus)+'</b> · '+esc(x.driver)+'<div class="small muted" style="margin-top:4px">Storing: '+esc(x.reason)+'</div><div style="margin-top:4px"><b>'+x.affected+'</b> betrokken kind(eren)</div>'+(x.children.length?'<div class="small" style="margin-top:5px">Kinderen: '+x.children.map(esc).join(', ')+'</div>':'<div class="small muted" style="margin-top:5px">Geen actieve kinderen meer op deze bus; ritten zijn mogelijk al herverdeeld.</div>')+'</div>').join('')+'</div>'
+    : '';
+  box.innerHTML='<div class="card" style="grid-column:1/-1;margin:0;padding:12px">'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap"><h3 style="margin:0">🌅 Ochtendcockpit</h3><span class="badge">'+(issueCount?'⚠ '+issueCount+' aandachtspunt(en)':'✓ Geen harde problemen gevonden')+'</span></div>'+
+    '<div class="grid" style="margin-top:10px">'+stats.map(x=>'<div class="row" style="margin:0;border-left:4px solid '+(x.bad?'#c62828':'#2e7d32')+'"><div style="font-size:1.15em">'+x.icon+' <b>'+x.value+'</b></div><div><b>'+x.label+'</b><div class="small muted">'+x.detail+'</div></div></div>').join('')+'</div>'+
+    breakdownPanel+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button type="button" onclick="runDayStartCheck();document.getElementById(\'dayStartCheck\').scrollIntoView({behavior:\'smooth\',block:\'start\'})">🔎 Bekijk volledige controle</button></div>'+
     '<p class="small muted" style="margin:8px 0 0">Berekend uit de huidige planning. Controleer de volledige dagstart voor vertrek; dit overzicht wijzigt zelf niets.</p></div>';
 }
 function renderAll(){saveState();renderMorningCockpitV901();renderDashboard();renderPlanning();renderDriver();renderParent();renderLive();renderDelayAlerts();updateParentDelayNotice();renderAttention();renderFleet();renderRouteControl();if(realMap)renderRealMapMarkers();}
@@ -4646,7 +4655,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=904").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=905").catch(()=>{}));}
 </script>
 
 
