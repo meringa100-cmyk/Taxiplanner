@@ -1589,7 +1589,7 @@ async function runDayStartCheck(){
 
   // V894: bereken een AI-voorstel tijdelijk en herstel de bestaande planning.
   // Alleen na expliciet akkoord wordt het voorstel opgeslagen.
-  window.__advisorProposalV894=null;
+  if(typeof window.__advisorProposalV894==='undefined')window.__advisorProposalV894=null;
   window.previewAdvisorPlanV894=function(){
     const btn=document.getElementById('advisorPreviewButtonV894');
     if(btn){btn.disabled=true;btn.textContent='⏳ Voorstel berekenen…';}
