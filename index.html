@@ -1499,10 +1499,53 @@ async function runDayStartCheck(){
     'Schooldeadline controleren':'Controleer de aankomsttijd en de route naar school; de deadline kan in gevaar zijn.'
   };
   const escapeAdvisorText=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  // V894: maak adviezen concreet met gegevens uit dezelfde dagstartcontrole.
+  // Alleen lezen: deze functie wijzigt geen ritten, chauffeurs of tijden.
+  const specificAdvisorAdvice=p=>{
+    if(p.title==='Busstoring'){
+      return 'Bus '+busForDriver(p.value)+' van '+p.value+' heeft een storing ('+(busIssues[p.value]?.reason||'reden niet ingevuld')+'). Bevestig eerst een vervangende bus en controleer daarna de ritten van deze chauffeur.';
+    }
+    if(p.title==='Chauffeur niet beschikbaar'){
+      return p.value+' is niet beschikbaar. Controleer eerst of een vervanger is toegewezen; controleer daarna de capaciteit en vertrektijden van de overgenomen ritten.';
+    }
+    if(p.title==='Rit zonder chauffeur'){
+      const child=kids.find(k=>k.id===p.value);
+      const candidates=child?driverNames.filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d)&&load(d)<MAX&&!driverTimeConflict(child,d)).slice(0,3):[];
+      return 'Deze rit heeft nog geen chauffeur. '+(candidates.length?'Mogelijke chauffeurs om als eerste te controleren: '+candidates.join(', ')+'. Dit zijn kandidaten; controleer ook de route en aankomsttijd.':'Er is geen directe kandidaat gevonden. Controleer beschikbare chauffeurs, bustoring en routeconflicten.')+' Wijs de rit pas toe na controle.';
+    }
+    if(p.title==='Bus boven capaciteit'){
+      return p.value+' heeft '+load(p.value)+' actieve kinderen bij een maximum van '+MAX+'. Verdeel minimaal '+(load(p.value)-MAX)+' rit(ten) naar beschikbare chauffeurs en controleer daarna opnieuw op tijdconflicten.';
+    }
+    if(p.title==='Routeconflict'){
+      const issue=routeConflictDetails.find(x=>x.driver===p.value);
+      if(issue){
+        const prevTime=issue.prev.time||fmtTime(issue.prev.timeMin||0);
+        const curTime=issue.cur.time||fmtTime(issue.cur.timeMin||0);
+        const required=Math.max(0,Math.ceil(issue.travel-15-issue.gap));
+        return p.value+': '+(issue.prev.name||'Vorige rit')+' ('+prevTime+') gevolgd door '+(issue.cur.name||'volgende rit')+' ('+curTime+'). Geschatte reistijd '+Math.round(issue.travel)+' min; geplande tussenruimte '+Math.round(issue.gap)+' min. Controleer een tijdsverschil van ongeveer '+required+' min of meer, of herverdeel één van de ritten.';
+      }
+      return 'Controleer de opeenvolgende ophaaltijden van '+p.value+' en vergelijk de tussenruimte met de geschatte reistijd. Pas de planning pas aan nadat de route is nagekeken.';
+    }
+    if(p.title==='Route te lang'){
+      const q=kids.filter(k=>k.driver===p.value&&active(k));
+      const minutes=Math.round(routeDurationEstimate(q,driverNames.indexOf(p.value)));
+      const limit=routeLimitForRides(q);
+      return p.value+' heeft een geschatte routetijd van '+minutes+' min bij een limiet van '+limit+' min ('+Math.max(0,minutes-limit)+' min te lang). Bekijk of een rit geografisch beter bij een andere beschikbare chauffeur past; controleer daarna reistijden en schooldeadline opnieuw.';
+    }
+    if(p.title==='Schooldeadline controleren'){
+      const child=kids.find(k=>k.id===p.value);
+      if(child){
+        const arrival=schoolArrivalMinutes(child);
+        const late=Math.max(0,arrival-SCHOOL_DEADLINE_MIN);
+        return (child.name||'Dit kind')+' heeft een geschatte aankomsttijd van '+fmtTime(arrival)+'. '+(late?'Dat is ongeveer '+late+' min na de deadline van 08:30.':'Controleer of de routeberekening en schoolbestemming kloppen.')+' Controleer de ophaaltijd, route naar school en eventuele andere stops.';
+      }
+    }
+    return advisorAdvice[p.title]||'Controleer dit punt in de planning voordat de rit wordt uitgevoerd.';
+  };
   const advisorItems=priorities.slice(0,5).map(p=>({
     title:p.title,
     detail:p.detail,
-    advice:advisorAdvice[p.title]||'Controleer dit punt in de planning voordat de rit wordt uitgevoerd.'
+    advice:specificAdvisorAdvice(p)
   }));
   const advisorHtml='<div class="priority-list-v887" style="margin-top:14px;border-top:1px solid var(--border,#d9dee7);padding-top:12px">'+
     '<h3>🧠 Slimme planningsadviseur</h3>'+
