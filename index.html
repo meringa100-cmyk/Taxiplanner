@@ -278,7 +278,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 
 <main>
 <section id="planner" class="page active"><div id="plannerDelayAlerts"></div>
-<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Planner Dashboard</h2><div class="actions"><button type="button" onclick="runDayStartCheck()">🔎 Controleer planning</button><button class="primary" onclick="runAIAndCheck()">🤖 AI plannen & controleren</button></div></div><div id="dashboard" class="grid" style="margin-top:12px"></div><div id="dayStartCheck"></div></div>
+<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Planner Dashboard</h2><div class="actions"><button type="button" id="runDayStartCheckButton">🔎 Controleer planning</button><button class="primary" onclick="runAIAndCheck()">🤖 AI plannen & controleren</button></div></div><div id="dashboard" class="grid" style="margin-top:12px"></div><div id="dayStartCheck"></div></div>
 
 <div class="card">
   <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
@@ -4470,8 +4470,32 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=884").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=888").catch(()=>{}));}
 </script>
 
+<script id="daystart-button-recovery-v888">
+(function(){
+  function bindDayStartButton(){
+    const button=document.getElementById("runDayStartCheckButton");
+    if(!button || button.dataset.boundV888==="1") return;
+    button.dataset.boundV888="1";
+    button.addEventListener("click",function(){
+      const box=document.getElementById("dayStartCheck");
+      if(box) box.innerHTML='<div class="daystart-result daystart-warn"><b>🔎 Dagstartcontrole gestart…</b></div>';
+      try{
+        if(typeof window.runDayStartCheck!=="function") throw new Error("De controlefunctie is niet geladen. Ververs de planner.");
+        Promise.resolve(window.runDayStartCheck()).catch(function(error){
+          if(box) box.innerHTML='<div class="daystart-result daystart-danger"><b>Controle mislukt</b><div>'+String(error&&error.message||error)+'</div></div>';
+          console.error("Dagstartcontrole mislukt",error);
+        });
+      }catch(error){
+        if(box) box.innerHTML='<div class="daystart-result daystart-danger"><b>Controle mislukt</b><div>'+String(error&&error.message||error)+'</div></div>';
+        console.error("Dagstartcontrole mislukt",error);
+      }
+    });
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",bindDayStartButton); else bindDayStartButton();
+})();
+</script>
 </body>
 </html>
