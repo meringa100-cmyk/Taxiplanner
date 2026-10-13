@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V901</title>
+<title>Taxi Planner V902</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V901</h1>
+<h1>🚕 Taxi Planner V902</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -793,6 +793,10 @@ function busForDriver(d){
   return i>=0 ? busNumbers[i] : 'Geen bus';
 }
 function isBusUnavailable(d){return !!busIssues[d];}
+function reportedBusIssueDrivers(){
+  // Eén bron voor cockpit, dagstart en wagenpark; neem ook opgeslagen meldingen mee.
+  return [...new Set([...driverNames.filter(d=>isBusUnavailable(d)),...Object.keys(busIssues||{}).filter(d=>!!busIssues[d])])];
+}
 
 let driverUnavailable={};
 let parentDriverChanges={};
@@ -1363,7 +1367,7 @@ function renderMorningCockpitV901(){
   const unassigned=activeKids.filter(k=>!k.driver);
   const availableDrivers=driverNames.filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d));
   const unavailable=driverNames.filter(d=>isDriverUnavailable(d));
-  const broken=driverNames.filter(d=>isBusUnavailable(d));
+  const broken=reportedBusIssueDrivers();
   const overloaded=driverNames.filter(d=>load(d)>MAX);
   let conflictCount=0;
   const longRoutes=[];
@@ -1405,7 +1409,7 @@ function renderFleet(){
   const list=document.getElementById('fleetList');
   if(!summary || !list) return;
 
-  const broken=driverNames.filter(d=>isBusUnavailable(d)).length;
+  const broken=reportedBusIssueDrivers().length;
   const available=busNumbers.length-broken;
 
   summary.innerHTML=
@@ -3944,6 +3948,7 @@ function reportBusIssue(d){
 async function saveBusIssue(d,reason){
   const bus=busForDriver(d);
   busIssues[d]={reason:reason,at:Date.now(),bus:bus};
+  saveState(); // Bewaar de storingsmelding vóór de asynchrone herverdeling.
 
   // Bus kapot = chauffeur kan de route niet meer uitvoeren.
   // Verdeel daarom direct ALLE actieve kinderen, ook vaste chauffeurrelaties.
@@ -4642,7 +4647,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=901").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=902").catch(()=>{}));}
 </script>
 
 
