@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V900</title>
+<title>Taxi Planner V901</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V900</h1>
+<h1>🚕 Taxi Planner V901</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -278,7 +278,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 
 <main>
 <section id="planner" class="page active"><div id="plannerDelayAlerts"></div>
-<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Planner Dashboard</h2><div class="actions"><button class="primary" onclick="runAIAndCheck()">🤖 AI plannen & controleren</button><button type="button" id="runDayStartCheckButton" onclick="runDayStartCheck(); document.getElementById('dayStartCheck').scrollIntoView({behavior:'smooth',block:'start'})">🔎 Controleer planning</button></div></div><div id="dashboard" class="grid" style="margin-top:12px"></div><div id="dayStartCheck"></div></div>
+<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Planner Dashboard</h2><div class="actions"><button class="primary" onclick="runAIAndCheck()">🤖 AI plannen & controleren</button><button type="button" id="runDayStartCheckButton" onclick="runDayStartCheck(); document.getElementById('dayStartCheck').scrollIntoView({behavior:'smooth',block:'start'})">🔎 Controleer planning</button></div></div><div id="morningCockpitV901" class="grid" style="margin-top:12px"></div><div id="dashboard" class="grid" style="margin-top:12px"></div><div id="dayStartCheck"></div></div>
 
 <div class="card">
   <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
@@ -1354,7 +1354,50 @@ function renderRouteControl(){
  }).join('');
  box.innerHTML='<div class="small muted" style="margin-bottom:8px">⏱️ Route-limiet: normaal maximaal <b>90 minuten</b>; bij gecombineerde scholen maximaal <b>99 minuten</b>. AI mag kinderen tussen chauffeurs verplaatsen als dat nodig is.</div>'+(rows||'<p class="muted">Nog geen actieve routes.</p>');
 }
-function renderAll(){saveState();renderDashboard();renderPlanning();renderDriver();renderParent();renderLive();renderDelayAlerts();updateParentDelayNotice();renderAttention();renderFleet();renderRouteControl();if(realMap)renderRealMapMarkers();}
+
+function renderMorningCockpitV901(){
+  const box=document.getElementById('morningCockpitV901');
+  if(!box)return;
+  const activeKids=kids.filter(k=>active(k));
+  const assigned=activeKids.filter(k=>!!k.driver);
+  const unassigned=activeKids.filter(k=>!k.driver);
+  const availableDrivers=driverNames.filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d));
+  const unavailable=driverNames.filter(d=>isDriverUnavailable(d));
+  const broken=driverNames.filter(d=>isBusUnavailable(d));
+  const overloaded=driverNames.filter(d=>load(d)>MAX);
+  let conflictCount=0;
+  const longRoutes=[];
+  const lateKids=[];
+  const conflictDrivers=new Set();
+  driverNames.forEach((d,di)=>{
+    const q=kids.filter(k=>k.driver===d&&active(k)).sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+    if(!q.length)return;
+    const duration=routeDurationEstimate(q,di);
+    if(Number.isFinite(duration)&&duration>routeLimitForRides(q))longRoutes.push(d);
+    q.forEach(k=>{if(!schoolDeadlineOk(k))lateKids.push(k);});
+    for(let j=1;j<q.length;j++){
+      const gap=(q[j].timeMin||0)-(q[j-1].timeMin||0);
+      const travel=routeMinutesBetween(q[j-1],q[j],di);
+      if(gap===0||(gap>=0&&travel>gap+15)){conflictCount++;conflictDrivers.add(d);}
+    }
+  });
+  const uniqueLate=[...new Map(lateKids.map(k=>[k.id,k])).values()];
+  const issueCount=unassigned.length+unavailable.length+broken.length+overloaded.length+conflictCount+longRoutes.length+uniqueLate.length;
+  const routeDrivers=new Set([...conflictDrivers,...longRoutes,...uniqueLate.map(k=>k.driver).filter(Boolean)]);
+  const stats=[
+    {icon:'👦',label:'Kinderen ingepland',value:assigned.length+'/'+activeKids.length,detail:unassigned.length?unassigned.length+' zonder chauffeur':'Alle actieve ritten toegewezen',bad:unassigned.length>0},
+    {icon:'👨‍✈️',label:'Chauffeurs beschikbaar',value:availableDrivers.length+'/'+driverNames.length,detail:unavailable.length?unavailable.length+' niet beschikbaar':'Geen chauffeurs als afwezig gemeld',bad:unavailable.length>0},
+    {icon:'🚌',label:'Busstoringen',value:String(broken.length),detail:broken.length?broken.map(d=>busForDriver(d)).join(', '):'Geen storing gemeld',bad:broken.length>0},
+    {icon:'🛣️',label:'Routes met aandacht',value:String(routeDrivers.size),detail:conflictCount+' tijdconflict(en) · '+longRoutes.length+' te lang · '+uniqueLate.length+' schooldeadlineprobleem/-problemen',bad:routeDrivers.size>0}
+  ];
+  box.innerHTML='<div class="card" style="grid-column:1/-1;margin:0;padding:12px">'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap"><h3 style="margin:0">🌅 Ochtendcockpit</h3><span class="badge">'+(issueCount?'⚠ '+issueCount+' aandachtspunt(en)':'✓ Geen harde problemen gevonden')+'</span></div>'+
+    '<div class="grid" style="margin-top:10px">'+stats.map(x=>'<div class="row" style="margin:0;border-left:4px solid '+(x.bad?'#c62828':'#2e7d32')+'"><div style="font-size:1.15em">'+x.icon+' <b>'+x.value+'</b></div><div><b>'+x.label+'</b><div class="small muted">'+x.detail+'</div></div></div>').join('')+'</div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button type="button" onclick="runDayStartCheck();document.getElementById(\'dayStartCheck\')?.scrollIntoView({behavior:\'smooth\',block:\'start\'})">🔎 Bekijk volledige controle</button></div>'+
+    '<p class="small muted" style="margin:8px 0 0">Berekend uit de huidige planning. Controleer de volledige dagstart voor vertrek; dit overzicht wijzigt zelf niets.</p></div>';
+}
+
+function renderAll(){saveState();renderMorningCockpitV901();renderDashboard();renderPlanning();renderDriver();renderParent();renderLive();renderDelayAlerts();updateParentDelayNotice();renderAttention();renderFleet();renderRouteControl();if(realMap)renderRealMapMarkers();}
 
 
 function renderFleet(){
@@ -4599,7 +4642,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=900").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=901").catch(()=>{}));}
 </script>
 
 
