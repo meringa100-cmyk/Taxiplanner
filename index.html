@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V908</title>
+<title>Taxi Planner V909</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V908</h1>
+<h1>🚕 Taxi Planner V909</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1409,6 +1409,9 @@ function renderMorningCockpitV901(){
   longRoutes.forEach(d=>quickActions.push({rank:6,icon:'⏱️',title:'Route te lang',detail:d+' · geschatte duur controleren'}));
   uniqueLate.forEach(k=>quickActions.push({rank:7,icon:'🏫',title:'Schooldeadline controleren',detail:(k.name||'Naam onbekend')+' · '+(k.driver||'geen chauffeur')}));
   quickActions.sort((a,b)=>a.rank-b.rank||a.detail.localeCompare(b.detail,'nl'));
+  const readinessHtml=issueCount===0
+    ? '<div style="margin-top:12px;padding:14px;border:1px solid #b8d8bc;border-radius:12px;background:#eef8ef;color:#21652b"><div style="font-size:18px;font-weight:800">✅ Alles onder controle</div><div style="margin-top:4px">De bekende automatische controles melden geen open problemen.</div><div class="small" style="margin-top:5px;color:#42664a">Controleer voor vertrek ook actuele aanwezigheid, adressen, verkeer en eventuele nieuwe meldingen.</div></div>'
+    : '<div style="margin-top:12px;padding:14px;border:1px solid #e6c96a;border-radius:12px;background:#fff7df;color:#755600"><div style="font-size:18px;font-weight:800">⚠️ Nog niet alles onder controle</div><div style="margin-top:4px">'+issueCount+' aandachtspunt(en) gevonden. Bekijk eerst de actielijst hieronder en voer daarna de volledige controle opnieuw uit.</div><div class="small" style="margin-top:5px">Dit is een controlehulp op basis van de beschikbare planningsgegevens, geen garantie voor de werkelijke verkeerssituatie.</div></div>';
   const quickActionsHtml=quickActions.length
     ? '<div style="margin-top:12px;padding:12px;border:1px solid #d9dee7;border-radius:11px;background:#fff"><h3 style="margin:0 0 6px">🚦 Eerst aanpakken</h3><p class="small muted" style="margin:0 0 8px">De belangrijkste open punten staan bovenaan. Tik op een punt om de volledige controle te openen. Er wordt niets automatisch gewijzigd.</p>'+quickActions.slice(0,4).map((x,i)=>'<button type="button" class="priority-action-v887 priority-rank-'+x.rank+'" style="width:100%" onclick="runDayStartCheck()"><span class="priority-number-v887">'+(i+1)+'</span><span class="priority-copy-v887"><b>'+x.icon+' '+esc(x.title)+'</b><small>'+esc(x.detail)+'</small></span><span class="priority-arrow-v887">Controleer ›</span></button>').join('')+(quickActions.length>4?'<div class="small muted">+'+(quickActions.length-4)+' overige aandachtspunten staan in de volledige controle.</div>':'')+'</div>'
     : '<div class="priority-all-clear-v887" style="margin-top:12px"><b>✅ Geen open acties gevonden</b><div>De cockpit ziet geen bekende urgente problemen.</div></div>';
@@ -1417,6 +1420,7 @@ function renderMorningCockpitV901(){
     : '';
   box.innerHTML='<div class="card" style="grid-column:1/-1;margin:0;padding:12px">'+
     '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap"><h3 style="margin:0">🌅 Ochtendcockpit</h3><span class="badge">'+(issueCount?'⚠ '+issueCount+' aandachtspunt(en)':'✓ Geen harde problemen gevonden')+'</span></div>'+
+    readinessHtml+
     '<div class="grid" style="margin-top:10px">'+stats.map(x=>'<div class="row" style="margin:0;border-left:4px solid '+(x.bad?'#c62828':'#2e7d32')+'"><div style="font-size:1.15em">'+x.icon+' <b>'+x.value+'</b></div><div><b>'+x.label+'</b><div class="small muted">'+x.detail+'</div></div></div>').join('')+'</div>'+
     quickActionsHtml+
     breakdownPanel+
@@ -4669,7 +4673,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=908").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=909").catch(()=>{}));}
 </script>
 
 
