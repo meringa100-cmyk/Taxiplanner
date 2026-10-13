@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V905</title>
+<title>Taxi Planner V906</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V905</h1>
+<h1>🚕 Taxi Planner V906</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1450,7 +1450,7 @@ function renderAttention(){
  const delays=kids.filter(k=>Number(k.delay)>0&&active(k));
  const absentKids=kids.filter(k=>k.status==='absent');
  const looseKids=kids.filter(k=>k.status==='loose');
- const brokenDrivers=driverNames.filter(d=>isBusUnavailable(d));
+ const brokenDrivers=reportedBusIssueDrivers();
  const unavailableDrivers=driverNames.filter(d=>isDriverUnavailable(d));
  const fullDrivers=driverNames.filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d)&&load(d)>=MAX);
  const unassignedKids=kids.filter(k=>!k.driver&&active(k));
@@ -1492,7 +1492,7 @@ async function runDayStartCheck(){
   box.innerHTML='<div class="daystart-result daystart-warn"><b>🔎 Dagstartcontrole…</b></div>';
 
   const unavailable=driverNames.filter(d=>isDriverUnavailable(d));
-  const broken=driverNames.filter(d=>isBusUnavailable(d));
+  const broken=reportedBusIssueDrivers();
   const unassigned=kids.filter(k=>active(k)&&!k.driver);
   const overloaded=driverNames.filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d)&&load(d)>MAX);
   const routeProblems=[];
@@ -4655,7 +4655,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=905").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=906").catch(()=>{}));}
 </script>
 
 
