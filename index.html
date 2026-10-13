@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V890</title>
+<title>Taxi Planner V894</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V893</h1>
+<h1>🚕 Taxi Planner V894</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -278,7 +278,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 
 <main>
 <section id="planner" class="page active"><div id="plannerDelayAlerts"></div>
-<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Planner Dashboard</h2><div class="actions"><button class="primary" onclick="runAIAndCheck()">🤖 AI plannen & controleren</button></div></div><div id="dashboard" class="grid" style="margin-top:12px"></div><div id="dayStartCheck"></div></div>
+<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Planner Dashboard</h2><div class="actions"><button class="primary" onclick="runAIAndCheck()">🤖 AI plannen & controleren</button><button type="button" onclick="previewPlanningProposalV894()">🧪 Voorstel bekijken</button></div></div><div id="dashboard" class="grid" style="margin-top:12px"></div><div id="proposalPanelV894"></div><div id="dayStartCheck"></div></div>
 
 <div class="card">
   <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
@@ -4497,7 +4497,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=893").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=894").catch(()=>{}));}
 </script>
 
 
@@ -4518,5 +4518,96 @@ window.runDayStartCheckV890 = async function(){
   }
 };
 </script>
+
+<script id="planning-proposal-v894">
+(function(){
+  let pendingProposal=null;
+  let pendingBaseline=null;
+  const panel=()=>document.getElementById("proposalPanelV894");
+  const escapeText=value=>String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+  const scoreLine=(label,value)=>'<div style="padding:4px 0">'+label+': <b>'+escapeText(value)+'</b></div>';
+  const scoreHtml=score=>'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px;margin-top:8px">'+
+    scoreLine("Chauffeurs ingezet",score.used)+
+    scoreLine("Routes te lang",score.longRoutes)+
+    scoreLine("Tijdconflicten",score.conflicts)+
+    scoreLine("Schooldeadline-problemen",score.deadlineLate)+
+    scoreLine("Ritten zonder chauffeur",score.unassigned)+
+    scoreLine("Bussen boven capaciteit",score.overloaded)+'</div>';
+  function showMessage(html){
+    const box=panel();
+    if(box)box.innerHTML='<div class="card" style="margin-top:12px;border:1px solid #d9dee7"><h3 style="margin-top:0">🧪 Veilig planningsvoorstel</h3>'+html+'</div>';
+  }
+  window.previewPlanningProposalV894=async function(){
+    const box=panel();
+    if(!box)return;
+    if(typeof runAI!=="function"||typeof optimizeAllRoutes!=="function"||typeof planningScore!=="function"){
+      showMessage('<p>De voorstelcontrole is niet beschikbaar. De bestaande planning is niet gewijzigd.</p>');return;
+    }
+    const baseline=JSON.stringify(kids);
+    const originalKids=JSON.parse(baseline);
+    const originalPreviousPlan=typeof previousPlan==="undefined"?null:JSON.parse(JSON.stringify(previousPlan));
+    const originalSpreadLock=typeof demoPlanningSpreadLocked==="undefined"?null:demoPlanningSpreadLocked;
+    const originalRenderAll=renderAll;
+    const originalSaveState=saveState;
+    const originalAlert=window.alert;
+    showMessage('<p>⏳ Ik bereken een proefplanning. Je huidige planning blijft behouden totdat je zelf akkoord geeft.</p>');
+    try{
+      renderAll=function(){};
+      saveState=function(){};
+      window.alert=function(){};
+      runAI(true);
+      await optimizeAllRoutes();
+      const candidate=JSON.parse(JSON.stringify(kids));
+      const candidateScore=planningScore();
+      const baselineScore=(()=>{kids=JSON.parse(baseline);const result=planningScore();kids=JSON.parse(JSON.stringify(candidate));return result;})();
+      pendingProposal=candidate;
+      pendingBaseline=baseline;
+      kids=originalKids;
+      if(typeof previousPlan!=="undefined"&&originalPreviousPlan!==null)previousPlan=originalPreviousPlan;
+      if(typeof demoPlanningSpreadLocked!=="undefined"&&originalSpreadLock!==null)demoPlanningSpreadLocked=originalSpreadLock;
+      renderAll=originalRenderAll;
+      saveState=originalSaveState;
+      window.alert=originalAlert;
+      renderAll();
+      const better=candidateScore.score<=baselineScore.score;
+      const delta= Math.round((baselineScore.score-candidateScore.score)*10)/10;
+      showMessage('<p>De proefplanning is berekend zonder je huidige planning op te slaan.</p>'+
+        '<b>Huidige planning</b>'+scoreHtml(baselineScore)+
+        '<b style="display:block;margin-top:12px">Voorgestelde planning</b>'+scoreHtml(candidateScore)+
+        '<p style="margin-top:10px">'+(better?(delta>0?'✅ De totaalscore verbetert met '+escapeText(delta)+' punten.':'ℹ️ De totaalscore wordt niet slechter.'):'⚠️ De voorgestelde planning scoort slechter. Je kunt deze niet overnemen.')+'</p>'+
+        (better?'<div class="actions"><button class="primary" type="button" onclick="acceptPlanningProposalV894()">✅ Voorstel overnemen</button><button type="button" onclick="rejectPlanningProposalV894()">❌ Afwijzen</button></div>':'<button type="button" onclick="rejectPlanningProposalV894()">Voorstel sluiten</button>'));
+      if(!better)pendingProposal=null;
+    }catch(error){
+      kids=originalKids;
+      if(typeof previousPlan!=="undefined"&&originalPreviousPlan!==null)previousPlan=originalPreviousPlan;
+      if(typeof demoPlanningSpreadLocked!=="undefined"&&originalSpreadLock!==null)demoPlanningSpreadLocked=originalSpreadLock;
+      renderAll=originalRenderAll;
+      saveState=originalSaveState;
+      window.alert=originalAlert;
+      renderAll();
+      pendingProposal=null;
+      showMessage('<p>De proefplanning kon niet veilig worden berekend. Je bestaande planning is hersteld en niet vervangen.</p><p class="small muted">'+escapeText(error&&error.message||error)+'</p>');
+      console.error("Taxi Planner voorstel V894",error);
+    }
+  };
+  window.acceptPlanningProposalV894=function(){
+    if(!pendingProposal||!pendingBaseline){showMessage('<p>Er staat geen voorstel klaar.</p>');return;}
+    if(JSON.stringify(kids)!==pendingBaseline){
+      pendingProposal=null;pendingBaseline=null;
+      showMessage('<p>Je planning is tussentijds veranderd. Om te voorkomen dat nieuwe wijzigingen verloren gaan, is het voorstel vervallen. Bereken het opnieuw.</p>');return;
+    }
+    kids=JSON.parse(JSON.stringify(pendingProposal));
+    pendingProposal=null;pendingBaseline=null;
+    if(typeof previousPlan!=="undefined")previousPlan=kids.map(k=>({id:k.id,driver:k.driver,fixed:k.fixed,status:k.status}));
+    saveState();renderAll();
+    showMessage('<p>✅ Het voorstel is overgenomen. De planning is opgeslagen. Controleer de dagstart en routes nog even.</p><button type="button" onclick="runDayStartCheck()">🔎 Controleer planning</button>');
+  };
+  window.rejectPlanningProposalV894=function(){
+    pendingProposal=null;pendingBaseline=null;
+    showMessage('<p>Voorstel afgewezen. Je bestaande planning is ongewijzigd gebleven.</p>');
+  };
+})();
+</script>
+
 </body>
 </html>
