@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V899</title>
+<title>Taxi Planner V900</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V899</h1>
+<h1>🚕 Taxi Planner V900</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1559,6 +1559,20 @@ async function runDayStartCheck(){
     ? '<div class="priority-list-v887"><h3>🚦 Wat eerst aandacht nodig heeft</h3>'+priorities.map((p,i)=>'<button type="button" class="priority-action-v887 priority-rank-'+p.rank+'" data-priority-index="'+i+'"><span class="priority-number-v887">'+(i+1)+'</span><span class="priority-copy-v887"><b>'+p.icon+' '+p.title+'</b><small>'+p.detail+'</small></span><span class="priority-arrow-v887">Open ›</span></button>').join('')+'</div>'
     : '<div class="priority-list-v887 priority-all-clear-v887"><b>✅ Geen open acties gevonden</b><div>De dagstartcontrole bevat momenteel geen aandachtspunten.</div></div>';
 
+  // V900: vertrekgereed-check. Alleen een samenvatting van de bestaande controles;
+  // deze sectie verandert zelf geen chauffeurs, ritten of tijden.
+  const readinessRow=(icon,label,count,detail)=>'<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border,#e1e5eb)"><span>'+icon+'</span><div style="flex:1"><b>'+escapeAdvisorText(label)+'</b><div class="small muted">'+escapeAdvisorText(detail)+'</div></div><b style="white-space:nowrap;color:'+(count?'#b42318':'#16803d')+'">'+(count?'⚠ '+count:'✓ OK')+'</b></div>';
+  const departureCheckHtml='<div class="daystart-result '+(totalIssues?'daystart-warn':'daystart-ok')+'" style="margin:12px 0">'+
+    '<h3 style="margin:0 0 4px">🚌 Vertrekgereed-check</h3>'+
+    '<p class="small muted" style="margin:0 0 8px">'+(totalIssues?'Controleer de aandachtspunten hieronder voordat de routes vertrekken.':'Geen harde planningsproblemen gevonden. Controleer ook aanwezigheid, voertuig en actuele verkeerssituatie.')+'</p>'+
+    readinessRow('👨‍✈️','Chauffeurs beschikbaar',unavailable.length,unavailable.length?unavailable.join(', '):'Alle chauffeurs zijn als beschikbaar geregistreerd.')+
+    readinessRow('🚌','Bussen beschikbaar',broken.length,broken.length?broken.map(d=>busForDriver(d)+' · '+d).join(', '):'Geen gemelde busstoringen.')+
+    readinessRow('👦','Ritten toegewezen',unassigned.length,unassigned.length?unassigned.map(k=>(k.name||'Naam onbekend')+' · zonder chauffeur').join(', '):'Alle actieve ritten hebben een chauffeur.')+
+    readinessRow('👥','Capaciteit',overloaded.length,overloaded.length?overloaded.map(d=>d+' · '+load(d)+'/'+MAX+' kinderen').join(', '):'Geen beschikbare chauffeur boven de capaciteit.')+
+    readinessRow('🛣️','Route en schooltijd',totalRouteIssues,totalRouteIssues?routeProblems.length+' tijdconflict(en), '+longRoutes.length+' te lange route(s), '+deadlineProblems.length+' mogelijke schooldeadline-probleem/-problemen.':'Geen routeconflicten, te lange routes of gemiste schooldeadlines gevonden.')+
+    '<p class="small muted" style="margin:8px 0 0">Dit is een berekende planningscontrole, geen bevestiging van werkelijke aanwezigheid, voertuigveiligheid of live verkeer. Er wordt niets automatisch aangepast.</p>'+
+    '</div>';
+
   const status=totalIssues?'daystart-warn':'daystart-ok';
 
   let summary='';
@@ -1605,6 +1619,7 @@ async function runDayStartCheck(){
       '<div class="daystart-stat '+(unassigned.length?'daystart-danger':'')+'"><b>'+unassigned.length+'</b><small>Zonder chauffeur</small></div>'+
       '<div class="daystart-stat '+(totalRouteIssues?'daystart-danger':'')+'"><b>'+totalRouteIssues+'</b><small>Routeproblemen</small></div>'+
     '</div>'+
+    departureCheckHtml+
     priorityHtml+
     advisorHtml+
     '<div id="routeFocusV895" style="margin-top:14px"></div>'+
@@ -4584,7 +4599,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=899").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=900").catch(()=>{}));}
 </script>
 
 
