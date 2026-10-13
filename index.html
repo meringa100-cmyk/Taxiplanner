@@ -1583,6 +1583,80 @@ async function runDayStartCheck(){
     });
   });
 
+
+  const previewButtonV894=document.getElementById('advisorPreviewButtonV894');
+  if(previewButtonV894)previewButtonV894.addEventListener('click',previewAdvisorPlanV894);
+
+  // V894: bereken een AI-voorstel tijdelijk en herstel de bestaande planning.
+  // Alleen na expliciet akkoord wordt het voorstel opgeslagen.
+  window.__advisorProposalV894=null;
+  window.previewAdvisorPlanV894=function(){
+    const btn=document.getElementById('advisorPreviewButtonV894');
+    if(btn){btn.disabled=true;btn.textContent='⏳ Voorstel berekenen…';}
+    const original=JSON.parse(JSON.stringify(kids));
+    const scoreBefore=planningScore();
+    const lockBefore=demoPlanningSpreadLocked;
+    const previousBefore=typeof previousPlan!=='undefined'?JSON.parse(JSON.stringify(previousPlan)):null;
+    const hardBefore=typeof demoHardPlanVersion!=='undefined'?demoHardPlanVersion:null;
+    try{
+      runAI(true);
+      window.__advisorProposalV894={
+        base:original,
+        candidate:JSON.parse(JSON.stringify(kids)),
+        before:scoreBefore,
+        after:planningScore(),
+        lockAfter:demoPlanningSpreadLocked
+      };
+    }catch(err){
+      window.__advisorProposalV894=null;
+    }
+    kids=original;
+    demoPlanningSpreadLocked=lockBefore;
+    if(typeof previousPlan!=='undefined'&&previousBefore)previousPlan=previousBefore;
+    if(typeof demoHardPlanVersion!=='undefined'&&hardBefore!==null)demoHardPlanVersion=hardBefore;
+    saveState();renderAll();runDayStartCheck();
+    const panel=document.getElementById('advisorProposalBoxV894');
+    const proposal=window.__advisorProposalV894;
+    if(!panel)return;
+    if(!proposal){
+      panel.innerHTML='<div class="daystart-item">⚠️ Voorstel kon niet worden berekend. De oorspronkelijke planning is behouden.</div>';
+    }else{
+      const good=proposal.after.score<=proposal.before.score;
+      panel.innerHTML='<div class="daystart-result '+(good?'daystart-ok':'daystart-warn')+'" style="margin-top:10px"><b>🧪 Voorstel — '+(good?'geen slechtere totaalscore':'niet beter dan de huidige planning')+'</b>'+
+        '<div>Score: '+Math.round(proposal.before.score)+' → '+Math.round(proposal.after.score)+'</div>'+
+        '<div>Te lange routes: '+proposal.before.longRoutes+' → '+proposal.after.longRoutes+' · Tijdconflicten: '+proposal.before.conflicts+' → '+proposal.after.conflicts+'</div>'+
+        '<div>Schooldeadlineproblemen: '+proposal.before.deadlineLate+' → '+proposal.after.deadlineLate+' · Zonder chauffeur: '+proposal.before.unassigned+' → '+proposal.after.unassigned+' · Overvolle bussen: '+proposal.before.overloaded+' → '+proposal.after.overloaded+'</div>'+
+        '<p class="small muted">De bestaande planning is nog niet gewijzigd.</p>'+
+        (good?'<button type="button" id="advisorAcceptV894">✅ Voorstel accepteren</button> ':'')+
+        '<button type="button" id="advisorRejectV894">↩️ Voorstel verwerpen</button></div>';
+      document.getElementById('advisorAcceptV894')?.addEventListener('click',acceptAdvisorPlanV894);
+      document.getElementById('advisorRejectV894')?.addEventListener('click',rejectAdvisorPlanV894);
+    }
+    if(btn){btn.disabled=false;btn.textContent='🧪 Opnieuw berekenen';}
+  };
+  window.acceptAdvisorPlanV894=function(){
+    const p=window.__advisorProposalV894;
+    if(!p)return;
+    if(JSON.stringify(kids)!==JSON.stringify(p.base)){
+      window.__advisorProposalV894=null;
+      const panel=document.getElementById('advisorProposalBoxV894');
+      if(panel)panel.innerHTML='<div class="daystart-item">⚠️ De planning is intussen veranderd. Bereken eerst een nieuw voorstel.</div>';
+      return;
+    }
+    if(p.after.score>p.before.score){rejectAdvisorPlanV894();return;}
+    kids=JSON.parse(JSON.stringify(p.candidate));
+    demoPlanningSpreadLocked=p.lockAfter;
+    window.__advisorProposalV894=null;
+    saveState();renderAll();runDayStartCheck();
+    const panel=document.getElementById('advisorProposalBoxV894');
+    if(panel)panel.innerHTML='<div class="daystart-item">✅ Voorstel geaccepteerd en opgeslagen. Controleer de planning nog even.</div>';
+  };
+  window.rejectAdvisorPlanV894=function(){
+    window.__advisorProposalV894=null;
+    const panel=document.getElementById('advisorProposalBoxV894');
+    if(panel)panel.innerHTML='<div class="daystart-item">↩️ Voorstel verworpen. De oorspronkelijke planning blijft behouden.</div>';
+  };
+
   // V885: maak bestaande detailregels veilig aanklikbaar via event listeners.
   // Geen inline onclick-HTML: zo blijft de rest van de planner intact.
   box.querySelectorAll('.daystart-item.daystart-detail').forEach(item=>{
