@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V898</title>
+<title>Taxi Planner V899</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V898</h1>
+<h1>🚕 Taxi Planner V899</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -2111,16 +2111,7 @@ const realRoadPoints=[
   [6.8500,52.7850],[6.9200,52.7500]
 ];
 
-function coordForDriverStop(driverIndex, stopIndex){
-  const d=driverNames[driverIndex];
-  const rides=kids.filter(k=>k.driver===d && active(k)).sort((a,b)=>{
-    const ao=Number.isFinite(a.routeOrder)?a.routeOrder:9999;
-    const bo=Number.isFinite(b.routeOrder)?b.routeOrder:9999;
-    return ao-bo || a.timeMin-b.timeMin;
-  });
-  const k=rides[stopIndex];
-  return coordForKid(k,driverIndex,stopIndex);
-}
+
 
 function coordForKid(k, driverIndex, stopIndex){
   // V868: in de ingebouwde DEMO houden we ritten zichtbaar met een
@@ -2734,21 +2725,7 @@ function aiTimeClash(driver,kid){
   return kids.filter(k=>k.driver===driver && active(k) &&
     aiTimeDistance(k,kid)<=20).length;
 }
-function aiScore(driver,kid,loads){
-  const sameSchool=aiSchoolCount(driver,kid);
-  const sameStreet=aiSameStreetCount(driver,kid);
-  const clashes=aiTimeClash(driver,kid);
-  const spread=aiRouteSpread(driver,kid);
-  const currentLoad=loads[driver]||0;
 
-  // Lagere score is beter. Capaciteit en beschikbaarheid worden al vooraf afgedwongen.
-  // Vaste ritten tellen zwaar mee: de AI probeert bestaande vaste combinaties niet te verstoren.
-  return currentLoad*35
-    + clashes*28
-    + spread/8
-    - sameSchool*18
-    - sameStreet*10;
-}
 
 function demoGroupValid(group){
   if(!group || !group.length || group.length>MAX)return false;
@@ -3481,11 +3458,7 @@ function runAI(silent=false){
     loads[d]=planned[d].length;
   });
 
-  function groupSchool(group,k){
-    if(!group.length)return true;
-    const s=group[0].school||group[0].destination||'';
-    return (k.school||k.destination||'')===s;
-  }
+  
 
   function feasibleGroup(group,d){
     if(!group.length)return true;
@@ -4611,7 +4584,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=898").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=899").catch(()=>{}));}
 </script>
 
 
