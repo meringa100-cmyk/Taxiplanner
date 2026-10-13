@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V897</title>
+<title>Taxi Planner V898</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V897</h1>
+<h1>🚕 Taxi Planner V898</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1879,7 +1879,7 @@ function renderDriver(){
    document.getElementById('driverRides').innerHTML=`<div class="driver-mode-v71">
     <h3 style="margin:0">🚕 Chauffeurmodus</h3>
     <div class="driver-status-v71"><span>👨‍✈️ ${d}</span><span>🚌 ${busForDriver(d)}</span><span>👦 ${load(d)}/8</span></div>
-   <div id="driverGpsStatus" class="small muted" style="margin:8px 0">📍 GPS nog niet gestart</div>
+   <div id="driverGpsStatusInline" class="small muted" style="margin:8px 0">📍 GPS nog niet gestart</div>
    <div class="actions">
     <button class="primary" onclick="startDriverGPS()">📡 Start live GPS</button>
     <button onclick="stopDriverGPS()">⏸️ Stop GPS</button>
@@ -4611,26 +4611,10 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=897").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=898").catch(()=>{}));}
 </script>
 
 
-<script id="daystart-button-recovery-v890">
-window.runDayStartCheckV890 = async function(){
-  const button=document.getElementById("runDayStartCheckButton");
-  const box=document.getElementById("dayStartCheck");
-  if(button){button.disabled=true;button.dataset.originalLabel=button.dataset.originalLabel||button.textContent;button.textContent="⏳ Planning controleren…";}
-  if(box) box.innerHTML='<div class="daystart-result daystart-warn"><b>🔎 Dagstartcontrole gestart…</b><div>Ik controleer de planning, chauffeurs, buscapaciteit en schooldeadlines.</div></div>';
-  try {
-    if(typeof window.runDayStartCheck!=="function") throw new Error("De dagstartcontrole is niet geladen. Ververs de planner.");
-    await window.runDayStartCheck();
-  } catch(error) {
-    if(box) box.innerHTML='<div class="daystart-result daystart-danger"><b>Controle mislukt</b><div>'+String(error&&error.message||error)+'</div><div>Probeer de pagina opnieuw te laden.</div></div>';
-    console.error("Dagstartcontrole V890",error);
-  } finally {
-    if(button){button.disabled=false;button.textContent=button.dataset.originalLabel||"🔎 Controleer planning";}
-  }
-};
-</script>
+
 </body>
 </html>
