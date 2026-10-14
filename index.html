@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V915</title>
+<title>Taxi Planner V916</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V915</h1>
+<h1>🚕 Taxi Planner V916</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1379,15 +1379,58 @@ function suggestRouteRelief(sourceDriver){
       let conflict=false;
       for(let i=1;i<candidateRides.length;i++){
         const gap=(candidateRides[i].timeMin||0)-(candidateRides[i-1].timeMin||0);
-        if(gap===0||(gap>=0&&routeMinutesBetween(candidateRides[i-1],candidateRides[i],idx)>gap+15)){conflict=true;break;}
+        if(gap<=0||routeMinutesBetween(candidateRides[i-1],candidateRides[i],idx)>gap+15){conflict=true;break;}
       }
-      results.push({ride,d,sourceMin,sourceMax,candidateMin,candidateMax,conflict,ok:sourceMin<=sourceMax&&candidateMin<=candidateMax&&!conflict&&candidateRides.length<=MAX});
+      results.push({ride,d,sourceDriver,sourceMin,sourceMax,candidateMin,candidateMax,conflict,ok:sourceMin<=sourceMax&&candidateMin<=candidateMax&&!conflict&&candidateRides.length<=MAX});
     });
   });
   results.sort((a,b)=>Number(b.ok)-Number(a.ok)||(a.candidateMin+a.sourceMin)-(b.candidateMin+b.sourceMin));
-  const cards=results.slice(0,6).map(x=>'<div class="row" style="margin:8px 0;padding:12px"><b>'+esc(x.ride.name||'Rit')+'</b> → '+esc(x.d)+'<div class="small">Nieuwe route: '+Math.round(x.candidateMin)+'/'+Math.round(x.candidateMax)+' min · resterende route: '+Math.round(x.sourceMin)+'/'+Math.round(x.sourceMax)+' min · bezetting '+(load(x.d)+1)+'/'+MAX+'</div><div class="small">'+(x.ok?'✅ Beide routes lijken binnen tijd en zonder tijdconflict te passen.':'⚠️ Nog een tijd-, route- of capaciteitsprobleem; handmatig controleren.')+'</div></div>').join('');
-  box.innerHTML='<div class="daystart-result '+(results.some(x=>x.ok)?'daystart-ok':'daystart-warn')+'"><h3>🔁 Alternatieve chauffeur</h3><p>Voor route '+esc(sourceDriver)+'. Dit is een simulatie: er wordt niets automatisch verplaatst.</p>'+(cards||'<p>Geen beschikbare chauffeur gevonden die de rit zonder direct tijdconflict kan overnemen.</p>')+'<button type="button" onclick="runDayStartCheck()">Terug naar volledige controle</button></div>';
+  const cards=results.slice(0,6).map(x=>{
+    const moveButton=x.ok?'<button type="button" class="primary" style="margin-top:8px" onclick="applyRouteReliefChoice(\''+encodeURIComponent(x.ride.id)+'\',\''+encodeURIComponent(x.d)+'\',\''+encodeURIComponent(x.sourceDriver)+'\')">Verplaats deze rit</button>':'';
+    return '<div class="row" style="margin:8px 0;padding:12px"><b>'+esc(x.ride.name||'Rit')+'</b> → '+esc(x.d)+'<div class="small">Nieuwe route: '+Math.round(x.candidateMin)+'/'+Math.round(x.candidateMax)+' min · resterende route: '+Math.round(x.sourceMin)+'/'+Math.round(x.sourceMax)+' min · bezetting '+(load(x.d)+1)+'/'+MAX+'</div><div class="small">'+(x.ok?'✅ Beide routes lijken binnen tijd en zonder tijdconflict te passen.':'⚠️ Nog een tijd-, route- of capaciteitsprobleem; handmatig controleren.')+'</div>'+moveButton+'</div>';
+  }).join('');
+  box.innerHTML='<div class="daystart-result '+(results.some(x=>x.ok)?'daystart-ok':'daystart-warn')+'"><h3>🔁 Alternatieve chauffeur</h3><p>Voor route '+esc(sourceDriver)+'. Alleen opties die de eerste controles doorstaan krijgen een verplaatsknop. De planning wordt vóór opslaan opnieuw gecontroleerd.</p>'+(cards||'<p>Geen beschikbare chauffeur gevonden die de rit zonder direct tijdconflict kan overnemen.</p>')+'<button type="button" onclick="runDayStartCheck()">Terug naar volledige controle</button></div>';
   box.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function applyRouteReliefChoice(encodedRideId,encodedTarget,encodedSource){
+  const rideId=decodeURIComponent(encodedRideId||'');
+  const target=decodeURIComponent(encodedTarget||'');
+  const source=decodeURIComponent(encodedSource||'');
+  const ride=kids.find(k=>String(k.id)===rideId);
+  if(!ride||!active(ride)||ride.driver!==source||ride.fixed){
+    alert('Deze rit is inmiddels gewijzigd of vastgezet. Controleer de planning opnieuw.');
+    runDayStartCheck();
+    return;
+  }
+  if(target===source||!driverNames.includes(target)||isDriverUnavailable(target)||isBusUnavailable(target)||load(target)>=MAX){
+    alert('Deze chauffeur is niet meer beschikbaar of heeft geen vrije plek. Er is niets gewijzigd.');
+    suggestRouteRelief(source);
+    return;
+  }
+  const sourceRides=kids.filter(k=>k.driver===source&&active(k)&&k.id!==ride.id).sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+  const targetRides=kids.filter(k=>k.driver===target&&active(k)).concat([ride]).sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+  const sourceIndex=driverNames.indexOf(source),targetIndex=driverNames.indexOf(target);
+  const hasConflict=(list,idx)=>{
+    for(let i=1;i<list.length;i++){
+      const gap=(list[i].timeMin||0)-(list[i-1].timeMin||0);
+      if(gap<=0||routeMinutesBetween(list[i-1],list[i],idx)>gap+15)return true;
+    }
+    return false;
+  };
+  const sourceMin=routeDurationEstimate(sourceRides,sourceIndex),sourceMax=routeLimitForRides(sourceRides);
+  const targetMin=routeDurationEstimate(targetRides,targetIndex),targetMax=routeLimitForRides(targetRides);
+  if(sourceMin>sourceMax||targetMin>targetMax||hasConflict(sourceRides,sourceIndex)||hasConflict(targetRides,targetIndex)||targetRides.length>MAX){
+    alert('De actuele controle is niet meer akkoord. Er is niets gewijzigd; bekijk de planning opnieuw.');
+    suggestRouteRelief(source);
+    return;
+  }
+  if(!confirm('Rit van '+(ride.name||'kind')+' verplaatsen van '+source+' naar '+target+'? De twee routes zijn opnieuw gecontroleerd.'))return;
+  ride.driver=target;
+  driverNames.forEach(d=>kids.filter(k=>k.driver===d&&active(k)).sort((a,b)=>(a.timeMin||0)-(b.timeMin||0)).forEach((k,i)=>k.routeOrder=i+1));
+  saveState();
+  renderAll();
+  runDayStartCheck();
 }
 
 function renderMorningCockpitV901(){
@@ -4713,7 +4756,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=915").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=916").catch(()=>{}));}
 </script>
 
 
