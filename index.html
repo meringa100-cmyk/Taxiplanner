@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V914</title>
+<title>Taxi Planner V915</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V911</h1>
+<h1>🚕 Taxi Planner V915</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1359,41 +1359,6 @@ function renderRouteControl(){
  box.innerHTML='<div class="small muted" style="margin-bottom:8px">⏱️ Route-limiet: normaal maximaal <b>90 minuten</b>; bij gecombineerde scholen maximaal <b>99 minuten</b>. AI mag kinderen tussen chauffeurs verplaatsen als dat nodig is.</div>'+(rows||'<p class="muted">Nog geen actieve routes.</p>');
 }
 
-let routeReliefChoices=[];
-function applyRouteReliefChoice(index){
-  const choice=routeReliefChoices[index];
-  if(!choice){alert('Deze optie is verlopen. Voer de routecontrole opnieuw uit.');return;}
-  const ride=kids.find(k=>String(k.id)===String(choice.rideId));
-  const source=choice.sourceDriver, target=choice.d;
-  if(!ride||!active(ride)||ride.driver!==source){alert('De rit is inmiddels gewijzigd. Er is niets verplaatst.');return;}
-  if(ride.fixed){alert('Deze rit is vastgezet en kan niet via deze functie worden verplaatst.');return;}
-  if(isDriverUnavailable(target)||isBusUnavailable(target)){alert('De gekozen chauffeur of bus is inmiddels niet beschikbaar. Er is niets verplaatst.');return;}
-  if(load(target)>=MAX){alert('De bus heeft inmiddels geen vrije plaats meer. Er is niets verplaatst.');return;}
-  if(driverTimeConflict(ride,target)){alert('De rit botst inmiddels met een andere rit van deze chauffeur. Er is niets verplaatst.');return;}
-  const sourceRides=kids.filter(k=>k.driver===source&&active(k)&&k.id!==ride.id).sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
-  const targetRides=kids.filter(k=>k.driver===target&&active(k)).concat([ride]).sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
-  const sourceMin=routeDurationEstimate(sourceRides,driverNames.indexOf(source));
-  const sourceMax=routeLimitForRides(sourceRides);
-  const targetMin=routeDurationEstimate(targetRides,driverNames.indexOf(target));
-  const targetMax=routeLimitForRides(targetRides);
-  let conflict=false;
-  for(let i=1;i<targetRides.length;i++){
-    const gap=(targetRides[i].timeMin||0)-(targetRides[i-1].timeMin||0);
-    if(gap===0||(gap>=0&&routeMinutesBetween(targetRides[i-1],targetRides[i],driverNames.indexOf(target))>gap+15)){conflict=true;break;}
-  }
-  if(sourceMin>sourceMax||targetMin>targetMax||conflict||targetRides.length>MAX){
-    alert('De nieuwe controle vindt nog een route-, tijd- of capaciteitsprobleem. Er is niets gewijzigd. Controleer de planning opnieuw.');
-    return;
-  }
-  const ok=confirm('Rit verplaatsen?\n\nRit: '+(ride.name||'Rit')+'\nVan: '+source+' (na verplaatsing circa '+Math.round(sourceMin)+'/'+Math.round(sourceMax)+' min)\nNaar: '+target+' (circa '+Math.round(targetMin)+'/'+Math.round(targetMax)+' min)\nBezetting nieuwe bus: '+targetRides.length+'/'+MAX+'\n\nDit zijn schattingen; controleer ook schooltijden en de volledige dagstart. Alleen bij jouw akkoord wordt de rit verplaatst.');
-  if(!ok)return;
-  ride.driver=target;
-  ride.routeOrder=targetRides.findIndex(k=>k.id===ride.id)+1;
-  parentDriverChanges[ride.id]={from:source,to:target,at:new Date().toISOString()};
-  renderAll();
-  runDayStartCheck();
-  alert('Rit verplaatst. De planning is opnieuw gecontroleerd; bekijk de meldingen en schooltijden voordat de route wordt gereden.');
-}
 function suggestRouteRelief(sourceDriver){
   const box=document.getElementById('dayStartCheck');
   if(!box)return;
@@ -1416,16 +1381,12 @@ function suggestRouteRelief(sourceDriver){
         const gap=(candidateRides[i].timeMin||0)-(candidateRides[i-1].timeMin||0);
         if(gap===0||(gap>=0&&routeMinutesBetween(candidateRides[i-1],candidateRides[i],idx)>gap+15)){conflict=true;break;}
       }
-      results.push({ride,d,sourceDriver,sourceMin,sourceMax,candidateMin,candidateMax,conflict,ok:sourceMin<=sourceMax&&candidateMin<=candidateMax&&!conflict&&candidateRides.length<=MAX});
+      results.push({ride,d,sourceMin,sourceMax,candidateMin,candidateMax,conflict,ok:sourceMin<=sourceMax&&candidateMin<=candidateMax&&!conflict&&candidateRides.length<=MAX});
     });
   });
   results.sort((a,b)=>Number(b.ok)-Number(a.ok)||(a.candidateMin+a.sourceMin)-(b.candidateMin+b.sourceMin));
-  routeReliefChoices=results.filter(x=>x.ok).slice(0,6).map(x=>({rideId:x.ride.id,d:x.d,sourceDriver:x.sourceDriver}));
-  const cards=results.slice(0,6).map(x=>{
-    const choiceIndex=routeReliefChoices.findIndex(c=>String(c.rideId)===String(x.ride.id)&&c.d===x.d);
-    return '<div class="row" style="margin:8px 0;padding:12px"><b>'+esc(x.ride.name||'Rit')+'</b> → '+esc(x.d)+'<div class="small">Nieuwe route: '+Math.round(x.candidateMin)+'/'+Math.round(x.candidateMax)+' min · resterende route: '+Math.round(x.sourceMin)+'/'+Math.round(x.sourceMax)+' min · bezetting '+(load(x.d)+1)+'/'+MAX+'</div><div class="small">'+(x.ok?'✅ Beide routes lijken binnen de tijd en zonder direct tijdconflict te passen.':'⚠️ Nog een tijd-, route- of capaciteitsprobleem; niet direct verplaatsbaar.')+'</div>'+(x.ok&&choiceIndex>=0?'<button type="button" style="width:100%;margin-top:7px" onclick="applyRouteReliefChoice('+choiceIndex+')">✅ Kies deze chauffeur en controleer opnieuw</button>':'')+'</div>';
-  }).join('');
-  box.innerHTML='<div class="daystart-result '+(results.some(x=>x.ok)?'daystart-ok':'daystart-warn')+'"><h3>🔁 Alternatieve chauffeur</h3><p>Voor route '+esc(sourceDriver)+'. Een rit wordt pas verplaatst nadat jij bevestigt en de laatste controle akkoord is.</p>'+(cards||'<p>Geen beschikbare chauffeur gevonden die de rit zonder direct tijdconflict kan overnemen.</p>')+'<button type="button" onclick="runDayStartCheck()">Terug naar volledige controle</button></div>';
+  const cards=results.slice(0,6).map(x=>'<div class="row" style="margin:8px 0;padding:12px"><b>'+esc(x.ride.name||'Rit')+'</b> → '+esc(x.d)+'<div class="small">Nieuwe route: '+Math.round(x.candidateMin)+'/'+Math.round(x.candidateMax)+' min · resterende route: '+Math.round(x.sourceMin)+'/'+Math.round(x.sourceMax)+' min · bezetting '+(load(x.d)+1)+'/'+MAX+'</div><div class="small">'+(x.ok?'✅ Beide routes lijken binnen tijd en zonder tijdconflict te passen.':'⚠️ Nog een tijd-, route- of capaciteitsprobleem; handmatig controleren.')+'</div></div>').join('');
+  box.innerHTML='<div class="daystart-result '+(results.some(x=>x.ok)?'daystart-ok':'daystart-warn')+'"><h3>🔁 Alternatieve chauffeur</h3><p>Voor route '+esc(sourceDriver)+'. Dit is een simulatie: er wordt niets automatisch verplaatst.</p>'+(cards||'<p>Geen beschikbare chauffeur gevonden die de rit zonder direct tijdconflict kan overnemen.</p>')+'<button type="button" onclick="runDayStartCheck()">Terug naar volledige controle</button></div>';
   box.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
@@ -1492,7 +1453,7 @@ function renderMorningCockpitV901(){
     ? '<div style="margin-top:12px;padding:14px;border:1px solid #b8d8bc;border-radius:12px;background:#eef8ef;color:#21652b"><div style="font-size:18px;font-weight:800">✅ Alles onder controle</div><div style="margin-top:4px">De bekende automatische controles melden geen open problemen.</div><div class="small" style="margin-top:5px;color:#42664a">Controleer voor vertrek ook actuele aanwezigheid, adressen, verkeer en eventuele nieuwe meldingen.</div></div>'
     : '<div style="margin-top:12px;padding:14px;border:1px solid #e6c96a;border-radius:12px;background:#fff7df;color:#755600"><div style="font-size:18px;font-weight:800">⚠️ Nog niet alles onder controle</div><div style="margin-top:4px">'+issueCount+' aandachtspunt(en) gevonden. Bekijk eerst de actielijst hieronder en voer daarna de volledige controle opnieuw uit.</div><div class="small" style="margin-top:5px">Dit is een controlehulp op basis van de beschikbare planningsgegevens, geen garantie voor de werkelijke verkeerssituatie.</div></div>';
   const quickActionsHtml=quickActions.length
-    ? '<div style="margin-top:12px;padding:12px;border:1px solid #d9dee7;border-radius:11px;background:#fff"><h3 style="margin:0 0 6px">🚦 Eerst aanpakken</h3><p class="small muted" style="margin:0 0 8px">De belangrijkste open punten staan bovenaan. Tik op een punt om de volledige controle te openen. Er wordt niets automatisch gewijzigd.</p>'+quickActions.slice(0,4).map((x,i)=>'<div style="margin:6px 0"><button type="button" class="priority-action-v887 priority-rank-'+x.rank+'" style="width:100%" onclick="runDayStartCheck();document.getElementById(\'dayStartCheck\')?.scrollIntoView({behavior:\'smooth\',block:\'start\'});"><span class="priority-number-v887">'+(i+1)+'</span><span class="priority-copy-v887"><b>'+x.icon+' '+esc(x.title)+'</b><small>'+esc(x.detail)+'</small></span><span class="priority-arrow-v887">Controleer ›</span></button>'+'</div>').join('')+(quickActions.some(x=>x.rank===6)?'<div style="margin-top:10px;padding:10px;border:1px solid #d9dee7;border-radius:10px;background:#f8fafc"><b>⏱️ Alternatief voor te lange route</b>'+quickActions.filter(x=>x.rank===6).map(x=>'<div style="margin-top:7px"><div class="small">'+esc(x.detail)+'</div><button type="button" style="width:100%;margin-top:4px" data-driver="'+esc(x.driver||x.detail.split(' · ')[0])+'" onclick="suggestRouteRelief(this.dataset.driver)">🔁 Zoek chauffeur die binnen de tijd past</button></div>')+(quickActions.length>4?'<div class="small muted">+'+(quickActions.length-4)+' overige aandachtspunten staan in de volledige controle.</div>':'')+'</div>'
+    ? '<div style="margin-top:12px;padding:12px;border:1px solid #d9dee7;border-radius:11px;background:#fff"><h3 style="margin:0 0 6px">🚦 Eerst aanpakken</h3><p class="small muted" style="margin:0 0 8px">De belangrijkste open punten staan bovenaan. Tik op een punt om de volledige controle te openen. Er wordt niets automatisch gewijzigd.</p>'+quickActions.slice(0,4).map((x,i)=>'<div style="margin:6px 0"><button type="button" class="priority-action-v887 priority-rank-'+x.rank+'" style="width:100%" onclick="runDayStartCheck();document.getElementById(\'dayStartCheck\')?.scrollIntoView({behavior:\'smooth\',block:\'start\'});"><span class="priority-number-v887">'+(i+1)+'</span><span class="priority-copy-v887"><b>'+x.icon+' '+esc(x.title)+'</b><small>'+esc(x.detail)+'</small></span><span class="priority-arrow-v887">Controleer ›</span></button>'+(x.rank===6?'<button type="button" style="width:100%;margin-top:4px" onclick="suggestRouteRelief(\''+esc(x.driver||x.detail.split(' · ')[0])+'\')">🔁 Zoek chauffeur die binnen de tijd past</button>':'')+'</div>').join('')+(quickActions.length>4?'<div class="small muted">+'+(quickActions.length-4)+' overige aandachtspunten staan in de volledige controle.</div>':'')+'</div>'
     : '<div class="priority-all-clear-v887" style="margin-top:12px"><b>✅ Geen open acties gevonden</b><div>De cockpit ziet geen bekende urgente problemen.</div></div>';
   const breakdownPanel=brokenDetails.length
     ? '<div style="margin-top:12px;padding:12px;border:1px solid #efb4b4;border-radius:11px;background:#fff5f5"><h3 style="margin:0 0 8px">🚌 Busstoringen — details</h3>'+brokenDetails.map(x=>'<div class="row" style="background:#fff;border-color:#efb4b4"><b>🚌 '+esc(x.bus)+'</b> · '+esc(x.driver)+'<div class="small muted" style="margin-top:4px">Storing: '+esc(x.reason)+'</div><div style="margin-top:4px"><b>'+x.affected+'</b> betrokken kind(eren)</div>'+(x.children.length?'<div class="small" style="margin-top:5px">Kinderen: '+x.children.map(esc).join(', ')+'</div>':'<div class="small muted" style="margin-top:5px">Geen actieve kinderen meer op deze bus; ritten zijn mogelijk al herverdeeld.</div>')+'</div>').join('')+'</div>'
@@ -4752,7 +4713,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=914").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=915").catch(()=>{}));}
 </script>
 
 
