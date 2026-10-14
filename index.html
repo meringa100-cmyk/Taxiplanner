@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V919</title>
+<title>Taxi Planner V920</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V919</h1>
+<h1>🚕 Taxi Planner V920</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1359,7 +1359,7 @@ function renderRouteControl(){
  box.innerHTML='<div class="small muted" style="margin-bottom:8px">⏱️ Route-limiet: normaal maximaal <b>90 minuten</b>; bij gecombineerde scholen maximaal <b>99 minuten</b>. AI mag kinderen tussen chauffeurs verplaatsen als dat nodig is.</div>'+(rows||'<p class="muted">Nog geen actieve routes.</p>');
 }
 
-function suggestRouteRelief(sourceDriver,appendToCheck=false){
+function suggestRouteRelief(sourceDriver){
   const box=document.getElementById('dayStartCheck');
   if(!box)return;
   const rides=kids.filter(k=>k.driver===sourceDriver&&active(k)).sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
@@ -1392,8 +1392,7 @@ function suggestRouteRelief(sourceDriver,appendToCheck=false){
     const moveButton=x.ok?'<button type="button" class="primary" style="margin-top:8px" onclick="applyRouteReliefChoice(\''+encodeURIComponent(x.ride.id)+'\',\''+encodeURIComponent(x.d)+'\',\''+encodeURIComponent(x.sourceDriver)+'\')">Verplaats deze rit</button>':'';
     return '<div class="row" style="margin:8px 0;padding:12px"><b>'+esc(x.ride.name||'Rit')+'</b> → '+esc(x.d)+'<div class="small">Nieuwe route: '+Math.round(x.candidateMin)+'/'+Math.round(x.candidateMax)+' min · resterende route: '+Math.round(x.sourceMin)+'/'+Math.round(x.sourceMax)+' min · bezetting '+(load(x.d)+1)+'/'+MAX+'</div><div class="small">'+(x.ok?(x.sourceMin<=x.sourceMax?'✅ Beide routes lijken binnen tijd en zonder tijdconflict te passen.':'⚠️ De ontvangende route past; de bronroute wordt korter maar kan nog steeds te lang zijn. Voer daarna opnieuw de volledige controle uit.'):'⚠️ Geen veilige verplaatsoptie: controleer route, tijd of capaciteit.')+'</div>'+moveButton+'</div>';
   }).join('');
-  const reliefHtml='<div class="daystart-result '+(results.some(x=>x.ok)?'daystart-ok':'daystart-warn')+'"><h3>🔁 Volgende stap: route '+esc(sourceDriver)+'</h3><p>De planning is opnieuw gecontroleerd. Dit zijn mogelijke volgende verplaatsingen voor deze route. Na iedere verplaatsing wordt de controle opnieuw uitgevoerd.</p>'+(cards||'<p>Geen beschikbare chauffeur gevonden die de rit zonder direct tijdconflict kan overnemen.</p>')+'<button type="button" onclick="runDayStartCheck()">Alleen volledige controle tonen</button></div>';
-  box.innerHTML=(appendToCheck?box.innerHTML:'')+reliefHtml;
+  box.innerHTML='<div class="daystart-result '+(results.some(x=>x.ok)?'daystart-ok':'daystart-warn')+'"><h3>🔁 Alternatieve chauffeur</h3><p>Voor route '+esc(sourceDriver)+'. Alleen opties die de eerste controles doorstaan krijgen een verplaatsknop. De planning wordt vóór opslaan opnieuw gecontroleerd.</p>'+(cards||'<p>Geen beschikbare chauffeur gevonden die de rit zonder direct tijdconflict kan overnemen.</p>')+'<button type="button" onclick="runDayStartCheck()">Terug naar volledige controle</button></div>';
   box.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
@@ -1437,21 +1436,7 @@ function applyRouteReliefChoice(encodedRideId,encodedTarget,encodedSource){
   driverNames.forEach(d=>kids.filter(k=>k.driver===d&&active(k)).sort((a,b)=>(a.timeMin||0)-(b.timeMin||0)).forEach((k,i)=>k.routeOrder=i+1));
   saveState();
   renderAll();
-  continueRouteReliefAfterMove(source);
-}
-
-async function continueRouteReliefAfterMove(previousSource){
-  // Eerst de volledige controle opnieuw uitvoeren na iedere verplaatsing.
-  await runDayStartCheck();
-  const remainingLongRoutes=driverNames.filter(d=>{
-    const route=kids.filter(k=>k.driver===d&&active(k));
-    return route.length>0&&routeDurationEstimate(route,driverNames.indexOf(d))>routeLimitForRides(route);
-  });
-  // Pak eerst de route die zojuist is ontlast, anders de volgende langste route.
-  const nextRoute=remainingLongRoutes.includes(previousSource)?previousSource:remainingLongRoutes[0];
-  if(nextRoute){
-    setTimeout(()=>suggestRouteRelief(nextRoute,true),120);
-  }
+  runDayStartCheck();
 }
 
 function renderMorningCockpitV901(){
@@ -4777,7 +4762,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=919").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=920").catch(()=>{}));}
 </script>
 
 
