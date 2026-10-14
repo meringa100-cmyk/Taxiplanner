@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V909</title>
+<title>Taxi Planner V910</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V909</h1>
+<h1>🚕 Taxi Planner V910</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1406,7 +1406,16 @@ function renderMorningCockpitV901(){
   unassigned.forEach(k=>quickActions.push({rank:3,icon:'⚠️',title:'Rit zonder chauffeur',detail:(k.name||'Naam onbekend')+' · '+(k.school||k.destination||'bestemming onbekend')}));
   overloaded.forEach(d=>quickActions.push({rank:4,icon:'🔴',title:'Bus boven capaciteit',detail:d+' · '+load(d)+'/'+MAX+' kinderen'}));
   [...conflictDrivers].forEach(d=>quickActions.push({rank:5,icon:'🛣️',title:'Routeconflict',detail:d+' · tijden en reistijd controleren'}));
-  longRoutes.forEach(d=>quickActions.push({rank:6,icon:'⏱️',title:'Route te lang',detail:d+' · geschatte duur controleren'}));
+  longRoutes.forEach(d=>{
+    const di=driverNames.indexOf(d);
+    const routeKids=kids.filter(k=>k.driver===d&&active(k));
+    const estimated=routeDurationEstimate(routeKids,di);
+    const limit=routeLimitForRides(routeKids);
+    const detail=Number.isFinite(estimated)
+      ? d+' · geschat '+Math.round(estimated)+' min / maximum '+Math.round(limit)+' min'
+      : d+' · geschatte duur niet beschikbaar; controleer route';
+    quickActions.push({rank:6,icon:'⏱️',title:'Route te lang',detail});
+  });
   uniqueLate.forEach(k=>quickActions.push({rank:7,icon:'🏫',title:'Schooldeadline controleren',detail:(k.name||'Naam onbekend')+' · '+(k.driver||'geen chauffeur')}));
   quickActions.sort((a,b)=>a.rank-b.rank||a.detail.localeCompare(b.detail,'nl'));
   const readinessHtml=issueCount===0
@@ -4673,7 +4682,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=909").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=910").catch(()=>{}));}
 </script>
 
 
