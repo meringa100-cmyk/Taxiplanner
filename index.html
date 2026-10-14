@@ -1440,7 +1440,7 @@ function applyRouteReliefChoice(encodedRideId,encodedTarget,encodedSource){
   continueRouteReliefAfterMove(source);
 }
 
-async async function continueRouteReliefAfterMove(previousSource){
+async function continueRouteReliefAfterMove(previousSource){
   // Eerst de volledige controle opnieuw uitvoeren na iedere verplaatsing.
   await runDayStartCheck();
   const remainingLongRoutes=driverNames.filter(d=>{
