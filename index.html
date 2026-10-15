@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V934</title>
+<title>Taxi Planner V935</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V934</h1>
+<h1>🚕 Taxi Planner V935</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -2756,6 +2756,56 @@ async function optimizeAllRoutes(options={}){
     if(!changed)break;
   }
 
+  // V935: gerichte herverdeling voor tijdconflicten en schooldeadlines.
+  // Probeer per probleemkind een andere beschikbare chauffeur; accepteer alleen
+  // een verplaatsing als bron én doel binnen capaciteit/routegrens blijven en
+  // de totale harde-planningsscore aantoonbaar daalt.
+  const routePenalty=d=>{
+    const q=kids.filter(k=>k.driver===d&&active(k)).sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+    if(!q.length)return 0;
+    let p=0;
+    const limit=routeLimitForRides(q);
+    p+=Math.max(0,routeDurationEstimate(q,driverNames.indexOf(d))-limit)*40;
+    for(let i=1;i<q.length;i++){
+      const gap=(q[i].timeMin||0)-(q[i-1].timeMin||0);
+      const travel=routeMinutesBetween(q[i-1],q[i],driverNames.indexOf(d));
+      p+=Math.max(0,travel-gap-15)*30;
+    }
+    for(const k of q)p+=Math.max(0,schoolArrivalMinutes(k)-schoolDeadlineMinutes(k))*60;
+    return p;
+  };
+  let targetedMoves=0;
+  for(let pass=0;pass<60;pass++){
+    let best=null;
+    const baseline=planningScore().score;
+    for(const kid of kids.filter(k=>active(k)&&k.driver)){
+      const from=kid.driver;
+      const source=kids.filter(k=>k.driver===from&&active(k));
+      const sourcePenalty=routePenalty(from);
+      if(!sourcePenalty)continue;
+      for(const to of driverNames){
+        if(to===from||isDriverUnavailable(to)||isBusUnavailable(to))continue;
+        const target=kids.filter(k=>k.driver===to&&active(k));
+        if(target.length>=MAX||target.some(k=>(k.timeMin||0)===(kid.timeMin||0)))continue;
+        const trialTarget=[...target,kid].sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+        const trialSource=source.filter(k=>k!==kid);
+        if(routeDurationEstimate(trialTarget,driverNames.indexOf(to))>routeLimitForRides(trialTarget))continue;
+        if(trialSource.length&&routeDurationEstimate(trialSource,driverNames.indexOf(from))>routeLimitForRides(trialSource))continue;
+        const oldDriver=kid.driver;
+        kid.driver=to;
+        const next=planningScore().score;
+        kid.driver=oldDriver;
+        const gain=baseline-next;
+        if(gain>0&&(!best||gain>best.gain))best={kid,to,gain};
+      }
+    }
+    if(!best)break;
+    best.kid.driver=best.to;
+    targetedMoves++;
+    for(const d of [best.to])await optimizeDriverRoute(d);
+    await optimizeDriverRoute(best.kid.driver===best.to?driverNames.find(d=>d!==best.to&&kids.some(k=>k.driver===d&&k.id===best.kid.id)):best.to);
+  }
+
   // V932: verplaatsingen om lange routes te splitsen kunnen nieuwe tijdconflicten
   // veroorzaken. Controleer daarom daarna nogmaals de tijdvensters en orden opnieuw.
   const finalTimeRepair=await repairAllTimeConflicts();
@@ -2796,6 +2846,7 @@ async function optimizeAllRoutes(options={}){
   let msg='🧭 Route-optimalisatie klaar!\\n\\n';
   if(timeRepair.repairs||timeRepair.moved||finalTimeRepair.repairs||finalTimeRepair.moved)msg+='🕒 '+(timeRepair.repairs+finalTimeRepair.repairs)+' tijdvensters hersteld en '+(timeRepair.moved+finalTimeRepair.moved)+' kind(eren) indien nodig verplaatst.\\n';
   if(deadlineTimeRepairs)msg+='🏫 '+deadlineTimeRepairs+' ophaaltijd(en) maximaal 15 minuten vervroegd voor schooldeadline.\\n';
+  if(targetedMoves)msg+='🔁 '+targetedMoves+' gerichte herverdeling(en) geprobeerd voor routeconflicten/schooldeadlines.\\n';
   msg+=total+' actieve ritten zijn opnieuw geordend.\\n';
   msg+='De eerste stop ligt zo ver mogelijk van Emmen; daarna werkt de route waar mogelijk geografisch terug richting Emmen.\\n';
   if(moved)msg+='\\n🔄 '+moved+' kind(eren) zijn automatisch naar een andere bus verplaatst om te lange routes te breken.';
