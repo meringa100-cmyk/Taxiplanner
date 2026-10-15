@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V936</title>
+<title>Taxi Planner V937</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V936</h1>
+<h1>🚕 Taxi Planner V937</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -297,7 +297,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 <div class="card">
 <h3>Wat moet er vandaag gebeuren?</h3>
 <div class="actions">
-<button class="primary" type="button" onclick="runAI()">🤖 AI plannen</button><button type="button" onclick="runBestPlanning()">🏆 Automatisch beste planning</button>
+<button class="primary" type="button" onclick="runAIAndCheck()">🤖 AI plannen & optimaliseren</button><button type="button" onclick="runBestPlanning()">🏆 Automatisch beste planning</button>
 <button type="button" onclick="optimizeAllRoutes()">🧭 Routes optimaal</button><button type="button" onclick="demoHardPlanVersion=''; const n=repairBuiltInDemoPlanningHard(); saveState(); renderAll(); alert('✅ Schone demo-planning opnieuw opgebouwd.')">🧹 Schone demo-planning</button>
 <button onclick="openAdd()">➕ Rit toevoegen</button>
 <button onclick="resetDemo()">↩️ Demo resetten</button>
@@ -5016,7 +5016,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=930").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=937").catch(()=>{}));}
 </script>
 
 
