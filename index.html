@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V930</title>
+<title>Taxi Planner V931</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V930</h1>
+<h1>🚕 Taxi Planner V931</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -2661,7 +2661,7 @@ async function repairAllTimeConflicts(){
   return {repairs,moved};
 }
 
-async function optimizeAllRoutes(){
+async function optimizeAllRoutes(options={}){
   const box=document.getElementById('routeInfo');
   if(box)box.textContent='🧭 Routes worden geografisch geoptimaliseerd en overvolle/te lange routes worden automatisch gesplitst…';
 
@@ -4016,33 +4016,44 @@ function runAI(silent=false){
   return {changes,unplanned:unplanned.length,conflicts:conflicts.length};
 }
 
-function runAIAndCheck(){
-  // V815: AI is now transactional. A worse planning result is never saved.
+async function runAIAndCheck(){
+  // V931: AI is transactioneel en voert na de eerste analyse ook de route-reparatie uit.
+  // Een slechtere eindplanning wordt teruggedraaid; onoplosbare punten blijven zichtbaar.
   const before=JSON.parse(JSON.stringify(kids));
   const beforeScore=planningScore();
   const beforeLock=demoPlanningSpreadLocked;
   const box=document.getElementById('dayStartCheck');
   if(box){
-    box.innerHTML='<div class="daystart-result daystart-warn"><b>🤖 AI bouwt de ochtendplanning opnieuw op…</b><div class="small muted">Alle wachtende ritten worden opnieuw verdeeld volgens capaciteit, scholen, reistijd en de 90/99-minutenregel.</div></div>';
+    box.innerHTML='<div class="daystart-result daystart-warn"><b>🤖 AI verbetert de planning…</b><div class="small muted">Eerst controleert de AI de indeling; daarna probeert hij routeconflicten en te lange routes te herstellen met maximaal 8 kinderen per bus en beschikbare chauffeurs.</div></div>';
   }
 
-  const result=runAI(true);
-  const afterScore=planningScore();
-  if(afterScore.score>beforeScore.score){
+  try{
+    runAI(true);
+    await optimizeAllRoutes({silent:true});
+    const afterScore=planningScore();
+    if(afterScore.score>beforeScore.score){
+      kids=before;
+      demoPlanningSpreadLocked=beforeLock;
+      saveState();
+      renderAll();
+      if(box)box.innerHTML='<div class="daystart-result daystart-warn"><b>🛡️ Vorige planning behouden</b><div class="small muted">De gecombineerde AI- en routecontrole gaf geen betere totaalscore. De oorspronkelijke planning is hersteld.</div></div>';
+    }else{
+      saveState();
+      renderAll();
+    }
+  }catch(error){
     kids=before;
     demoPlanningSpreadLocked=beforeLock;
     saveState();
     renderAll();
-    if(box)box.innerHTML='<div class="daystart-result daystart-warn"><b>🛡️ AI-resultaat geweigerd</b><div class="small muted">De AI maakte de planning slechter. De vorige planning is daarom behouden.</div></div>';
-  }else{
-    saveState();
-    renderAll();
+    if(box)box.innerHTML='<div class="daystart-result daystart-warn"><b>⚠️ AI-controle afgebroken</b><div class="small muted">De vorige planning is veilig teruggezet. Probeer het opnieuw; er zijn geen wijzigingen behouden.</div></div>';
+    console.error('AI planning repair failed',error);
   }
 
   setTimeout(async()=>{
     await runDayStartCheck();
     const b=document.getElementById('dayStartCheck');
-    if(b) b.scrollIntoView({behavior:'smooth',block:'center'});
+    if(b)b.scrollIntoView({behavior:'smooth',block:'center'});
   },120);
 }
 function resetDemo(){
