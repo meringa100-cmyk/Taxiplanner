@@ -2796,14 +2796,14 @@ async function optimizeAllRoutes(options={}){
         const next=planningScore().score;
         kid.driver=oldDriver;
         const gain=baseline-next;
-        if(gain>0&&(!best||gain>best.gain))best={kid,to,gain};
+        if(gain>0&&(!best||gain>best.gain))best={kid,from,to,gain};
       }
     }
     if(!best)break;
     best.kid.driver=best.to;
     targetedMoves++;
-    for(const d of [best.to])await optimizeDriverRoute(d);
-    await optimizeDriverRoute(best.kid.driver===best.to?driverNames.find(d=>d!==best.to&&kids.some(k=>k.driver===d&&k.id===best.kid.id)):best.to);
+    await optimizeDriverRoute(best.from);
+    await optimizeDriverRoute(best.to);
   }
 
   // V932: verplaatsingen om lange routes te splitsen kunnen nieuwe tijdconflicten
