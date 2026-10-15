@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V931</title>
+<title>Taxi Planner V932</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V931</h1>
+<h1>🚕 Taxi Planner V932</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -2753,6 +2753,11 @@ async function optimizeAllRoutes(options={}){
     if(!changed)break;
   }
 
+  // V932: verplaatsingen om lange routes te splitsen kunnen nieuwe tijdconflicten
+  // veroorzaken. Controleer daarom daarna nogmaals de tijdvensters en orden opnieuw.
+  const finalTimeRepair=await repairAllTimeConflicts();
+  for(const d of driverNames) await optimizeDriverRoute(d);
+
   // Definitieve controle.
   let total=0,conflicts=0,drivers=0,longRoutes=0;
   for(const d of driverNames){
@@ -2770,7 +2775,7 @@ async function optimizeAllRoutes(options={}){
   renderAll();
 
   let msg='🧭 Route-optimalisatie klaar!\\n\\n';
-  if(timeRepair.repairs||timeRepair.moved)msg+='🕒 '+timeRepair.repairs+' tijdvensters hersteld en '+timeRepair.moved+' kind(eren) indien nodig verplaatst.\\n';
+  if(timeRepair.repairs||timeRepair.moved||finalTimeRepair.repairs||finalTimeRepair.moved)msg+='🕒 '+(timeRepair.repairs+finalTimeRepair.repairs)+' tijdvensters hersteld en '+(timeRepair.moved+finalTimeRepair.moved)+' kind(eren) indien nodig verplaatst.\\n';
   msg+=total+' actieve ritten zijn opnieuw geordend.\\n';
   msg+='De eerste stop ligt zo ver mogelijk van Emmen; daarna werkt de route waar mogelijk geografisch terug richting Emmen.\\n';
   if(moved)msg+='\\n🔄 '+moved+' kind(eren) zijn automatisch naar een andere bus verplaatst om te lange routes te breken.';
