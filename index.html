@@ -2233,13 +2233,33 @@ function renderLive(){
 }
 function showDriverLiveRouteIndex(index){const driver=driverNames[index];if(driver)showDriverLiveRoute(driver);}
 function showDriverLiveRoute(driver){
- const select=document.getElementById('mapDriver');
- if(select){select.value=driver;renderRealMapMarkers();}
- const live=document.getElementById('live');
- if(live){live.scrollIntoView({behavior:'smooth',block:'start'});}
- if(typeof initRealMap==='function')setTimeout(()=>{initRealMap();if(select){select.value=driver;renderRealMapMarkers();}},120);
- const info=document.getElementById('routeInfo');
- if(info)info.textContent='Route geselecteerd voor '+driver+'. Klik op “Echte routes berekenen” om de wegroute te tekenen.';
+  // Zorg dat de kaart zichtbaar en geïnitialiseerd is voordat we markers tekenen.
+  const livePage=document.getElementById('live');
+  if(livePage&&!livePage.classList.contains('active')){
+    const liveTab=[...document.querySelectorAll('nav .tab')].find(b=>(b.getAttribute('onclick')||'').includes("showPage('live'"));
+    showPage('live',liveTab||null);
+  }
+  const showMap=()=>{
+    if(typeof initRealMap==='function')initRealMap();
+    const select=document.getElementById('mapDriver');
+    if(select){
+      const exists=[...select.options].some(o=>o.value===driver||o.textContent===driver);
+      if(!exists){select.add(new Option(driver,driver));}
+      select.value=driver;
+    }
+    if(typeof renderRealMapMarkers==='function')renderRealMapMarkers();
+    const info=document.getElementById('routeInfo');
+    if(info)info.textContent='Route geselecteerd voor '+driver+'. De kaart wordt op deze chauffeur ingesteld; de wegroute wordt automatisch aangevraagd.';
+    const mapCard=document.getElementById('realMap');
+    if(mapCard){mapCard.scrollIntoView({behavior:'smooth',block:'start'});}
+    if(typeof realMap!=='undefined'&&realMap){
+      setTimeout(()=>{
+        realMap.invalidateSize(true);
+        if(typeof renderRealMapMarkers==='function')renderRealMapMarkers();
+      },180);
+    }
+  };
+  setTimeout(showMap,180);
 }
 
 
