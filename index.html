@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V920</title>
+<title>Taxi Planner V921</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V920</h1>
+<h1>🚕 Taxi Planner V921</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -769,11 +769,15 @@ function pickupToSchoolMinutes(k){
 function schoolArrivalMinutes(k){
   return (k?.timeMin||0)+pickupToSchoolMinutes(k);
 }
+function schoolDeadlineMinutes(k){
+  const raw=Number(k?.arrivalDeadlineMin);
+  return Number.isFinite(raw)&&raw>=0&&raw<1440 ? raw : SCHOOL_DEADLINE_MIN;
+}
 function schoolDeadlineOk(k){
-  // Een rit die na 08:30 is ingevoerd is een speciale/niet-ochtendrit.
-  // Daarvoor geldt de vaste ochtenddeadline van 08:30 niet.
-  if(Number(k?.timeMin)>SCHOOL_DEADLINE_MIN)return true;
-  return schoolArrivalMinutes(k)<=SCHOOL_DEADLINE_MIN;
+  // Bestaande kinderen krijgen bij migratie 08:30; nieuwe kinderen bewaren hun eigen deadline.
+  const deadline=schoolDeadlineMinutes(k);
+  if(Number(k?.timeMin)>deadline)return true;
+  return schoolArrivalMinutes(k)<=deadline;
 }
 
 const streets=['Laan van de Marel','Emmerhout','Boslaan','Hoofdstraat','Stationsstraat'];
@@ -1037,7 +1041,8 @@ async function redistributeUnavailableDriver(brokenDriver,changeReason='ziek/nie
       const trial=[...group,child].sort((a,b)=>a.timeMin-b.timeMin);
       const estimated=estimateRouteMinutes(trial);
       const routeMinutes=routeDurationEstimate(trial,driverNames.indexOf(d));
-      if(routeMinutes>MAX_ROUTE_MINUTES)continue;
+      if(routeMinutes>routeLimitForRides(trial))continue;
+      if(!trial.every(schoolDeadlineOk))continue;
 
       // A group without coordinates gets a neutral score instead of being rejected.
       const geoScore=Number.isFinite(nearest)?nearest*3:100;
@@ -1164,6 +1169,7 @@ function loadState(){
   // Migreer bestaande opgeslagen kinderen naar ouderaccounts; oudere browserdata
   // bevat mogelijk nog geen parentId/parentPin van de nieuwere versie.
   kids.forEach((k,i)=>{
+    if(!Number.isFinite(Number(k.arrivalDeadlineMin)))k.arrivalDeadlineMin=SCHOOL_DEADLINE_MIN;
     if(!k.parentId)k.parentId='OUDER'+String(i+1).padStart(3,'0');
     if(!k.parentName)k.parentName='Ouder '+(i+1);
     if(!k.parentPin)k.parentPin='1234';
@@ -1698,8 +1704,9 @@ async function runDayStartCheck(){
       const child=kids.find(k=>k.id===p.value);
       if(child){
         const arrival=schoolArrivalMinutes(child);
-        const late=Math.max(0,arrival-SCHOOL_DEADLINE_MIN);
-        return (child.name||'Dit kind')+' heeft een geschatte aankomsttijd van '+fmtTime(arrival)+'. '+(late?'Dat is ongeveer '+late+' min na de deadline van 08:30.':'Controleer of de routeberekening en schoolbestemming kloppen.')+' Controleer de ophaaltijd, route naar school en eventuele andere stops.';
+        const deadline=schoolDeadlineMinutes(child);
+        const late=Math.max(0,arrival-deadline);
+        return (child.name||'Dit kind')+' heeft een geschatte aankomsttijd van '+fmtTime(arrival)+'. Uiterlijke aankomsttijd: '+fmtTime(deadline)+'. '+(late?'Dat is ongeveer '+late+' min te laat.':'Controleer of de routeberekening en schoolbestemming kloppen.')+' Controleer de ophaaltijd, route naar school en eventuele andere stops.';
       }
     }
     return advisorAdvice[p.title]||'Controleer dit punt in de planning voordat de rit wordt uitgevoerd.';
@@ -2441,7 +2448,8 @@ function planningScore(){
       const travel=routeMinutesBetween(q[i-1],q[i],driverNames.indexOf(d));
       if(travel>gap+15){conflicts++;score+=(travel-gap-15)*30;}
     }
-    const late=Math.max(0,schoolArrivalMinutes(q[q.length-1])-SCHOOL_DEADLINE_MIN);
+    const lastKid=q[q.length-1];
+    const late=Math.max(0,schoolArrivalMinutes(lastKid)-schoolDeadlineMinutes(lastKid));
     if(late>0){deadlineLate++;score+=late*60;}
     score+=Math.max(0,limit-minutes)*0.05;
   }
@@ -3347,7 +3355,7 @@ function runAI(silent=false){
 
       q.sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
       const last=q[q.length-1];
-      const late=Math.max(0,schoolArrivalMinutes(last)-SCHOOL_DEADLINE_MIN);
+      const late=Math.max(0,schoolArrivalMinutes(last)-schoolDeadlineMinutes(last));
       if(late>0){
         const shift=Math.min(15,late);
         q.forEach(k=>{
@@ -3660,7 +3668,7 @@ function runAI(silent=false){
       const school=all[0].school||all[0].destination||'';
       if(all.some(k=>(k.school||k.destination||'')!==school))return false;
       const last=all[all.length-1];
-      if(schoolArrivalMinutes(last)>SCHOOL_DEADLINE_MIN)return false;
+      if(schoolArrivalMinutes(last)>schoolDeadlineMinutes(last))return false;
     }
     return true;
   }
@@ -3673,7 +3681,7 @@ function runAI(silent=false){
   // "zonder chauffeur" blijft omdat bijvoorbeeld 08:30 te laat blijkt.
   kids.filter(k=>k.status==='waiting' && k.newlyAdded).forEach(k=>{
     if(schoolDeadlineOk(k))return;
-    const needed=SCHOOL_DEADLINE_MIN-pickupToSchoolMinutes(k);
+    const needed=schoolDeadlineMinutes(k)-pickupToSchoolMinutes(k);
     const original=Number(k.timeMin)||0;
     const target=Math.max(original-15,needed);
     if(target<original && target>=original-15){
@@ -3860,7 +3868,7 @@ function runAI(silent=false){
 
     for(let i=0;i<q.length;i++){
       if(!schoolDeadlineOk(q[i]))
-        conflicts.push(d+' • '+q[i].name+' haalt 08:30 niet');
+        conflicts.push(d+' • '+q[i].name+' haalt de uiterlijke aankomsttijd '+fmtTime(schoolDeadlineMinutes(q[i]))+' niet');
 
       if(i>0){
         const gap=(q[i].timeMin||0)-(q[i-1].timeMin||0);
@@ -4276,7 +4284,7 @@ function childCardHtml(k){
      <span class="arrow">▼</span>
    </button>
    <div class="child-details-v70">
-     <div class="child-meta-v70"><span>🚕 ${k.driver}</span><span>🧭 Route ${Number.isFinite(k.routeOrder)?k.routeOrder:'—'}</span><span>📍 Ophalen: ${displayPickupAddress(k)}</span><span>🏫 Bestemming: ${k.destinationAddress||k.address||k.destination||'Onbekend'}</span><span>➡️ ${k.destination||k.school||'Bestemming onbekend'}</span><span>${k.fixed?'🔒 Vast':'🔄 Vrij planbaar'}</span></div>
+     <div class="child-meta-v70"><span>🚕 ${k.driver}</span><span>🧭 Route ${Number.isFinite(k.routeOrder)?k.routeOrder:'—'}</span><span>📍 Ophalen: ${displayPickupAddress(k)}</span><span>⏰ Uiterlijk op school: ${fmtTime(schoolDeadlineMinutes(k))}</span><span>🏫 Bestemming: ${k.destinationAddress||k.address||k.destination||'Onbekend'}</span><span>➡️ ${k.destination||k.school||'Bestemming onbekend'}</span><span>${k.fixed?'🔒 Vast':'🔄 Vrij planbaar'}</span></div>
      <div class="child-info-v70"><b>Benadering:</b> ${k.approach}</div>
      <div class="child-info-v70"><b>Veiligheid:</b> ${k.safety}</div>
      <div class="child-info-v70"><b>Belangrijk:</b> ${k.important}</div>
@@ -4291,6 +4299,7 @@ function editChild(id){
  document.getElementById('modalBox').innerHTML=`<h2>✏️ Kindprofiel bewerken</h2>
  <p>👦 Naam kind</p><input id="eName" style="width:100%" value="${k.name||''}">
  <p>🕐 Ophaaltijd</p><input id="eTime" type="time" style="width:100%" value="${k.time||'08:30'}">
+ <p>🏫 Uiterlijke aankomsttijd op school</p><input id="eArrivalDeadline" type="time" style="width:100%" value="${fmtTime(schoolDeadlineMinutes(k))}">
  <p>📍 Ophaaladres</p><input id="ePickup" style="width:100%" value="${k.pickupAddress||k.address||''}">
  <p>🏘️ Plaats ophalen</p><input id="ePickupCity" style="width:100%" value="${k.pickupCity||''}">
  <p>🏫 Bestemming</p><select id="eDestination" style="width:100%" onchange="toggleEditDestination()">${destinationOptions}</select>
@@ -4316,6 +4325,9 @@ async function saveChild(id){
  k.name=document.getElementById('eName')?.value.trim()||k.name;
  k.time=t;
  k.timeMin=(Number(parts[0])||0)*60+(Number(parts[1])||0);
+ const arrivalValue=document.getElementById('eArrivalDeadline')?.value||'08:30';
+ const arrivalParts=arrivalValue.split(':').map(Number);
+ k.arrivalDeadlineMin=(Number(arrivalParts[0])||0)*60+(Number(arrivalParts[1])||0);
  k.pickupAddress=document.getElementById('ePickup')?.value.trim()||k.pickupAddress||'';
  k.pickupCity=document.getElementById('ePickupCity')?.value.trim()||'';
  const destination=document.getElementById('eDestination')?.value||k.destination||k.school||'Nieuwe bestemming';
@@ -4354,6 +4366,8 @@ function openAdd(){
  <input id="newName" style="width:100%" value="Nieuw kind">
  <p>🕐 Ophaaltijd</p>
  <input id="newTime" type="time" style="width:100%" value="08:30">
+ <p>🏫 Uiterlijke aankomsttijd op school</p>
+ <input id="newArrivalDeadline" type="time" style="width:100%" value="08:30">
  <p>📍 <b>Ophaaladres</b></p>
  <input id="newPickupAddress" style="width:100%" value="" placeholder="Bijv. Laan van de Marel 12">
  <p>🏘️ <b>Plaats</b></p>
@@ -4425,6 +4439,13 @@ function assignNewRidesToAvailableDrivers(rides){
     !isBusUnavailable(d) &&
     load(d)<MAX
   );
+  const feasibleFor=(d,k)=>{
+    const route=kids.filter(x=>x.driver===d&&active(x)&&x.id!==k.id);
+    if(route.length>=MAX)return false;
+    const trial=[...route,k].sort((x,y)=>(x.timeMin||0)-(y.timeMin||0));
+    return trial.every(schoolDeadlineOk) &&
+      routeDurationEstimate(trial,driverNames.indexOf(d))<=routeLimitForRides(trial);
+  };
 
   // Als er genoeg ruimte is, blijft een nieuw groepje zoveel mogelijk bij
   // dezelfde chauffeur. Anders verdelen we de kinderen over de minst belaste
@@ -4432,6 +4453,9 @@ function assignNewRidesToAvailableDrivers(rides){
   let remaining=[...list];
   while(remaining.length){
     const choices=available().sort((a,b)=>{
+      const af=remaining.length>0&&feasibleFor(a,remaining[0]);
+      const bf=remaining.length>0&&feasibleFor(b,remaining[0]);
+      if(af!==bf)return af?-1:1;
       const la=load(a),lb=load(b);
       if(la!==lb)return la-lb;
       return driverNames.indexOf(a)-driverNames.indexOf(b);
@@ -4476,6 +4500,9 @@ async function addRide(){
  const parts=t.split(':').map(Number);
  const h=Number.isFinite(parts[0])?parts[0]:8;
  const m=Number.isFinite(parts[1])?parts[1]:30;
+ const deadlineValue=document.getElementById('newArrivalDeadline')?.value||'08:30';
+ const deadlineParts=deadlineValue.split(':').map(Number);
+ const arrivalDeadlineMin=(Number(deadlineParts[0])||0)*60+(Number(deadlineParts[1])||0);
  const pickupStreet=document.getElementById('newPickupAddress')?.value.trim()||'';
  const pickupCity=document.getElementById('newPickupCity')?.value.trim()||'';
  const pickupAddress=[pickupStreet,pickupCity].filter(Boolean).join(', ')||'Ophaaladres onbekend';
@@ -4491,6 +4518,7 @@ async function addRide(){
    id:newId,
    name:document.getElementById('newName').value||'Nieuw kind',
    time:t,timeMin:h*60+m,
+   arrivalDeadlineMin,
    pickupAddress,
    pickupCity,
    address,
