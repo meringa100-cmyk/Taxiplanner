@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V935</title>
+<title>Taxi Planner V936</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V935</h1>
+<h1>🚕 Taxi Planner V936</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -2827,6 +2827,45 @@ async function optimizeAllRoutes(options={}){
   }
   for(const d of driverNames) await optimizeDriverRoute(d);
 
+  // V936: zoek per te laat aankomend kind meerdere haalbare eerdere ophaaltijden.
+  // Behoud alleen een tijdswijziging die de totale planningsscore verbetert;
+  // zo proberen we verder dan één vaste stap van 15 minuten zonder blind
+  // nieuwe tijdconflicten te veroorzaken.
+  let deadlineSearchRepairs=0;
+  for(let pass=0;pass<3;pass++){
+    let improved=false;
+    const lateKids=kids.filter(k=>active(k)&&k.driver&&schoolArrivalMinutes(k)>schoolDeadlineMinutes(k))
+      .sort((a,b)=>(schoolArrivalMinutes(b)-schoolDeadlineMinutes(b))-(schoolArrivalMinutes(a)-schoolDeadlineMinutes(a)));
+    for(const kid of lateKids){
+      const oldTime=Number(kid.timeMin)||0;
+      const oldLabel=kid.time;
+      const baseline=planningScore().score;
+      const needed=Math.max(0,schoolDeadlineMinutes(kid)-pickupToSchoolMinutes(kid));
+      const candidates=[oldTime-5,oldTime-10,oldTime-15,oldTime-20,oldTime-25,oldTime-30,needed]
+        .filter(t=>Number.isFinite(t)&&t>=needed&&t>=0&&t<oldTime)
+        .sort((a,b)=>b-a)
+        .filter((t,i,arr)=>arr.indexOf(t)===i);
+      let bestTime=null,bestScore=baseline;
+      for(const t of candidates){
+        kid.timeMin=t;
+        kid.time=fmtTime(t);
+        const score=planningScore().score;
+        if(score<bestScore){bestScore=score;bestTime=t;}
+      }
+      kid.timeMin=oldTime;
+      kid.time=oldLabel;
+      if(bestTime!==null){
+        kid.timeMin=bestTime;
+        kid.time=fmtTime(bestTime);
+        deadlineSearchRepairs++;
+        improved=true;
+      }
+    }
+    if(!improved)break;
+    await repairAllTimeConflicts();
+    for(const d of driverNames)await optimizeDriverRoute(d);
+  }
+
   // Definitieve controle.
   let total=0,conflicts=0,drivers=0,longRoutes=0;
   for(const d of driverNames){
@@ -2846,6 +2885,7 @@ async function optimizeAllRoutes(options={}){
   let msg='🧭 Route-optimalisatie klaar!\\n\\n';
   if(timeRepair.repairs||timeRepair.moved||finalTimeRepair.repairs||finalTimeRepair.moved)msg+='🕒 '+(timeRepair.repairs+finalTimeRepair.repairs)+' tijdvensters hersteld en '+(timeRepair.moved+finalTimeRepair.moved)+' kind(eren) indien nodig verplaatst.\\n';
   if(deadlineTimeRepairs)msg+='🏫 '+deadlineTimeRepairs+' ophaaltijd(en) maximaal 15 minuten vervroegd voor schooldeadline.\\n';
+  if(deadlineSearchRepairs)msg+='🎯 '+deadlineSearchRepairs+' extra tijdoptimalisatie(s) voor schooldeadlines geprobeerd.\\n';
   if(targetedMoves)msg+='🔁 '+targetedMoves+' gerichte herverdeling(en) geprobeerd voor routeconflicten/schooldeadlines.\\n';
   msg+=total+' actieve ritten zijn opnieuw geordend.\\n';
   msg+='De eerste stop ligt zo ver mogelijk van Emmen; daarna werkt de route waar mogelijk geografisch terug richting Emmen.\\n';
