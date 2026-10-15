@@ -2778,7 +2778,7 @@ async function optimizeAllRoutes(options={}){
   if(longRoutes)msg+='\\n⚠️ '+longRoutes+' route(s) blijven boven hun toegestane limiet.';
   else msg+='\\n✅ Alle routes blijven binnen de toegestane 90/99 minuten.';
 
-  alert(msg);
+  if(!options.silent)alert(msg);
 }
 async function calculateRealRoutes(){
   if(!realMap || realRouteLoading)return;
