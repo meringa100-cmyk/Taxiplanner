@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V932</title>
+<title>Taxi Planner V933</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V932</h1>
+<h1>🚕 Taxi Planner V933</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -2756,6 +2756,22 @@ async function optimizeAllRoutes(options={}){
   // V932: verplaatsingen om lange routes te splitsen kunnen nieuwe tijdconflicten
   // veroorzaken. Controleer daarom daarna nogmaals de tijdvensters en orden opnieuw.
   const finalTimeRepair=await repairAllTimeConflicts();
+
+  // V933: bescherm de schooldeadline ná routeverplaatsingen en tijdreparatie.
+  // Als een kind nog te laat dreigt te komen, probeer de ophaaltijd maximaal
+  // 15 minuten te vervroegen. Conflicten die daardoor ontstaan blijven zichtbaar
+  // in de eindcontrole; de planner doet niet alsof ze opgelost zijn.
+  let deadlineTimeRepairs=0;
+  for(const k of kids.filter(x=>active(x)&&x.driver&& !schoolDeadlineOk(x))){
+    const current=Number(k.timeMin)||0;
+    const needed=schoolDeadlineMinutes(k)-pickupToSchoolMinutes(k);
+    const target=Math.max(current-15,needed,0);
+    if(target<current){
+      k.timeMin=target;
+      k.time=fmtTime(target);
+      deadlineTimeRepairs++;
+    }
+  }
   for(const d of driverNames) await optimizeDriverRoute(d);
 
   // Definitieve controle.
@@ -2776,6 +2792,7 @@ async function optimizeAllRoutes(options={}){
 
   let msg='🧭 Route-optimalisatie klaar!\\n\\n';
   if(timeRepair.repairs||timeRepair.moved||finalTimeRepair.repairs||finalTimeRepair.moved)msg+='🕒 '+(timeRepair.repairs+finalTimeRepair.repairs)+' tijdvensters hersteld en '+(timeRepair.moved+finalTimeRepair.moved)+' kind(eren) indien nodig verplaatst.\\n';
+  if(deadlineTimeRepairs)msg+='🏫 '+deadlineTimeRepairs+' ophaaltijd(en) maximaal 15 minuten vervroegd voor schooldeadline.\\n';
   msg+=total+' actieve ritten zijn opnieuw geordend.\\n';
   msg+='De eerste stop ligt zo ver mogelijk van Emmen; daarna werkt de route waar mogelijk geografisch terug richting Emmen.\\n';
   if(moved)msg+='\\n🔄 '+moved+' kind(eren) zijn automatisch naar een andere bus verplaatst om te lange routes te breken.';
