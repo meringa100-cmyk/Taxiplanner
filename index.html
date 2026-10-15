@@ -688,7 +688,7 @@ async function geocodeExactDemoAddresses(){
     if(address)selected.push({kid,address});
   }
 
-  if(selected.length<100{
+  if(selected.length<100){
     const msg='⚠️ BAG/PDOK vond '+selected.length+' van de 100 demo-adressen exact. Niet gevonden kinderen worden niet op een verzonnen plek gezet.';
     console.warn(msg);
     const status=document.getElementById('routeInfo');
