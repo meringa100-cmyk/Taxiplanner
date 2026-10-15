@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V926</title>
+<title>Taxi Planner V927</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V926</h1>
+<h1>🚕 Taxi Planner V927</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1391,7 +1391,7 @@ function suggestRouteRelief(sourceDriver){
       const targetBefore=candidateRides.filter(k=>k.id!==ride.id);
       const currentTargetMin=routeDurationEstimate(targetBefore,idx);
       const currentTargetMax=routeLimitForRides(targetBefore);
-      // V926: rangschik eerst veilige opties, daarna de grootste daling van overschrijding.
+      // V927: rangschik eerst veilige opties, daarna de grootste daling van overschrijding.
       // Bij gelijke score wint de optie met de beste netto geschatte routetijdwinst.
       const sourceBeforeExcess=Math.max(0,currentSourceMin-routeLimitForRides(rides));
       const sourceAfterExcess=Math.max(0,sourceMin-sourceMax);
@@ -1407,7 +1407,7 @@ function suggestRouteRelief(sourceDriver){
   });
   results.sort((a,b)=>Number(b.ok)-Number(a.ok)||(b.improvement-a.improvement)||(b.netTimeGain-a.netTimeGain)||(a.candidateMin+a.sourceMin)-(b.candidateMin+b.sourceMin));
   const cards=results.slice(0,6).map(x=>{
-    const moveButton=x.ok?'<button type="button" class="primary" style="margin-top:8px" onclick="applyRouteReliefChoice(\\''+encodeURIComponent(x.ride.id)+'\\',\\''+encodeURIComponent(x.d)+'\\',\\''+encodeURIComponent(sourceDriver)+'\\')">Verplaats deze rit</button>':'';
+    const moveButton=x.ok?'<button type="button" class="primary" style="margin-top:8px" onclick="applyRouteReliefChoice(\''+encodeURIComponent(x.ride.id)+'\',\''+encodeURIComponent(x.d)+'\',\''+encodeURIComponent(sourceDriver)+'\')">Verplaats deze rit</button>':'';
     const gain=x.improvement>0.5?' · vermindert route-overschrijding '+Math.round(x.improvement)+' min':'';
     const net=' · netto geschat '+(x.netTimeGain>=0?'winst ':'extra tijd ')+Math.round(Math.abs(x.netTimeGain))+' min';
     return '<div class="row" style="margin:8px 0;padding:12px"><b>'+esc(x.ride.name||'Rit')+'</b> → '+esc(x.d)+'<div class="small">Nieuwe route: '+Math.round(x.candidateMin)+'/'+Math.round(x.candidateMax)+' min · resterende route: '+Math.round(x.sourceMin)+'/'+Math.round(x.sourceMax)+' min · bezetting '+(load(x.d)+1)+'/'+MAX+gain+net+'</div><div class="small">'+(x.ok?(x.sourceMin<=x.sourceMax?'✅ Beide routes lijken binnen tijd en zonder tijdconflict te passen.':'⚠️ De ontvangende route past; de bronroute wordt korter maar kan nog steeds te lang zijn. Voer daarna opnieuw de volledige controle uit.'):'⚠️ Geen veilige verplaatsoptie: controleer route, tijd of capaciteit.')+'</div>'+moveButton+'</div>';
@@ -1458,7 +1458,7 @@ function applyRouteReliefChoice(encodedRideId,encodedTarget,encodedSource){
   renderAll();
   runDayStartCheck();
 
-  // V926: toon na iedere handmatige verplaatsing direct de volgende nuttige
+  // V927: toon na iedere handmatige verplaatsing direct de volgende nuttige
   // route-optie. Eerst opnieuw meten; nooit zelf automatisch een kind verplaatsen.
   const stillLong=driverNames.map((d,di)=>{
     const q=kids.filter(k=>k.driver===d&&active(k));
