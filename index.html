@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V933</title>
+<title>Taxi Planner V934</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V933</h1>
+<h1>🚕 Taxi Planner V934</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -2537,9 +2537,12 @@ function planningScore(){
       const travel=routeMinutesBetween(q[i-1],q[i],driverNames.indexOf(d));
       if(travel>gap+15){conflicts++;score+=(travel-gap-15)*30;}
     }
-    const lastKid=q[q.length-1];
-    const late=Math.max(0,schoolArrivalMinutes(lastKid)-schoolDeadlineMinutes(lastKid));
-    if(late>0){deadlineLate++;score+=late*60;}
+    // V934: beoordeel de schooldeadline voor ieder kind, niet alleen de laatste stop.
+    // Daardoor kan de AI geen route als goed beoordelen terwijl eerdere kinderen te laat aankomen.
+    for(const kid of q){
+      const late=Math.max(0,schoolArrivalMinutes(kid)-schoolDeadlineMinutes(kid));
+      if(late>0){deadlineLate++;score+=late*60;}
+    }
     score+=Math.max(0,limit-minutes)*0.05;
   }
   score+=capacityWaste*1.5+used*0.5;
