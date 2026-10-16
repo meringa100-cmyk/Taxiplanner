@@ -1618,7 +1618,7 @@ function renderRecoverySuggestionsV953(){
       advice='Controleer de opeenvolgende ophaaltijden en geschatte reistijd. Open de chauffeur om de betreffende route na te lopen.';
     }else if(rank===6){
       advice='Bekijk mogelijke ritverplaatsingen. Alleen een optie die je bewust kiest mag de planning veranderen; voer daarna opnieuw de volledige controle uit.';
-      action='<button type="button" class="primary" onclick="showPage(\'planner\',null);suggestRouteRelief(\''+encodeURIComponent(p.waarde||'')+'\')">Bekijk alternatieve verdeling ›</button>';
+      action='<button type="button" class="primary" onclick="handleQuickAction(\'driver\',\''+encodeURIComponent(p.waarde||'')+'\',\'6\')">Bekijk alternatieve verdeling ›</button>';
     }else if(rank===7){
       const kid=kids.find(k=>String(k.id)===String(p.waarde));
       if(kid){const arrival=schoolArrivalMinutes(kid),deadline=schoolDeadlineMinutes(kid);advice='Geschatte aankomst '+fmtTime(arrival)+'; uiterlijke aankomst '+fmtTime(deadline)+'. Controleer ophaaltijd, route en schoolbestemming.';}
