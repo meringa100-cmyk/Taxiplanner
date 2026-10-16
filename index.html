@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V939</title>
+<title>Taxi Planner V940</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V939</h1>
+<h1>🚕 Taxi Planner V940</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -4518,11 +4518,12 @@ function renderQuickChildSearch(){
  const input=document.getElementById('quickChildSearch');
  const out=document.getElementById('quickChildSearchResults');
  if(!input||!out)return;
- const q=input.value.trim().toLowerCase();
- if(!q){out.innerHTML='<div class="muted small">Begin met typen om een kind te zoeken.</div>';return;}
- const matches=kids.filter(k=>String(k.name||'').toLowerCase().includes(q)||String(k.id||'').toLowerCase().includes(q)).slice(0,12);
- if(!matches.length){out.innerHTML='<div class="muted small">Geen kind gevonden.</div>';return;}
- out.innerHTML=matches.map(k=>'<div class="row" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap"><div><b>'+esc(k.name||k.id)+'</b><div class="small muted">'+esc(k.id)+' · '+esc(k.time||'Geen tijd')+' · '+esc(k.driver||'Geen chauffeur')+'</div></div><button type="button" class="primary" onclick="editChild(\''+String(k.id).replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')">✏️ Tijd wijzigen</button></div>').join('');
+ const q=String(input.value||'').trim().toLocaleLowerCase('nl');
+ if(!q){out.innerHTML='<div class="muted small">Typ een naam of kindnummer, bijvoorbeeld K101.</div>';return;}
+ const matches=kids.filter(k=>String(k.name||'').toLocaleLowerCase('nl').includes(q)||String(k.id||'').toLocaleLowerCase('nl').includes(q)).slice(0,20);
+ if(!matches.length){out.innerHTML='<div class="muted small">Geen kind gevonden. Probeer een deel van de naam of het nummer (bijv. 101).</div>';return;}
+ out.innerHTML=matches.map((k,i)=>'<div class="row" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--border,#ddd)"><div><b>'+escapeHtml(k.name||k.id)+'</b><div class="small muted">'+escapeHtml(k.id)+' · '+escapeHtml(k.time||'Geen tijd')+' · '+escapeHtml(k.driver||'Geen chauffeur')+'</div></div><button type="button" class="primary" data-quick-child-id="'+escapeHtml(k.id)+'">✏️ Kind / tijd openen</button></div>').join('');
+ out.querySelectorAll('[data-quick-child-id]').forEach(btn=>btn.addEventListener('click',()=>editChild(btn.getAttribute('data-quick-child-id'))));
 }
 function editChild(id){
  const k=find(id);if(!k)return;
@@ -5032,7 +5033,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=939").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=940").catch(()=>{}));}
 </script>
 
 
