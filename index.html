@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V953</title>
+<title>Taxi Planner V954</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -1539,6 +1539,7 @@ function renderMorningCockpitV901(){
     quickActionsHtml+
     '<div id="priorityCockpitPanelV952" style="grid-column:1/-1"></div>'+
     '<div id="recoverySuggestionsV953" style="grid-column:1/-1"></div>'+
+    '<div id="qualityStressTestV954" style="grid-column:1/-1"></div>'+
     breakdownPanel+
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button type="button" onclick="runDayStartCheck();document.getElementById(\'dayStartCheck\').scrollIntoView({behavior:\'smooth\',block:\'start\'})">🔎 Bekijk volledige controle</button></div>'+
     '<p class="small muted" style="margin:8px 0 0">Bijgewerkt om '+updatedAt+'. Berekend uit de huidige planning. Controleer de volledige dagstart voor vertrek; dit overzicht wijzigt zelf niets.</p></div>';
@@ -1629,7 +1630,38 @@ function renderRecoverySuggestionsV953(){
   box.innerHTML='<div style="margin-top:12px;padding:12px;border:1px solid #b9d6f3;border-radius:12px;background:#f4f9ff"><h3 style="margin:0 0 5px">🧰 Herstelvoorstellen</h3><p class="small muted" style="margin:0 0 8px">Per belangrijk aandachtspunt staat een volgende stap. Bij ritten zonder chauffeur worden mogelijke kandidaten berekend op beschikbaarheid, capaciteit en eenvoudige tijd-/routecontroles. Dit zijn suggesties, geen garantie; niets wordt automatisch gewijzigd.</p>'+(cards||'<div class="priority-all-clear-v887"><b>✅ Geen herstelacties nodig</b><div>De huidige cockpit vindt geen open aandachtspunten.</div></div>')+'</div>';
 }
 
-function renderAll(){saveState();renderMorningCockpitV901();renderPriorityCockpitPanel();renderRecoverySuggestionsV953();renderDashboard();renderPlanning();renderDriver();renderParent();renderLive();renderDelayAlerts();updateParentDelayNotice();renderAttention();renderFleet();renderRouteControl();if(realMap)renderRealMapMarkers();}
+
+function renderQualityStressTestV954(){
+ const box=document.getElementById('qualityStressTestV954');if(!box)return;
+ const ks=kids.filter(active),unassigned=ks.filter(k=>!k.driver||!driverNames.includes(k.driver));
+ const loads=driverNames.map(d=>({d,n:load(d),q:ks.filter(k=>k.driver===d)}));
+ const checks=[
+ {n:unassigned.length,label:'Ritten zonder chauffeur'},
+ {n:loads.filter(x=>x.n>MAX).length,label:'Overvolle routes'},
+ {n:loads.filter(x=>x.n>0&&(isDriverUnavailable(x.d)||isBusUnavailable(x.d))).length,label:'Chauffeur/bus met kinderen niet beschikbaar'},
+ {n:loads.filter(x=>x.n>0&&routeDurationEstimate(x.q,driverNames.indexOf(x.d))>routeLimitForRides(x.q)).length,label:'Routes boven tijdslimiet'},
+ {n:loads.filter(x=>{const q=x.q.slice().sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));for(let i=1;i<q.length;i++){const gap=(q[i].timeMin||0)-(q[i-1].timeMin||0);if(gap<=0||routeMinutesBetween(q[i-1],q[i],driverNames.indexOf(x.d))>gap+15)return true;}return false;}).length,label:'Mogelijke tijdconflicten'},
+ {n:ks.filter(k=>k.driver&&!schoolDeadlineOk(k)).length,label:'Kinderen mogelijk te laat op school'}
+ ];
+ const total=checks.reduce((n,x)=>n+x.n,0);
+ box.innerHTML='<div style="margin-top:12px;padding:14px;border:1px solid '+(total?'#e6c96a':'#b8d8bc')+';border-radius:12px;background:'+(total?'#fff9e8':'#f0f9f1')+'"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h3 style="margin:0">🧪 Kwaliteitscheck & stresstest V954</h3><span class="badge">'+(total?'⚠ '+total+' signalen':'✓ Geen signalen')+'</span></div><p class="small muted" style="margin:6px 0 10px">Controleert de huidige planning en rekent hypothetische uitval door. De stresstest verandert geen echte rit, chauffeur of bus.</p><div class="grid" style="margin:8px 0">'+checks.map(x=>'<div class="row" style="margin:0;border-left:4px solid '+(x.n?'#c88719':'#2e7d32')+'"><b style="font-size:1.2em">'+x.n+'</b><span>'+x.label+'</span></div>').join('')+'</div><button type="button" class="primary" onclick="runDayStartCheck();document.getElementById(\'dayStartCheck\')?.scrollIntoView({behavior:\'smooth\',block:\'start\'})">🔎 Voer volledige controle uit</button><div style="border-top:1px solid #d7e0e8;margin-top:12px;padding-top:12px"><b>🚨 Proefscenario: uitval opvangen</b><div class="small muted" style="margin:4px 0 8px">Kies aantallen voor een capaciteitsschatting. Routes en schooltijden moeten apart gecontroleerd worden.</div><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end"><label style="display:flex;flex-direction:column;gap:4px">Chauffeurs uitval (0–5)<input id="stressDriversV954" type="number" min="0" max="5" step="1" value="3" style="width:120px;padding:8px"></label><label style="display:flex;flex-direction:column;gap:4px">Extra busstoringen (0–5)<input id="stressBusesV954" type="number" min="0" max="5" step="1" value="2" style="width:120px;padding:8px"></label><label style="display:flex;flex-direction:column;gap:4px">Extra ritten (0–10)<input id="stressExtraV954" type="number" min="0" max="10" step="1" value="2" style="width:120px;padding:8px"></label><button type="button" onclick="runStressSimulationV954()">▶ Simuleer scenario</button></div><div id="stressResultV954" aria-live="polite" style="margin-top:10px"></div></div></div>';
+ runStressSimulationV954();
+}
+function runStressSimulationV954(){
+ const out=document.getElementById('stressResultV954');if(!out)return;
+ const read=(id,max)=>Math.max(0,Math.min(max,Math.floor(Number(document.getElementById(id)?.value)||0)));
+ const dc=read('stressDriversV954',5),bc=read('stressBusesV954',5),extra=read('stressExtraV954',10),ks=kids.filter(active);
+ const loads=driverNames.map(d=>({d,n:load(d)})).sort((a,b)=>b.n-a.n);
+ const fd=loads.filter(x=>x.n>0).slice(0,dc),failed=new Set(fd.map(x=>x.d));
+ const fb=loads.filter(x=>x.n>0&&!failed.has(x.d)&&!isBusUnavailable(x.d)).slice(0,bc);fb.forEach(x=>failed.add(x.d));
+ const affected=ks.filter(k=>failed.has(k.driver));
+ const remaining=driverNames.filter(d=>!failed.has(d)&&!isDriverUnavailable(d)&&!isBusUnavailable(d));
+ const unaffected=ks.filter(k=>!failed.has(k.driver)&&k.driver&&driverNames.includes(k.driver)).length;
+ const seats=Math.max(0,remaining.length*MAX-unaffected),needed=affected.length+extra,shortage=Math.max(0,needed-seats);
+ out.innerHTML='<div style="padding:11px;border-radius:9px;border:1px solid '+(shortage?'#e6b5ae':'#b8d8bc')+';background:'+(shortage?'#fff1ef':'#eef8ef')+'"><b style="color:'+(shortage?'#a33a24':'#21652b')+'">'+(shortage?'⚠ Capaciteitstekort in dit proefscenario':'✓ Capaciteit lijkt op papier voldoende')+'</b><div class="small" style="margin-top:5px">Hypothetisch uitgevallen chauffeurs: '+fd.length+' · extra busstoringen: '+fb.length+' · kinderen op getroffen routes: '+affected.length+' · extra ritten: '+extra+'.</div><div class="small" style="margin-top:4px">Overblijvende chauffeurs zonder bekende storing: '+remaining.length+' · vrije plaatsen op basis van huidige verdeling: '+seats+' · benodigde plaatsen: '+needed+(shortage?' · tekort: '+shortage:'')+'.</div><div class="small muted" style="margin-top:6px">Dit telt capaciteit, maar herverdeelt geen kinderen en controleert geen reistijden of schooldeadlines. Voer na echte wijzigingen de volledige controle uit.</div></div>';
+}
+
+function renderAll(){saveState();renderMorningCockpitV901();renderPriorityCockpitPanel();renderRecoverySuggestionsV953();renderQualityStressTestV954();renderDashboard();renderPlanning();renderDriver();renderParent();renderLive();renderDelayAlerts();updateParentDelayNotice();renderAttention();renderFleet();renderRouteControl();if(realMap)renderRealMapMarkers();}
 
 
 function renderFleet(){
@@ -5188,7 +5220,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=953").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=954").catch(()=>{}));}
 </script>
 
 
