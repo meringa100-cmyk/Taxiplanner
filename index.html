@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V956</title>
+<title>Taxi Planner V957</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -1648,6 +1648,7 @@ function renderQualityStressTestV954(){
  runStressSimulationV954();
 }
 
+
 function runStressSimulationV954(){
  const out=document.getElementById('stressResultV954');if(!out)return;
  const read=(id,max)=>Math.max(0,Math.min(max,Math.floor(Number(document.getElementById(id)?.value)||0)));
@@ -1658,24 +1659,30 @@ function runStressSimulationV954(){
  const affected=ks.filter(k=>failed.has(k.driver)).sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
  const available=driverNames.filter(d=>!failed.has(d)&&!isDriverUnavailable(d)&&!isBusUnavailable(d));
  const planned=Object.fromEntries(available.map(d=>[d,ks.filter(k=>k.driver===d)]));
- const relocated=[],unplaced=[];
- function fits(d,k){
+ const results=[];
+ function capacityFit(d,k){return (planned[d]||[]).filter(active).length<MAX;}
+ function routeFit(d,k){
   const route=[...(planned[d]||[]),k].filter(active).sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
   if(route.length>MAX||!schoolDeadlineOk(k))return false;
   for(let i=1;i<route.length;i++){const gap=(route[i].timeMin||0)-(route[i-1].timeMin||0);if(gap<=0||routeMinutesBetween(route[i-1],route[i],driverNames.indexOf(d))>gap+15)return false;}
   return routeDurationEstimate(route,driverNames.indexOf(d))<=routeLimitForRides(route);
  }
  for(const k of affected){
-  const choices=available.filter(d=>fits(d,k)).sort((a,b)=>planned[a].length-planned[b].length);
-  if(choices.length){const d=choices[0];planned[d].push(k);relocated.push({kid:k,driver:d});}else unplaced.push(k);
+  const cap=available.filter(d=>capacityFit(d,k)).sort((a,b)=>planned[a].length-planned[b].length);
+  const strict=cap.filter(d=>routeFit(d,k));
+  if(strict.length){const d=strict[0];planned[d].push(k);results.push({kid:k,driver:d,status:'green',reason:'Capaciteit, geschatte route en schooldeadline voldoen aan de basiscontrole.'});}
+  else if(cap.length){const d=cap[0];planned[d].push(k);results.push({kid:k,driver:d,status:'amber',reason:'Er is plek, maar route- of schooltijdcontrole vraagt handmatige controle.'});}
+  else results.push({kid:k,driver:'',status:'red',reason:'Geen chauffeur met vrije capaciteit gevonden in dit scenario.'});
  }
- const availableSeats=available.reduce((n,d)=>n+Math.max(0,MAX-ks.filter(k=>k.driver===d).length),0);
- const extraShortage=Math.max(0,extra-Math.max(0,availableSeats-relocated.length));
- const concern=unplaced.length||extraShortage;
- const headline=unplaced.length?'⚠ '+unplaced.length+' kinderen niet veilig herplaatsbaar':extraShortage?'⚠ Extra ritten geven mogelijk capaciteitstekort':relocated.length?'◉ Kandidaat-herplaatsingen gevonden; controle nodig':'✓ Geen getroffen kinderen om te herplaatsen';
+ const counts={green:results.filter(x=>x.status==='green').length,amber:results.filter(x=>x.status==='amber').length,red:results.filter(x=>x.status==='red').length};
+ const extraItems=Array.from({length:extra},(_,i)=>({status:'amber',label:'Extra rit '+(i+1),reason:'Adres, ophaaltijd en schoolbestemming ontbreken; alleen capaciteit kan worden beoordeeld.'}));
  const esc=v=>String(v??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
- const detail=relocated.length?'<div class="small" style="margin-top:6px"><b>Voorlopige routekandidaten</b><ul style="margin:4px 0;padding-left:20px">'+relocated.slice(0,8).map(x=>'<li>'+esc(x.kid.name||x.kid.childName||('Kind '+x.kid.id))+' → '+esc(x.driver)+'</li>').join('')+(relocated.length>8?'<li>… en '+(relocated.length-8)+' meer</li>':'')+'</ul></div>':'';
- out.innerHTML='<div style="padding:11px;border-radius:9px;border:1px solid '+(concern?'#e6b5ae':'#e6c96a')+';background:'+(concern?'#fff1ef':'#fff9e8')+'"><b style="color:'+(concern?'#a33a24':'#8a5a00')+'">'+headline+'</b><div class="small" style="margin-top:5px">Gesimuleerd: '+fd.length+' chauffeur(s) uitgevallen en '+fb.length+' extra busstoring(en). '+affected.length+' kinderen geraakt; '+relocated.length+' kandidaat-herplaatsingen gevonden; '+unplaced.length+' niet geplaatst.</div><div class="small" style="margin-top:4px">Beschikbare chauffeurs na uitval: '+available.length+'. Extra ritten opgegeven: '+extra+'.</div>'+detail+'<div class="small muted" style="margin-top:7px">Er is niets gewijzigd in de echte planning. Kandidaten zijn indicatief op basis van capaciteit, tijdsvolgorde, geschatte routelengte en schooldeadline. Extra ritten hebben geen adressen of tijden en worden daarom alleen als capaciteit meegeteld. Controleer handmatig en voer de volledige dagstartcontrole uit.</div></div>';
+ const style={green:'border-left:4px solid #2e7d32;background:#eff8ef',amber:'border-left:4px solid #c88719;background:#fff8e6',red:'border-left:4px solid #b42318;background:#fff0ee'};
+ const icon={green:'🟢',amber:'🟠',red:'🔴'};
+ const line=x=>'<div style="padding:8px;margin:5px 0;border-radius:7px;'+style[x.status]+'"><b>'+icon[x.status]+' '+esc(x.kid?(x.kid.name||x.kid.childName||('Kind '+x.kid.id)):x.label)+'</b>'+(x.driver?' → '+esc(x.driver):'')+'<div class="small">'+esc(x.reason)+'</div></div>';
+ const hasConcern=counts.red>0||counts.amber>0||extra>0;
+ const headline=counts.red?'🔴 '+counts.red+' kinderen zonder kandidaat':counts.amber||extra?'🟠 Kandidaten gevonden; controle nodig':'🟢 Alle basiscontroles geslaagd';
+ out.innerHTML='<div style="padding:11px;border-radius:9px;border:1px solid '+(counts.red?'#e6b5ae':'#e6c96a')+';background:'+(counts.red?'#fff1ef':'#fff9e8')+'"><b style="color:'+(counts.red?'#a33a24':'#8a5a00')+'">'+headline+'</b><div class="small" style="margin-top:5px">Gesimuleerd: '+fd.length+' chauffeur(s) uitgevallen en '+fb.length+' extra busstoring(en). '+affected.length+' kinderen geraakt. 🟢 '+counts.green+' basiscontrole geslaagd · 🟠 '+counts.amber+' extra controle nodig · 🔴 '+counts.red+' geen kandidaat.</div><div class="small" style="margin-top:4px">Beschikbare chauffeurs na uitval: '+available.length+'. Extra ritten: '+extra+' (nog zonder echte ritgegevens).</div><div style="margin-top:8px"><b>Resultaat per kind</b>'+results.map(line).join('')+extraItems.map(line).join('')+'</div><div class="small muted" style="margin-top:8px">Dit is een niet-destructieve proef: de echte planning wordt niet gewijzigd. Groen betekent alleen dat de ingebouwde basiscontroles slagen, niet dat de route gegarandeerd uitvoerbaar is. Oranje vereist controle van adres, routevolgorde, reistijd en schooldeadline. Extra ritten blijven oranje tot echte gegevens zijn ingevuld. Voer de volledige dagstartcontrole uit voordat je echte wijzigingen maakt.</div></div>';
 }
 
 function renderAll(){saveState();renderMorningCockpitV901();renderPriorityCockpitPanel();renderRecoverySuggestionsV953();renderQualityStressTestV954();renderDashboard();renderPlanning();renderDriver();renderParent();renderLive();renderDelayAlerts();updateParentDelayNotice();renderAttention();renderFleet();renderRouteControl();if(realMap)renderRealMapMarkers();}
@@ -5237,7 +5244,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=956").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=957").catch(()=>{}));}
 </script>
 
 
