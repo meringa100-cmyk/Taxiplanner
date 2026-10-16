@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V942</title>
+<title>Taxi Planner V943</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V942</h1>
+<h1>🚕 Taxi Planner V943</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -4565,52 +4565,62 @@ function toggleEditDestination(){
 }
 async function saveChild(id){
  const k=find(id);if(!k)return;
+ // V943: transactionele veiligheidskopie; een mislukte wijziging mag de planning niet beschadigen.
+ const kidsSnapshot=JSON.stringify(kids);
+ const original=JSON.parse(kidsSnapshot).find(x=>x.id===id);
+ if(!original){alert('Kind niet gevonden. Er is niets gewijzigd.');return;}
  const t=document.getElementById('eTime')?.value||k.time||'08:30';
+ if(!/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(t)){alert('Vul een geldige ophaaltijd in.');return;}
  const parts=t.split(':').map(Number);
- k.name=document.getElementById('eName')?.value.trim()||k.name;
- const selectedDriver=document.getElementById('eDriver')?.value||k.driver;
- if(selectedDriver!==k.driver){
+ const pickupAddress=document.getElementById('ePickup')?.value.trim()||k.pickupAddress||'';
+ const pickupCity=document.getElementById('ePickupCity')?.value.trim()||'';
+ const destination=document.getElementById('eDestination')?.value||k.destination||k.school||'Nieuwe bestemming';
+ const destinationAddress=document.getElementById('eAddress')?.value.trim()||schoolLocations[schools.includes(destination)?destination:'Nieuwe bestemming']?.address||destination;
+ const destinationCity=document.getElementById('eDestinationCity')?.value.trim()||'';
+ try{
+  const selectedDriver=document.getElementById('eDriver')?.value||k.driver;
+  if(selectedDriver!==k.driver){
    if(!driverNames.includes(selectedDriver)){alert('Kies een geldige chauffeur.');return;}
    if(load(selectedDriver)>=MAX){alert(selectedDriver+' heeft al '+load(selectedDriver)+' actieve kinderen. Kies eerst een route met ruimte.');return;}
    if(isDriverUnavailable(selectedDriver)||isBusUnavailable(selectedDriver)){alert(selectedDriver+' is momenteel niet beschikbaar. Kies een beschikbare chauffeur.');return;}
    if(driverTimeConflict(k,selectedDriver)&&!confirm('Deze rit kan een tijdconflict veroorzaken bij '+selectedDriver+'. Toch handmatig verplaatsen?'))return;
    k.driver=selectedDriver;
+  }
+  k.name=document.getElementById('eName')?.value.trim()||k.name;
+  k.time=t;k.timeMin=parts[0]*60+parts[1];
+  const arrivalValue=document.getElementById('eArrivalDeadline')?.value||'08:30';
+  if(!/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(arrivalValue))throw new Error('Vul een geldige uiterlijke aankomsttijd in.');
+  const arrivalParts=arrivalValue.split(':').map(Number);
+  k.arrivalDeadlineMin=arrivalParts[0]*60+arrivalParts[1];
+  const pickupChanged=pickupAddress!==String(original.pickupAddress||original.address||'')||pickupCity!==String(original.pickupCity||'');
+  const destinationChanged=destination!==String(original.destination||original.school||'')||destinationAddress!==String(original.destinationAddress||'')||destinationCity!==String(original.destinationCity||'');
+  k.pickupAddress=pickupAddress;k.pickupCity=pickupCity;
+  k.destination=destination;k.school=schools.includes(destination)?destination:'Nieuwe bestemming';
+  k.destinationAddress=destinationAddress;k.address=pickupAddress||k.address||'';k.destinationCity=destinationCity;
+  k.approach=document.getElementById('e1')?.value||'';k.safety=document.getElementById('e2')?.value||'';k.important=document.getElementById('e3')?.value||'';
+  // Herbereken uitsluitend de routevolgorde van de betrokken chauffeur(s).
+  const affectedDrivers=new Set([original.driver,k.driver].filter(Boolean));
+  affectedDrivers.forEach(d=>kids.filter(x=>x.driver===d&&active(x)).sort((a,b)=>(Number(a.timeMin)||0)-(Number(b.timeMin)||0)).forEach((x,i)=>x.routeOrder=i+1));
+  // Een tijdwijziging alleen mag nooit opnieuw adressen geocoderen.
+  if(pickupChanged&&pickupAddress){
+   const geo=await geocodePickupAddress([pickupAddress,pickupCity].filter(Boolean).join(', ')+', Nederland');
+   if(geo){k.lat=geo.lat;k.lon=geo.lon;}
+  }
+  if(destinationChanged&&destinationAddress){
+   const destinationGeo=await geocodeAddress([destinationAddress,destinationCity].filter(Boolean).join(', ')+', Nederland');
+   if(destinationGeo){k.destinationLat=destinationGeo.lat;k.destinationLon=destinationGeo.lon;}
+   else if(schoolLocations[k.school]){k.destinationLat=schoolLocations[k.school].lat;k.destinationLon=schoolLocations[k.school].lon;}
+  }
+  k.newlyAdded=k.newlyAdded!==false;
+  saveState();closeModal();renderAll();
+ }catch(err){
+  // Herstel alle kinderen in-place bij een fout; de gebruiker kan veilig opnieuw proberen.
+  const restored=JSON.parse(kidsSnapshot);
+  kids.splice(0,kids.length,...restored);
+  saveState();renderAll();
+  console.error('Kind bewerken teruggedraaid:',err);
+  alert('De wijziging is niet opgeslagen en de vorige planning is hersteld. Probeer het opnieuw. Details: '+(err?.message||err));
  }
- k.time=t;
- k.timeMin=(Number(parts[0])||0)*60+(Number(parts[1])||0);
- const arrivalValue=document.getElementById('eArrivalDeadline')?.value||'08:30';
- const arrivalParts=arrivalValue.split(':').map(Number);
- k.arrivalDeadlineMin=(Number(arrivalParts[0])||0)*60+(Number(arrivalParts[1])||0);
- k.pickupAddress=document.getElementById('ePickup')?.value.trim()||k.pickupAddress||'';
- k.pickupCity=document.getElementById('ePickupCity')?.value.trim()||'';
- const destination=document.getElementById('eDestination')?.value||k.destination||k.school||'Nieuwe bestemming';
- k.destination=destination;
- k.school=schools.includes(destination)?destination:'Nieuwe bestemming';
- k.destinationAddress=document.getElementById('eAddress')?.value.trim()||schoolLocations[k.school]?.address||destination;
- // Het legacy-veld address blijft het ophaaladres; bestemming staat apart.
- k.address=k.pickupAddress||k.address||'';
- k.destinationCity=document.getElementById('eDestinationCity')?.value.trim()||'';
- k.approach=document.getElementById('e1')?.value||'';
- k.safety=document.getElementById('e2')?.value||'';
- k.important=document.getElementById('e3')?.value||'';
- driverNames.forEach(d=>kids.filter(x=>x.driver===d&&active(x)).sort((a,b)=>(a.timeMin||0)-(b.timeMin||0)).forEach((x,i)=>x.routeOrder=i+1));
-
- const pickupQuery=[k.pickupAddress,k.pickupCity].filter(Boolean).join(', ');
- const geo=await geocodePickupAddress(pickupQuery+', Nederland');
- if(geo){k.lat=geo.lat;k.lon=geo.lon;}
-
- const destinationQuery=[k.destinationAddress,k.destinationCity].filter(Boolean).join(', ');
- const destinationGeo=await geocodeAddress(destinationQuery+', Nederland');
- if(destinationGeo){
-   k.destinationLat=destinationGeo.lat;
-   k.destinationLon=destinationGeo.lon;
- }else if(schoolLocations[k.school]){
-   k.destinationLat=schoolLocations[k.school].lat;
-   k.destinationLon=schoolLocations[k.school].lon;
- }
- k.newlyAdded=k.newlyAdded!==false;
- closeModal();
- renderAll();
 }
 function openAdd(){
  const destinationOptions=schools.map(s=>`<option value="${s}">${s}</option>`).join('')+`<option value="Anders">Anders / eigen bestemming</option>`;
