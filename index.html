@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V938</title>
+<title>Taxi Planner V939</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V938</h1>
+<h1>🚕 Taxi Planner V939</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -316,6 +316,12 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 <div id="alerts"></div>
 </div>
 <div class="card"><h3>🧭 Routecontrole</h3><p class="muted">Controle op route, capaciteit en schooldeadline na AI-herverdeling.</p><div id="routeControl"></div></div>
+<div class="card" id="quickChildTimeCard">
+<h3>⏱️ Kind direct opzoeken & tijd wijzigen</h3>
+<p class="muted">Zoek een kind op naam of nummer en open direct het bewerkscherm om de ophaaltijd aan te passen.</p>
+<input id="quickChildSearch" placeholder="Typ naam of kindnummer..." oninput="renderQuickChildSearch()" style="width:100%">
+<div id="quickChildSearchResults" style="margin-top:10px"></div>
+</div>
 <div id="collapsibleRittenVandaag" class="collapsible-section open"><button type="button" class="collapsible-header" onclick="toggleCollapsible('collapsibleRittenVandaag')"><span>📋 Ritten vandaag</span><span class="collapsible-arrow">▼</span></button><div class="collapsible-content"><div class="card">
 <h3>🗺️ Ritten vandaag</h3>
 <div class="actions">
@@ -4508,6 +4514,16 @@ function childCardHtml(k){
    </div>
  </div>`;
 }
+function renderQuickChildSearch(){
+ const input=document.getElementById('quickChildSearch');
+ const out=document.getElementById('quickChildSearchResults');
+ if(!input||!out)return;
+ const q=input.value.trim().toLowerCase();
+ if(!q){out.innerHTML='<div class="muted small">Begin met typen om een kind te zoeken.</div>';return;}
+ const matches=kids.filter(k=>String(k.name||'').toLowerCase().includes(q)||String(k.id||'').toLowerCase().includes(q)).slice(0,12);
+ if(!matches.length){out.innerHTML='<div class="muted small">Geen kind gevonden.</div>';return;}
+ out.innerHTML=matches.map(k=>'<div class="row" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap"><div><b>'+esc(k.name||k.id)+'</b><div class="small muted">'+esc(k.id)+' · '+esc(k.time||'Geen tijd')+' · '+esc(k.driver||'Geen chauffeur')+'</div></div><button type="button" class="primary" onclick="editChild(\''+String(k.id).replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')">✏️ Tijd wijzigen</button></div>').join('');
+}
 function editChild(id){
  const k=find(id);if(!k)return;
  const destinationOptions=schools.map(x=>`<option value="${x}" ${(k.destination||k.school)===x?'selected':''}>${x}</option>`).join('')+
@@ -5016,7 +5032,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=938").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=939").catch(()=>{}));}
 </script>
 
 
