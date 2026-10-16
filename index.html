@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V952</title>
+<title>Taxi Planner V953</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V952</h1>
+<h1>🚕 Taxi Planner V953</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1538,6 +1538,7 @@ function renderMorningCockpitV901(){
     '<div class="grid" style="margin-top:10px">'+stats.map(x=>'<div class="row" style="margin:0;border-left:4px solid '+(x.bad?'#c62828':'#2e7d32')+'"><div style="font-size:1.15em">'+x.icon+' <b>'+x.value+'</b></div><div><b>'+x.label+'</b><div class="small muted">'+x.detail+'</div></div></div>').join('')+'</div>'+
     quickActionsHtml+
     '<div id="priorityCockpitPanelV952" style="grid-column:1/-1"></div>'+
+    '<div id="recoverySuggestionsV953" style="grid-column:1/-1"></div>'+
     breakdownPanel+
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button type="button" onclick="runDayStartCheck();document.getElementById(\'dayStartCheck\').scrollIntoView({behavior:\'smooth\',block:\'start\'})">🔎 Bekijk volledige controle</button></div>'+
     '<p class="small muted" style="margin:8px 0 0">Bijgewerkt om '+updatedAt+'. Berekend uit de huidige planning. Controleer de volledige dagstart voor vertrek; dit overzicht wijzigt zelf niets.</p></div>';
@@ -1582,7 +1583,53 @@ function togglePriorityCockpitExpandedV952(){
   renderPriorityCockpitPanel();
 }
 
-function renderAll(){saveState();renderMorningCockpitV901();renderPriorityCockpitPanel();renderDashboard();renderPlanning();renderDriver();renderParent();renderLive();renderDelayAlerts();updateParentDelayNotice();renderAttention();renderFleet();renderRouteControl();if(realMap)renderRealMapMarkers();}
+
+function renderRecoverySuggestionsV953(){
+  const box=document.getElementById('recoverySuggestionsV953');
+  if(!box)return;
+  const issues=Array.isArray(window.taxiplannerAttentionExport)?window.taxiplannerAttentionExport:[];
+  const esc=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const cards=issues.slice(0,4).map(p=>{
+    const rank=Number(p.prioriteit)||99;
+    let advice='Open de melding en controleer de planning voordat je wijzigingen opslaat.';
+    let action='<button type="button" onclick="handleQuickAction(\''+(p.type||'driver')+'\',\''+encodeURIComponent(p.waarde||'')+'\',\''+rank+'\')">Bekijk melding ›</button>';
+    if(rank===1){
+      advice='Controleer eerst de gemelde busstoring en regel zo nodig vervangend vervoer. Controleer daarna de betrokken kinderen en vertrektijden.';
+    }else if(rank===2){
+      advice='Controleer de beschikbaarheid en wijs alleen na overleg een vervanger toe. Kijk daarna opnieuw naar capaciteit en reistijden.';
+    }else if(rank===3){
+      const kid=kids.find(k=>String(k.id)===String(p.waarde));
+      const candidates=kid?driverNames.map((d,di)=>{
+        if(isDriverUnavailable(d)||isBusUnavailable(d)||load(d)>=MAX||driverTimeConflict(kid,d))return null;
+        const route=kids.filter(k=>k.driver===d&&active(k)).concat([kid]).sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+        let conflict=false;
+        for(let i=1;i<route.length;i++){
+          const gap=(route[i].timeMin||0)-(route[i-1].timeMin||0);
+          if(gap<=0||routeMinutesBetween(route[i-1],route[i],di)>gap+15){conflict=true;break;}
+        }
+        const minutes=routeDurationEstimate(route,di),limit=routeLimitForRides(route);
+        return {d,minutes,limit,conflict,ok:!conflict&&route.length<=MAX&&minutes<=limit};
+      }).filter(Boolean).sort((a,b)=>Number(b.ok)-Number(a.ok)||(a.minutes-b.minutes)).slice(0,3):[];
+      advice=candidates.length?'Mogelijke chauffeurs om als eerste te controleren: '+candidates.map(x=>x.d+' ('+load(x.d)+'/'+MAX+', route '+Math.round(x.minutes)+'/'+Math.round(x.limit)+' min'+(x.ok?', lijkt passend':', controle nodig')+')').join('; ')+'. Controleer ook de schooldeadline en wijs pas daarna toe.':'Geen directe kandidaat gevonden; controleer beschikbaarheid, capaciteit en tijdconflicten.';
+      action='<button type="button" onclick="handleQuickAction(\'child\',\''+encodeURIComponent(p.waarde||'')+'\',\'3\')">Open rit en beoordeel ›</button>';
+    }else if(rank===4){
+      advice='Er zijn meer actieve kinderen dan toegestane plaatsen. Verdeel ritten en voer daarna de volledige controle opnieuw uit.';
+    }else if(rank===5){
+      advice='Controleer de opeenvolgende ophaaltijden en geschatte reistijd. Open de chauffeur om de betreffende route na te lopen.';
+    }else if(rank===6){
+      advice='Bekijk mogelijke ritverplaatsingen. Alleen een optie die je bewust kiest mag de planning veranderen; voer daarna opnieuw de volledige controle uit.';
+      action='<button type="button" class="primary" onclick="showPage(\'planner\',null);suggestRouteRelief(\''+encodeURIComponent(p.waarde||'')+'\')">Bekijk alternatieve verdeling ›</button>';
+    }else if(rank===7){
+      const kid=kids.find(k=>String(k.id)===String(p.waarde));
+      if(kid){const arrival=schoolArrivalMinutes(kid),deadline=schoolDeadlineMinutes(kid);advice='Geschatte aankomst '+fmtTime(arrival)+'; uiterlijke aankomst '+fmtTime(deadline)+'. Controleer ophaaltijd, route en schoolbestemming.';}
+      action='<button type="button" onclick="handleQuickAction(\'child\',\''+encodeURIComponent(p.waarde||'')+'\',\'7\')">Controleer rit ›</button>';
+    }
+    return '<div class="row" style="margin:7px 0;padding:12px"><div style="display:flex;gap:8px;align-items:flex-start"><b style="min-width:25px">'+rank+'.</b><div style="flex:1;min-width:0"><b>'+esc(p.onderwerp||'Aandachtspunt')+'</b><div class="small muted">'+esc(p.details||'')+'</div><p style="margin:7px 0">'+esc(advice)+'</p>'+action+'</div></div></div>';
+  }).join('');
+  box.innerHTML='<div style="margin-top:12px;padding:12px;border:1px solid #b9d6f3;border-radius:12px;background:#f4f9ff"><h3 style="margin:0 0 5px">🧰 Herstelvoorstellen</h3><p class="small muted" style="margin:0 0 8px">Per belangrijk aandachtspunt staat een volgende stap. Bij ritten zonder chauffeur worden mogelijke kandidaten berekend op beschikbaarheid, capaciteit en eenvoudige tijd-/routecontroles. Dit zijn suggesties, geen garantie; niets wordt automatisch gewijzigd.</p>'+(cards||'<div class="priority-all-clear-v887"><b>✅ Geen herstelacties nodig</b><div>De huidige cockpit vindt geen open aandachtspunten.</div></div>')+'</div>';
+}
+
+function renderAll(){saveState();renderMorningCockpitV901();renderPriorityCockpitPanel();renderRecoverySuggestionsV953();renderDashboard();renderPlanning();renderDriver();renderParent();renderLive();renderDelayAlerts();updateParentDelayNotice();renderAttention();renderFleet();renderRouteControl();if(realMap)renderRealMapMarkers();}
 
 
 function renderFleet(){
@@ -5141,7 +5188,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=952").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=953").catch(()=>{}));}
 </script>
 
 
