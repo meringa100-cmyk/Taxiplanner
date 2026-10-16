@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V957</title>
+<title>Taxi Planner V958</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V957</h1>
+<h1>🚕 Taxi Planner V958</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1680,9 +1680,28 @@ function runStressSimulationV954(){
  const style={green:'border-left:4px solid #2e7d32;background:#eff8ef',amber:'border-left:4px solid #c88719;background:#fff8e6',red:'border-left:4px solid #b42318;background:#fff0ee'};
  const icon={green:'🟢',amber:'🟠',red:'🔴'};
  const line=x=>'<div style="padding:8px;margin:5px 0;border-radius:7px;'+style[x.status]+'"><b>'+icon[x.status]+' '+esc(x.kid?(x.kid.name||x.kid.childName||('Kind '+x.kid.id)):x.label)+'</b>'+(x.driver?' → '+esc(x.driver):'')+'<div class="small">'+esc(x.reason)+'</div></div>';
+ window.taxiplannerStressReportV958={driversOut:dc,busFailures:bc,extraRides:extra,results:results.map(x=>({childId:x.kid?.id||'',childName:x.kid?.name||x.kid?.childName||('Kind '+(x.kid?.id||'')),driver:x.driver||'',status:x.status,reason:x.reason})),extraItems:extraItems.map(x=>({name:x.label,status:x.status,reason:x.reason}))};
  const hasConcern=counts.red>0||counts.amber>0||extra>0;
  const headline=counts.red?'🔴 '+counts.red+' kinderen zonder kandidaat':counts.amber||extra?'🟠 Kandidaten gevonden; controle nodig':'🟢 Alle basiscontroles geslaagd';
  out.innerHTML='<div style="padding:11px;border-radius:9px;border:1px solid '+(counts.red?'#e6b5ae':'#e6c96a')+';background:'+(counts.red?'#fff1ef':'#fff9e8')+'"><b style="color:'+(counts.red?'#a33a24':'#8a5a00')+'">'+headline+'</b><div class="small" style="margin-top:5px">Gesimuleerd: '+fd.length+' chauffeur(s) uitgevallen en '+fb.length+' extra busstoring(en). '+affected.length+' kinderen geraakt. 🟢 '+counts.green+' basiscontrole geslaagd · 🟠 '+counts.amber+' extra controle nodig · 🔴 '+counts.red+' geen kandidaat.</div><div class="small" style="margin-top:4px">Beschikbare chauffeurs na uitval: '+available.length+'. Extra ritten: '+extra+' (nog zonder echte ritgegevens).</div><div style="margin-top:8px"><b>Resultaat per kind</b>'+results.map(line).join('')+extraItems.map(line).join('')+'</div><div class="small muted" style="margin-top:8px">Dit is een niet-destructieve proef: de echte planning wordt niet gewijzigd. Groen betekent alleen dat de ingebouwde basiscontroles slagen, niet dat de route gegarandeerd uitvoerbaar is. Oranje vereist controle van adres, routevolgorde, reistijd en schooldeadline. Extra ritten blijven oranje tot echte gegevens zijn ingevuld. Voer de volledige dagstartcontrole uit voordat je echte wijzigingen maakt.</div></div>';
+ const exportBtn=document.createElement('button');
+ exportBtn.type='button';exportBtn.textContent='📄 Exporteer stresstestrapport (CSV)';exportBtn.style.marginTop='10px';
+ exportBtn.onclick=exportStressSimulationV958;
+ out.appendChild(exportBtn);
+
+}
+
+
+function exportStressSimulationV958(){
+ const report=window.taxiplannerStressReportV958;
+ if(!report){alert('Voer eerst een stresstest uit.');return;}
+ const columns=['Type','Kind-ID','Kind / extra rit','Kandidaat-chauffeur','Status','Toelichting','Scenario'];
+ const cell=v=>String(v??'').replace(/"/g,'""');
+ const scenario=report.driversOut+' chauffeurs uitval; '+report.busFailures+' busstoringen; '+report.extraRides+' extra ritten';
+ const rows=[...report.results.map(x=>['Kind',x.childId,x.childName,x.driver,x.status,x.reason,scenario]),...report.extraItems.map(x=>['Extra rit','',x.name,'',x.status,x.reason,scenario])];
+ const content='\uFEFF'+[columns,...rows].map(row=>row.map(v=>'"'+cell(v)+'"').join(';')).join('\r\n');
+ const blob=new Blob([content],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),link=document.createElement('a');
+ link.href=url;link.download='taxi-stresstest-'+new Date().toISOString().slice(0,10)+'.csv';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
 function renderAll(){saveState();renderMorningCockpitV901();renderPriorityCockpitPanel();renderRecoverySuggestionsV953();renderQualityStressTestV954();renderDashboard();renderPlanning();renderDriver();renderParent();renderLive();renderDelayAlerts();updateParentDelayNotice();renderAttention();renderFleet();renderRouteControl();if(realMap)renderRealMapMarkers();}
@@ -5244,7 +5263,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=957").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=958").catch(()=>{}));}
 </script>
 
 
