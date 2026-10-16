@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V947</title>
+<title>Taxi Planner V948</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V947</h1>
+<h1>🚕 Taxi Planner V948</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -279,7 +279,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 
 <main>
 <section id="planner" class="page active"><div id="plannerDelayAlerts"></div>
-<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Planner Dashboard</h2><div class="actions"><button class="primary" onclick="runAIAndCheck()">🤖 AI plannen & controleren</button><button type="button" id="runDayStartCheckButton" onclick="runDayStartCheck(); document.getElementById('dayStartCheck').scrollIntoView({behavior:'smooth',block:'start'})">🔎 Controleer planning</button></div></div><div id="morningCockpitV901" class="grid" style="margin-top:12px"></div><div id="dashboard" class="grid" style="margin-top:12px"></div><div id="dayStartCheck"></div></div>
+<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Planner Dashboard</h2><div class="actions"><button class="primary" onclick="runAIAndCheck()">🤖 AI plannen & controleren</button><button type="button" id="runDayStartCheckButton" onclick="runDayStartCheck(); document.getElementById('dayStartCheck').scrollIntoView({behavior:'smooth',block:'start'})">🔎 Controleer planning</button><button type="button" onclick="exportPlanningCsv()">📥 Exporteer planning (CSV)</button></div></div><div id="morningCockpitV901" class="grid" style="margin-top:12px"></div><div id="dashboard" class="grid" style="margin-top:12px"></div><div id="dayStartCheck"></div></div>
 
 <div class="card">
   <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
@@ -4096,6 +4096,40 @@ async function runAIAndCheck(){
     if(b)b.scrollIntoView({behavior:'smooth',block:'center'});
   },120);
 }
+function exportPlanningCsv(){
+  // V948: exporteer een leesbaar planningsoverzicht zonder ouder-PINs of andere inloggegevens.
+  const columns=['Kind-ID','Kind','Ophaaladres','School/bestemming','Ophaaltijd','Chauffeur','Bus','Routevolgorde','Status'];
+  const csvCell=value=>{
+    const text=String(value??'');
+    return '"'+text.replace(/"/g,'""')+'"';
+  };
+  const rows=[...kids].sort((a,b)=>{
+    const driverCompare=String(a.driver||'').localeCompare(String(b.driver||'','nl'));
+    return driverCompare ||
+      (Number(a.routeOrder)||9999)-(Number(b.routeOrder)||9999) ||
+      (Number(a.timeMin)||0)-(Number(b.timeMin)||0);
+  }).map(k=>[
+    k.id||'',
+    k.name||'',
+    k.pickupAddress||k.address||'',
+    k.school||k.destination||'',
+    k.time||fmtTime(Number(k.timeMin)||0),
+    k.driver||'Niet toegewezen',
+    busForDriver(k.driver),
+    Number(k.routeOrder)||'',
+    statusText(k.status||'')
+  ]);
+  const content='\\uFEFF'+[columns,...rows].map(row=>row.map(csvCell).join(';')).join('\\r\\n');
+  const blob=new Blob([content],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement('a');
+  link.href=url;
+  link.download='taxi-planning-'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
 function resetDemo(){
  if(!confirm('Demo terugzetten?'))return;
  localStorage.removeItem(STORAGE_KEY);
@@ -4971,7 +5005,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=947").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=948").catch(()=>{}));}
 </script>
 
 
