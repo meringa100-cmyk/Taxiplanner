@@ -2422,17 +2422,6 @@ async function osrmRoute(coords){
   return data.routes[0];
 }
 
-async function osrmTrip(coords){
-  const joined=coords.map(p=>p[0]+','+p[1]).join(';');
-  const url='https://router.project-osrm.org/trip/v1/driving/'+joined+
-    '?source=first&destination=last&roundtrip=false&overview=false';
-  const res=await fetch(url);
-  if(!res.ok)throw new Error('Optimalisatie-server reageert niet');
-  const data=await res.json();
-  if(data.code!=='Ok' || !data.trips?.length)throw new Error('Geen optimale route gevonden');
-  return data;
-}
-
 async function osrmTable(coords){
   const joined=coords.map(p=>p[0]+','+p[1]).join(';');
   const url='https://router.project-osrm.org/table/v1/driving/'+joined+
@@ -3100,28 +3089,6 @@ function clearRoutes(){
 function aiTimeDistance(a,b){
   return Math.abs((a.timeMin||0)-(b.timeMin||0));
 }
-function aiRouteSpread(driver, extraKid){
-  const rides=kids.filter(k=>k.driver===driver && active(k));
-  const times=rides.map(k=>k.timeMin);
-  if(extraKid) times.push(extraKid.timeMin);
-  if(!times.length) return 0;
-  return Math.max(...times)-Math.min(...times);
-}
-function aiSameStreetCount(driver,kid){
-  const street=(kid.address||'').split(/\\s+\\d/)[0].trim().toLowerCase();
-  if(!street) return 0;
-  return kids.filter(k=>k.driver===driver && active(k) &&
-    (k.address||'').toLowerCase().startsWith(street)).length;
-}
-function aiSchoolCount(driver,kid){
-  return kids.filter(k=>k.driver===driver && active(k) && k.school===kid.school).length;
-}
-function aiTimeClash(driver,kid){
-  // Beschouw ritten binnen 20 minuten als gelijktijdige belasting.
-  return kids.filter(k=>k.driver===driver && active(k) &&
-    aiTimeDistance(k,kid)<=20).length;
-}
-
 
 function demoGroupValid(group){
   if(!group || !group.length || group.length>MAX)return false;
