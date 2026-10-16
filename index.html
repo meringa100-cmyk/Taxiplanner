@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V948</title>
+<title>Taxi Planner V949</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V948</h1>
+<h1>🚕 Taxi Planner V949</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -279,7 +279,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 
 <main>
 <section id="planner" class="page active"><div id="plannerDelayAlerts"></div>
-<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Planner Dashboard</h2><div class="actions"><button class="primary" onclick="runAIAndCheck()">🤖 AI plannen & controleren</button><button type="button" id="runDayStartCheckButton" onclick="runDayStartCheck(); document.getElementById('dayStartCheck').scrollIntoView({behavior:'smooth',block:'start'})">🔎 Controleer planning</button><button type="button" onclick="exportPlanningCsv()">📥 Exporteer planning (CSV)</button></div></div><div id="morningCockpitV901" class="grid" style="margin-top:12px"></div><div id="dashboard" class="grid" style="margin-top:12px"></div><div id="dayStartCheck"></div></div>
+<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Planner Dashboard</h2><div class="actions"><button class="primary" onclick="runAIAndCheck()">🤖 AI plannen & controleren</button><button type="button" id="runDayStartCheckButton" onclick="runDayStartCheck(); document.getElementById('dayStartCheck').scrollIntoView({behavior:'smooth',block:'start'})">🔎 Controleer planning</button><button type="button" onclick="exportPlanningCsv()">📥 Exporteer planning (CSV)</button><button type="button" onclick="exportAttentionCsv()">⚠️ Exporteer aandachtspunten (CSV)</button></div></div><div id="morningCockpitV901" class="grid" style="margin-top:12px"></div><div id="dashboard" class="grid" style="margin-top:12px"></div><div id="dayStartCheck"></div></div>
 
 <div class="card">
   <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
@@ -1522,6 +1522,7 @@ function renderMorningCockpitV901(){
   });
   uniqueLate.forEach(k=>quickActions.push({rank:7,icon:'🏫',title:'Schooldeadline controleren',detail:(k.name||'Naam onbekend')+' · '+(k.driver||'geen chauffeur'),kind:'child',value:k.id}));
   quickActions.sort((a,b)=>a.rank-b.rank||a.detail.localeCompare(b.detail,'nl'));
+  window.taxiplannerAttentionExport=quickActions.map(x=>({prioriteit:x.rank,onderwerp:x.title,details:x.detail,type:x.kind||'',waarde:x.value||''}));
   const readinessHtml=issueCount===0
     ? '<div style="margin-top:12px;padding:14px;border:1px solid #b8d8bc;border-radius:12px;background:#eef8ef;color:#21652b"><div style="font-size:18px;font-weight:800">✅ Alles onder controle</div><div style="margin-top:4px">De bekende automatische controles melden geen open problemen.</div><div class="small" style="margin-top:5px;color:#42664a">Controleer voor vertrek ook actuele aanwezigheid, adressen, verkeer en eventuele nieuwe meldingen.</div></div>'
     : '<div style="margin-top:12px;padding:14px;border:1px solid #e6c96a;border-radius:12px;background:#fff7df;color:#755600"><div style="font-size:18px;font-weight:800">⚠️ Nog niet alles onder controle</div><div style="margin-top:4px">'+issueCount+' aandachtspunt(en) gevonden. Bekijk eerst de actielijst hieronder en voer daarna de volledige controle opnieuw uit.</div><div class="small" style="margin-top:5px">Dit is een controlehulp op basis van de beschikbare planningsgegevens, geen garantie voor de werkelijke verkeerssituatie.</div></div>';
@@ -4130,6 +4131,24 @@ function exportPlanningCsv(){
   link.remove();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
+function exportAttentionCsv(){
+  // V949: exporteer alle bekende cockpit-aandachtspunten, zonder inloggegevens.
+  const issues=Array.isArray(window.taxiplannerAttentionExport)?window.taxiplannerAttentionExport:[];
+  const columns=['Prioriteit','Onderwerp','Details','Type'];
+  const csvCell=value=>'"'+String(value??'').replace(/"/g,'""')+'"';
+  const rows=issues.map(x=>[x.prioriteit,x.onderwerp,x.details,x.type]);
+  const content='\uFEFF'+[columns,...rows].map(row=>row.map(csvCell).join(';')).join('\r\n');
+  const blob=new Blob([content],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement('a');
+  link.href=url;
+  link.download='taxi-aandachtspunten-'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  if(!issues.length) alert('Er zijn nog geen aandachtspunten opgebouwd. Tik eerst op “Controleer planning” en probeer daarna opnieuw.');
+}
 function resetDemo(){
  if(!confirm('Demo terugzetten?'))return;
  localStorage.removeItem(STORAGE_KEY);
@@ -5005,7 +5024,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=948").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=949").catch(()=>{}));}
 </script>
 
 
