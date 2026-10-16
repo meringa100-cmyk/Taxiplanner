@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V946</title>
+<title>Taxi Planner V947</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V946</h1>
+<h1>🚕 Taxi Planner V947</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -535,51 +535,6 @@ function applyGuaranteedDemoHomeSpread(){
   saveState();
   console.log('V844 fallback: maximaal acht kinderen per plaats, verspreid over straten.');
   return true;
-}
-async function geocodeBuiltInDemoExactAddresses(){
-  // V864: geocodeer elk demo-adres individueel op exact straat + huisnummer + woonplaats.
-  // Niet langer een algemene lijst met adressen uit een hele plaats verdelen over kinderen.
-  const demoKids=kids.filter(k=>/^k(?:[1-9]|[1-9][0-9]|1[0-4][0-9]|150)$/.test(String(k.id||'')))
-    .sort((a,b)=>Number(a.id.slice(1))-Number(b.id.slice(1)));
-  if(demoKids.length!==100)return {matched:0,total:demoKids.length};
-  const byTown=new Map(exactDemoAddresses.map(x=>[x.town.toLowerCase(),x]));
-  let matched=0, cursor=0;
-  async function worker(){
-    while(cursor<demoKids.length){
-      const k=demoKids[cursor++];
-      const n=Number(k.id.slice(1));
-      const group=Math.floor((n-1)/8);
-      const pos=(n-1)%8;
-      const loc=drentheDemoLocations[group%drentheDemoLocations.length];
-      const spec=byTown.get(String(loc.town).toLowerCase());
-      if(!spec)continue;
-      const house=spec.numbers[pos];
-      const hit=await pdokAddress(spec.street,spec.town,house);
-      if(hit && Number.isFinite(hit.lat)&&Number.isFinite(hit.lon)){
-        k.address=hit.address;
-        k.pickupAddress=hit.address;
-        k.demoTown=spec.town;
-        k.demoStreet=spec.street;
-        k.lat=hit.lat;
-        k.lon=hit.lon;
-        k.geocodeStatus='exact';
-        matched++;
-      }else{
-        // Niet doen alsof een plaatscentrum een exact huisadres is.
-        k.geocodeStatus='unverified';
-        delete k.lat;
-        delete k.lon;
-      }
-    }
-  }
-  await Promise.all(Array.from({length:5},()=>worker()));
-  addressesReady=matched>0;
-  demoAddressSpreadVersion='v864';
-  saveState();
-  const status=document.getElementById('routeInfo');
-  if(status)status.textContent='📍 Exacte adrescontrole: '+matched+' van '+demoKids.length+' demo-adressen gevonden in PDOK. Onbevestigde adressen krijgen geen verzonnen huiscoördinaten.';
-  console.log('V864 exact address audit:',matched,'/',demoKids.length);
-  return {matched,total:demoKids.length};
 }
 
 async function geocodeExactDemoAddresses(){
@@ -5016,7 +4971,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=946").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=947").catch(()=>{}));}
 </script>
 
 
