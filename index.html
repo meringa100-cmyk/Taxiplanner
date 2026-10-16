@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V955</title>
+<title>Taxi Planner V956</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -1647,18 +1647,35 @@ function renderQualityStressTestV954(){
  box.innerHTML='<div style="margin-top:12px;padding:14px;border:1px solid '+(total?'#e6c96a':'#b8d8bc')+';border-radius:12px;background:'+(total?'#fff9e8':'#f0f9f1')+'"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h3 style="margin:0">🧪 Kwaliteitscheck & stresstest V954</h3><span class="badge">'+(total?'⚠ '+total+' signalen':'✓ Geen signalen')+'</span></div><p class="small muted" style="margin:6px 0 10px">Controleert de huidige planning en rekent hypothetische uitval door. De stresstest verandert geen echte rit, chauffeur of bus.</p><div class="grid" style="margin:8px 0">'+checks.map(x=>'<div class="row" style="margin:0;border-left:4px solid '+(x.n?'#c88719':'#2e7d32')+'"><b style="font-size:1.2em">'+x.n+'</b><span>'+x.label+'</span></div>').join('')+'</div><button type="button" class="primary" onclick="runDayStartCheck();document.getElementById(\'dayStartCheck\')?.scrollIntoView({behavior:\'smooth\',block:\'start\'})">🔎 Voer volledige controle uit</button><div style="border-top:1px solid #d7e0e8;margin-top:12px;padding-top:12px"><b>🚨 Proefscenario: uitval opvangen</b><div class="small muted" style="margin:4px 0 8px">Kies aantallen voor een capaciteitsschatting. Routes en schooltijden moeten apart gecontroleerd worden.</div><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end"><label style="display:flex;flex-direction:column;gap:4px">Chauffeurs uitval (0–5)<input id="stressDriversV954" type="number" min="0" max="5" step="1" value="3" style="width:120px;padding:8px"></label><label style="display:flex;flex-direction:column;gap:4px">Extra busstoringen (0–5)<input id="stressBusesV954" type="number" min="0" max="5" step="1" value="2" style="width:120px;padding:8px"></label><label style="display:flex;flex-direction:column;gap:4px">Extra ritten (0–10)<input id="stressExtraV954" type="number" min="0" max="10" step="1" value="2" style="width:120px;padding:8px"></label><button type="button" onclick="runStressSimulationV954()">▶ Simuleer scenario</button></div><div id="stressResultV954" aria-live="polite" style="margin-top:10px"></div></div></div>';
  runStressSimulationV954();
 }
+
 function runStressSimulationV954(){
  const out=document.getElementById('stressResultV954');if(!out)return;
  const read=(id,max)=>Math.max(0,Math.min(max,Math.floor(Number(document.getElementById(id)?.value)||0)));
  const dc=read('stressDriversV954',5),bc=read('stressBusesV954',5),extra=read('stressExtraV954',10),ks=kids.filter(active);
- const loads=driverNames.map(d=>({d,n:load(d)})).sort((a,b)=>b.n-a.n);
- const fd=loads.filter(x=>x.n>0).slice(0,dc),failed=new Set(fd.map(x=>x.d));
- const fb=loads.filter(x=>x.n>0&&!failed.has(x.d)&&!isBusUnavailable(x.d)).slice(0,bc);fb.forEach(x=>failed.add(x.d));
- const affected=ks.filter(k=>failed.has(k.driver));
- const remaining=driverNames.filter(d=>!failed.has(d)&&!isDriverUnavailable(d)&&!isBusUnavailable(d));
- const unaffected=ks.filter(k=>!failed.has(k.driver)&&k.driver&&driverNames.includes(k.driver)).length;
- const seats=Math.max(0,remaining.length*MAX-unaffected),needed=affected.length+extra,shortage=Math.max(0,needed-seats);
- out.innerHTML='<div style="padding:11px;border-radius:9px;border:1px solid '+(shortage?'#e6b5ae':'#b8d8bc')+';background:'+(shortage?'#fff1ef':'#eef8ef')+'"><b style="color:'+(shortage?'#a33a24':'#21652b')+'">'+(shortage?'⚠ Capaciteitstekort in dit proefscenario':'✓ Capaciteit lijkt op papier voldoende')+'</b><div class="small" style="margin-top:5px">Hypothetisch uitgevallen chauffeurs: '+fd.length+' · extra busstoringen: '+fb.length+' · kinderen op getroffen routes: '+affected.length+' · extra ritten: '+extra+'.</div><div class="small" style="margin-top:4px">Overblijvende chauffeurs zonder bekende storing: '+remaining.length+' · vrije plaatsen op basis van huidige verdeling: '+seats+' · benodigde plaatsen: '+needed+(shortage?' · tekort: '+shortage:'')+'.</div><div class="small muted" style="margin-top:6px">Dit telt capaciteit, maar herverdeelt geen kinderen en controleert geen reistijden of schooldeadlines. Voer na echte wijzigingen de volledige controle uit.</div></div>';
+ const loads=driverNames.map(d=>({d,n:load(d),q:ks.filter(k=>k.driver===d)})).sort((a,b)=>b.n-a.n);
+ const fd=loads.filter(x=>x.n>0&&!isDriverUnavailable(x.d)).slice(0,dc),failed=new Set(fd.map(x=>x.d));
+ const fb=loads.filter(x=>x.n>0&&!failed.has(x.d)&&!isBusUnavailable(x.d)&&!isDriverUnavailable(x.d)).slice(0,bc);fb.forEach(x=>failed.add(x.d));
+ const affected=ks.filter(k=>failed.has(k.driver)).sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+ const available=driverNames.filter(d=>!failed.has(d)&&!isDriverUnavailable(d)&&!isBusUnavailable(d));
+ const planned=Object.fromEntries(available.map(d=>[d,ks.filter(k=>k.driver===d)]));
+ const relocated=[],unplaced=[];
+ function fits(d,k){
+  const route=[...(planned[d]||[]),k].filter(active).sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
+  if(route.length>MAX||!schoolDeadlineOk(k))return false;
+  for(let i=1;i<route.length;i++){const gap=(route[i].timeMin||0)-(route[i-1].timeMin||0);if(gap<=0||routeMinutesBetween(route[i-1],route[i],driverNames.indexOf(d))>gap+15)return false;}
+  return routeDurationEstimate(route,driverNames.indexOf(d))<=routeLimitForRides(route);
+ }
+ for(const k of affected){
+  const choices=available.filter(d=>fits(d,k)).sort((a,b)=>planned[a].length-planned[b].length);
+  if(choices.length){const d=choices[0];planned[d].push(k);relocated.push({kid:k,driver:d});}else unplaced.push(k);
+ }
+ const availableSeats=available.reduce((n,d)=>n+Math.max(0,MAX-ks.filter(k=>k.driver===d).length),0);
+ const extraShortage=Math.max(0,extra-Math.max(0,availableSeats-relocated.length));
+ const concern=unplaced.length||extraShortage;
+ const headline=unplaced.length?'⚠ '+unplaced.length+' kinderen niet veilig herplaatsbaar':extraShortage?'⚠ Extra ritten geven mogelijk capaciteitstekort':relocated.length?'◉ Kandidaat-herplaatsingen gevonden; controle nodig':'✓ Geen getroffen kinderen om te herplaatsen';
+ const esc=v=>String(v??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+ const detail=relocated.length?'<div class="small" style="margin-top:6px"><b>Voorlopige routekandidaten</b><ul style="margin:4px 0;padding-left:20px">'+relocated.slice(0,8).map(x=>'<li>'+esc(x.kid.name||x.kid.childName||('Kind '+x.kid.id))+' → '+esc(x.driver)+'</li>').join('')+(relocated.length>8?'<li>… en '+(relocated.length-8)+' meer</li>':'')+'</ul></div>':'';
+ out.innerHTML='<div style="padding:11px;border-radius:9px;border:1px solid '+(concern?'#e6b5ae':'#e6c96a')+';background:'+(concern?'#fff1ef':'#fff9e8')+'"><b style="color:'+(concern?'#a33a24':'#8a5a00')+'">'+headline+'</b><div class="small" style="margin-top:5px">Gesimuleerd: '+fd.length+' chauffeur(s) uitgevallen en '+fb.length+' extra busstoring(en). '+affected.length+' kinderen geraakt; '+relocated.length+' kandidaat-herplaatsingen gevonden; '+unplaced.length+' niet geplaatst.</div><div class="small" style="margin-top:4px">Beschikbare chauffeurs na uitval: '+available.length+'. Extra ritten opgegeven: '+extra+'.</div>'+detail+'<div class="small muted" style="margin-top:7px">Er is niets gewijzigd in de echte planning. Kandidaten zijn indicatief op basis van capaciteit, tijdsvolgorde, geschatte routelengte en schooldeadline. Extra ritten hebben geen adressen of tijden en worden daarom alleen als capaciteit meegeteld. Controleer handmatig en voer de volledige dagstartcontrole uit.</div></div>';
 }
 
 function renderAll(){saveState();renderMorningCockpitV901();renderPriorityCockpitPanel();renderRecoverySuggestionsV953();renderQualityStressTestV954();renderDashboard();renderPlanning();renderDriver();renderParent();renderLive();renderDelayAlerts();updateParentDelayNotice();renderAttention();renderFleet();renderRouteControl();if(realMap)renderRealMapMarkers();}
@@ -5220,7 +5237,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=955").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=956").catch(()=>{}));}
 </script>
 
 
