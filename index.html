@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V941</title>
+<title>Taxi Planner V942</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V941</h1>
+<h1>🚕 Taxi Planner V942</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -274,6 +274,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 <button class="tab" onclick="showPage('driver',this)">🚕 Chauffeur</button>
 <button class="tab" onclick="showPage('parent',this)">👨‍👩‍👧 Ouder</button>
 <button class="tab" onclick="showPage('live',this)">📡 Live Centrum</button>
+<button type="button" class="primary" onclick="openQuickChildSearch()">⏱️ Kind / ophaaltijd wijzigen</button>
 </nav>
 
 <main>
@@ -4514,6 +4515,15 @@ function childCardHtml(k){
    </div>
  </div>`;
 }
+function openQuickChildSearch(){
+ const plannerTab=[...document.querySelectorAll('.tab')].find(b=>b.textContent.includes('Planner'));
+ showPage('planner',plannerTab||null);
+ const card=document.getElementById('quickChildTimeCard');
+ if(card)card.scrollIntoView({behavior:'smooth',block:'start'});
+ const input=document.getElementById('quickChildSearch');
+ if(input)setTimeout(()=>input.focus(),250);
+}
+
 function renderQuickChildSearch(){
  const input=document.getElementById('quickChildSearch');
  const out=document.getElementById('quickChildSearchResults');
@@ -5034,7 +5044,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=941").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=942").catch(()=>{}));}
 </script>
 
 
