@@ -4216,7 +4216,7 @@ function exportDriverLoadCsv(){
     if(!route.length&&!driverOff&&!busOff)flags.push('Geen actieve ritten');
     rows.push([driver,busForDriver(driver),driverOff?'Niet beschikbaar':'Beschikbaar',busOff?'Storing: '+(busIssues[driver]?.reason||'reden onbekend'):'Inzetbaar',route.length,MAX,Math.max(0,MAX-route.length),routeMinutes,routeLimit,flags.length?flags.join(' | '):'Geen automatische waarschuwing']);
   });
-  const content='\\uFEFF'+rows.map(row=>row.map(csvCell).join(';')).join('\\r\\n');
+  const content='\uFEFF'+rows.map(row=>row.map(csvCell).join(';')).join('\r\n');
   const blob=new Blob([content],{type:'text/csv;charset=utf-8;'});
   const url=URL.createObjectURL(blob);
   const link=document.createElement('a');link.href=url;
