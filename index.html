@@ -4104,7 +4104,7 @@ function exportPlanningCsv(){
     return '"'+text.replace(/"/g,'""')+'"';
   };
   const rows=[...kids].sort((a,b)=>{
-    const driverCompare=String(a.driver||'').localeCompare(String(b.driver||'','nl'));
+    const driverCompare=String(a.driver||'').localeCompare(String(b.driver||''),'nl');
     return driverCompare ||
       (Number(a.routeOrder)||9999)-(Number(b.routeOrder)||9999) ||
       (Number(a.timeMin)||0)-(Number(b.timeMin)||0);
@@ -4119,7 +4119,7 @@ function exportPlanningCsv(){
     Number(k.routeOrder)||'',
     statusText(k.status||'')
   ]);
-  const content='\\uFEFF'+[columns,...rows].map(row=>row.map(csvCell).join(';')).join('\\r\\n');
+  const content='\uFEFF'+[columns,...rows].map(row=>row.map(csvCell).join(';')).join('\r\n');
   const blob=new Blob([content],{type:'text/csv;charset=utf-8;'});
   const url=URL.createObjectURL(blob);
   const link=document.createElement('a');
