@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V962</title>
+<title>Taxi Planner V963</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V962</h1>
+<h1>🚕 Taxi Planner V963</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1722,13 +1722,15 @@ function renderRecoveryPlannerV961(){
  window.taxiplannerRecoveryPlanV961={assignments:best.assignments,failed:best.failed.map(k=>({id:k.id,name:k.name||('Kind '+k.id)})),mode:best.mode,scenario,failedDrivers:Array.from(simFailed)};
  const choices=plans.map(p=>'<div style="padding:8px;border:1px solid #d8e0e7;border-radius:8px;margin:5px 0"><b>'+esc(labels[p.mode])+'</b> · '+p.assignments.length+' herplaatsingen · '+p.failed.length+' zonder kandidaat · circa '+Math.round(p.total)+' extra geschatte minuten</div>').join('');
  const rows=best.assignments.slice(0,50).map(x=>'<tr><td>'+esc(x.name)+'</td><td>'+esc(x.from)+'</td><td>→ '+esc(x.to)+'</td><td>'+Math.round(x.delta)+' min</td></tr>').join('');
- box.innerHTML='<div style="background:#fff;border:1px solid #d8e0e7;border-radius:14px;padding:14px"><h3>🛠️ V961 · Herstelplanner</h3><p class="small muted">'+(scenario?'Gebaseerd op de laatst uitgevoerde stresstest: '+report.driversOut+' chauffeur(s) uitval, '+report.busFailures+' busstoring(en), '+report.results.length+' getroffen kinderen en '+report.extraRides+' extra rit(ten).':'Vergelijkt conceptverdelingen voor actieve kinderen zonder chauffeur of met een onbeschikbare chauffeur/bus.')+' Er verandert niets totdat je bevestigt.</p><b>'+needing.length+' kinderen vragen herplaatsing</b> · '+(scenario?simFailed.size:unavailable.length)+' chauffeurs/bussen uitgesloten'+choices+(best.assignments.length?'<h4>Beste gevonden concept: '+esc(labels[best.mode])+'</h4><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th>Kind</th><th>Huidig</th><th>Voorgesteld</th><th>Extra min.</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<p>Geen kandidaat-herplaatsingen gevonden.</p>')+(best.assignments.length>50?'<p class="small muted">Preview toont eerste 50 regels; toepassen gebruikt het volledige concept.</p>':'')+(best.failed.length?'<p style="color:#b42318"><b>Niet opgelost: '+best.failed.length+' kinderen.</b></p>':'')+'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button type="button" onclick="renderRecoveryPlannerV961()">🔄 Herbereken opties</button><button type="button" '+(!best.assignments.length?'disabled':'')+' onclick="applyRecoveryPlanV961()">✅ Controleer en bevestig herverdeling</button></div><p class="small muted">Concept op basis van capaciteit, geschatte reistijd, stopvolgorde en schooldeadline. Controleer daarna altijd de volledige dagstart.</p></div>';
+ box.innerHTML='<div style="background:#fff;border:1px solid #d8e0e7;border-radius:14px;padding:14px"><h3>🛠️ V963 · Herstelplanner</h3><p class="small muted">'+(scenario?'Gebaseerd op de laatst uitgevoerde stresstest: '+report.driversOut+' chauffeur(s) uitval, '+report.busFailures+' busstoring(en), '+report.results.length+' getroffen kinderen en '+report.extraRides+' extra rit(ten).':'Vergelijkt conceptverdelingen voor actieve kinderen zonder chauffeur of met een onbeschikbare chauffeur/bus.')+' Er verandert niets totdat je bevestigt.</p><b>'+needing.length+' kinderen vragen herplaatsing</b> · '+(scenario?simFailed.size:unavailable.length)+' chauffeurs/bussen uitgesloten'+choices+(best.assignments.length?'<h4>Beste gevonden concept: '+esc(labels[best.mode])+'</h4><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th>Kind</th><th>Huidig</th><th>Voorgesteld</th><th>Extra min.</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<p>Geen kandidaat-herplaatsingen gevonden.</p>')+(best.assignments.length>50?'<p class="small muted">Preview toont eerste 50 regels; toepassen gebruikt het volledige concept.</p>':'')+(best.failed.length?'<p style="color:#b42318"><b>Niet opgelost: '+best.failed.length+' kinderen.</b></p>':'')+'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button type="button" onclick="renderRecoveryPlannerV961()">🔄 Herbereken opties</button><button type="button" '+(!best.assignments.length?'disabled':'')+' onclick="applyRecoveryPlanV961()">✅ Controleer en bevestig herverdeling</button></div><p class="small muted">Concept op basis van capaciteit, geschatte reistijd, stopvolgorde en schooldeadline. Controleer daarna altijd de volledige dagstart.</p></div>';
+ const audit=window.taxiplannerLastRecoveryResultV963;if(audit){box.innerHTML+='<div style="margin-top:10px;padding:12px;border:1px solid #b7dfc2;border-radius:12px;background:#f0faf2"><h4 style="margin:0 0 6px">✅ Laatste herverdeling</h4><p style="margin:0 0 6px">'+esc(audit.changed.length)+' succesvol · '+esc(audit.failed.length)+' niet toegepast</p><p class="small muted" style="margin:0 0 6px">'+esc(audit.timestamp)+'</p>'+(audit.changed.length?'<details><summary>Bekijk verplaatste kinderen</summary><ul>'+audit.changed.map(n=>'<li>'+esc(n)+'</li>').join('')+'</ul></details>':'')+(audit.failed.length?'<details><summary>Bekijk niet toegepaste kinderen</summary><ul>'+audit.failed.map(n=>'<li>'+esc(n)+'</li>').join('')+'</ul></details>':'')+'</div>'; }
 }
 function applyRecoveryPlanV961(){
  const plan=window.taxiplannerRecoveryPlanV961;if(!plan||!plan.assignments.length){alert('Geen herverdeling beschikbaar.');return;}
  if(!confirm('Je staat op het punt '+plan.assignments.length+' kind(eren) te herverdelen. De actuele gegevens worden opnieuw gecontroleerd. Doorgaan?'))return;
  const changed=[],failed=[];
  for(const item of plan.assignments){const k=kids.find(x=>String(x.id)===String(item.id)),d=item.to;if(!k||!active(k)||(!plan.scenario&&!(!k.driver||!driverNames.includes(k.driver)||isDriverUnavailable(k.driver)||isBusUnavailable(k.driver)))||(plan.scenario&&!(plan.failedDrivers||[]).includes(k.driver))||isDriverUnavailable(d)||isBusUnavailable(d)||(plan.scenario&&(plan.failedDrivers||[]).includes(d))||load(d)>=MAX||driverTimeConflict(k,d)||!schoolDeadlineOk(k)){failed.push(item.name);continue;}const route=kids.filter(x=>x.id!==k.id&&x.driver===d&&active(x)).concat([k]).sort((a,b)=>(Number(a.timeMin)||0)-(Number(b.timeMin)||0));let conflict=false;for(let i=1;i<route.length;i++){const gap=(Number(route[i].timeMin)||0)-(Number(route[i-1].timeMin)||0);if(gap<=0||routeMinutesBetween(route[i-1],route[i],driverNames.indexOf(d))>gap+15){conflict=true;break;}}if(conflict||route.length>MAX||routeDurationEstimate(route,driverNames.indexOf(d))>routeLimitForRides(route)){failed.push(item.name);continue;}k.driver=d;k.routeOrder=route.length;changed.push(item.name);}
+ window.taxiplannerLastRecoveryResultV963={changed:changed.slice(),failed:failed.slice(),timestamp:new Date().toLocaleString('nl-NL')};
  renderAll();runDayStartCheck();alert('Herverdeling toegepast: '+changed.length+'. Niet toegepast na controle: '+failed.length+'. Controleer de dagstart.');
 }
 function renderAll(){saveState();renderMorningCockpitV901();renderPriorityCockpitPanel();renderRecoverySuggestionsV953();renderQualityStressTestV954();renderRecoveryPlannerV961();renderDashboard();renderPlanning();renderDriver();renderParent();renderLive();renderDelayAlerts();updateParentDelayNotice();renderAttention();renderFleet();renderRouteControl();if(realMap)renderRealMapMarkers();}
@@ -5290,7 +5292,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=962").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=963").catch(()=>{}));}
 </script>
 
 
