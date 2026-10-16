@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V940</title>
+<title>Taxi Planner V941</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V940</h1>
+<h1>🚕 Taxi Planner V941</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -4544,6 +4544,7 @@ function editChild(id){
  <p>Belangrijk voor chauffeur</p><input id="e3" style="width:100%" value="${k.important||''}">
  <p><button class="primary" onclick="saveChild('${id}')">💾 Opslaan</button> <button onclick="closeModal()">Annuleren</button></p>`;
  toggleEditDestination();
+ document.getElementById('modal').classList.remove('hidden');
 }
 function toggleEditDestination(){
  const sel=document.getElementById('eDestination'), address=document.getElementById('eAddress');
@@ -5033,7 +5034,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=940").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=941").catch(()=>{}));}
 </script>
 
 
