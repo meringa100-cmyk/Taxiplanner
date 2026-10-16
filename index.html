@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V951</title>
+<title>Taxi Planner V952</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -265,7 +265,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V951</h1>
+<h1>🚕 Taxi Planner V952</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1537,11 +1537,52 @@ function renderMorningCockpitV901(){
     readinessHtml+
     '<div class="grid" style="margin-top:10px">'+stats.map(x=>'<div class="row" style="margin:0;border-left:4px solid '+(x.bad?'#c62828':'#2e7d32')+'"><div style="font-size:1.15em">'+x.icon+' <b>'+x.value+'</b></div><div><b>'+x.label+'</b><div class="small muted">'+x.detail+'</div></div></div>').join('')+'</div>'+
     quickActionsHtml+
+    '<div id="priorityCockpitPanelV952" style="grid-column:1/-1"></div>'+
     breakdownPanel+
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button type="button" onclick="runDayStartCheck();document.getElementById(\'dayStartCheck\').scrollIntoView({behavior:\'smooth\',block:\'start\'})">🔎 Bekijk volledige controle</button></div>'+
     '<p class="small muted" style="margin:8px 0 0">Bijgewerkt om '+updatedAt+'. Berekend uit de huidige planning. Controleer de volledige dagstart voor vertrek; dit overzicht wijzigt zelf niets.</p></div>';
 }
-function renderAll(){saveState();renderMorningCockpitV901();renderDashboard();renderPlanning();renderDriver();renderParent();renderLive();renderDelayAlerts();updateParentDelayNotice();renderAttention();renderFleet();renderRouteControl();if(realMap)renderRealMapMarkers();}
+
+function renderPriorityCockpitPanel(){
+  const box=document.getElementById('priorityCockpitPanelV952');
+  if(!box)return;
+  const issues=Array.isArray(window.taxiplannerAttentionExport)?window.taxiplannerAttentionExport:[];
+  const filter=window.taxiplannerPriorityFilterV952||'all';
+  const expanded=!!window.taxiplannerPriorityExpandedV952;
+  const filtered=issues.filter(x=>{
+    const rank=Number(x.prioriteit)||99;
+    if(filter==='urgent')return rank<=3;
+    if(filter==='routes')return rank===5||rank===6||rank===7;
+    if(filter==='fleet')return rank===1||rank===2||rank===4;
+    if(filter==='assignments')return rank===3;
+    return true;
+  });
+  const esc=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const labels={all:'Alles',urgent:'Urgent',fleet:'Chauffeurs & bussen',assignments:'Niet toegewezen',routes:'Routes & schooltijden'};
+  const btn=(key,label)=>'<button type="button" class="'+(filter===key?'primary':'')+'" aria-pressed="'+(filter===key?'true':'false')+'" onclick="setPriorityCockpitFilterV952(\''+key+'\')">'+label+'</button>';
+  const items=filtered.slice(0,expanded?filtered.length:6).map((x,i)=>{
+    const kind=x.type||'driver',value=x.waarde||String(x.details||'').split(' · ')[0];
+    return '<button type="button" class="priority-action-v887 priority-rank-'+(Number(x.prioriteit)||7)+'" style="width:100%;margin:5px 0" onclick="handleQuickAction(\''+esc(kind)+'\',\''+encodeURIComponent(value)+'\',\''+(Number(x.prioriteit)||7)+'\')"><span class="priority-number-v887">'+(i+1)+'</span><span class="priority-copy-v887"><b>'+esc(x.onderwerp||'Aandachtspunt')+'</b><small>'+esc(x.details||'')+'</small></span><span class="priority-arrow-v887">Open ›</span></button>';
+  }).join('');
+  box.innerHTML='<div style="padding:12px;border:1px solid #d9dee7;border-radius:11px;background:#f8fafc;margin-top:12px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h3 style="margin:0">🎯 Prioriteitenfilter</h3><span class="badge">'+filtered.length+' van '+issues.length+'</span></div>'+
+    '<p class="small muted" style="margin:5px 0 9px">Filter op soort probleem. Open een melding om de betreffende chauffeur of rit te bekijken; deze cockpit past niets automatisch aan.</p>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:6px">'+btn('all','Alles')+btn('urgent','🔴 Urgent')+btn('fleet','🚌 Chauffeurs & bussen')+btn('assignments','👦 Niet toegewezen')+btn('routes','🛣️ Routes & schooltijden')+'</div>'+
+    (items?'<div style="margin-top:8px">'+items+'</div>':'<div class="priority-all-clear-v887" style="margin-top:9px"><b>✅ Geen meldingen in deze categorie</b><div>Kies een andere filter of voer eerst een nieuwe controle uit.</div></div>')+
+    (filtered.length>6?'<button type="button" style="width:100%;margin-top:8px" onclick="togglePriorityCockpitExpandedV952()">'+(expanded?'Toon minder ▲':'Toon alle '+filtered.length+' meldingen ▼')+'</button>':'')+
+    '<div class="small muted" style="margin-top:8px">De lijst wordt bijgewerkt wanneer de planning opnieuw wordt getekend. Controleer de dagstart vóór vertrek.</div></div>';
+}
+function setPriorityCockpitFilterV952(filter){
+  window.taxiplannerPriorityFilterV952=filter;
+  window.taxiplannerPriorityExpandedV952=false;
+  renderPriorityCockpitPanel();
+}
+function togglePriorityCockpitExpandedV952(){
+  window.taxiplannerPriorityExpandedV952=!window.taxiplannerPriorityExpandedV952;
+  renderPriorityCockpitPanel();
+}
+
+function renderAll(){saveState();renderMorningCockpitV901();renderPriorityCockpitPanel();renderDashboard();renderPlanning();renderDriver();renderParent();renderLive();renderDelayAlerts();updateParentDelayNotice();renderAttention();renderFleet();renderRouteControl();if(realMap)renderRealMapMarkers();}
 
 
 function renderFleet(){
@@ -5100,7 +5141,7 @@ function toggleCollapsible(id){
 
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=950").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=952").catch(()=>{}));}
 </script>
 
 
