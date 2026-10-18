@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V972</title>
+<title>Taxi Planner V973</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -262,10 +262,18 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 .priority-all-clear-v887{padding:13px;border:1px solid #b8d8bc;border-radius:12px;background:#eef8ef}.priority-all-clear-v887 div{margin-top:4px;color:#42664a}
 </style>
 
+
+<style id="v973-planner-collapse-css">
+.planner-fold-toggle{font-size:13px;padding:6px 9px;margin-left:8px;white-space:nowrap}
+.planner-fold-title{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.planner-fold-collapsed>:not(.planner-fold-title){display:none!important}
+.planner-fold-collapsed{padding-bottom:10px!important}
+@media(max-width:600px){.planner-fold-toggle{margin-left:0}.planner-fold-title{align-items:flex-start}}
+</style>
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V972</h1>
+<h1>🚕 Taxi Planner V973</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -5360,6 +5368,36 @@ function toggleCollapsible(id){
 }
 
 
+</script>
+
+<script id="v973-planner-collapse-js">
+(function(){
+  function setupPlannerFolds(){
+    const planner=document.getElementById('planner');
+    if(!planner)return;
+    const cards=Array.from(planner.children).filter(el=>el.classList&&el.classList.contains('card'));
+    cards.forEach((card,index)=>{
+      if(index===0||card.dataset.v973FoldReady==='1')return;
+      const heading=Array.from(card.children).find(el=>/^H[2-4]$/.test(el.tagName));
+      if(!heading)return;
+      card.dataset.v973FoldReady='1';
+      heading.classList.add('planner-fold-title');
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='planner-fold-toggle';
+      btn.setAttribute('aria-expanded','true');
+      btn.textContent='Inklappen −';
+      btn.addEventListener('click',function(){
+        const collapsed=card.classList.toggle('planner-fold-collapsed');
+        btn.setAttribute('aria-expanded',String(!collapsed));
+        btn.textContent=collapsed?'Uitklappen +':'Inklappen −';
+      });
+      heading.appendChild(btn);
+    });
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setupPlannerFolds,{once:true});
+  else setupPlannerFolds();
+})();
 </script>
 <script>
 if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=970").catch(()=>{}));}
