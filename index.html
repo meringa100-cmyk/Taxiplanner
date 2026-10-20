@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V994</title>
+<title>Taxi Planner V995</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -2836,7 +2836,7 @@ async function optimizeAllRoutes(options={}){
     .sort((a,b)=>(Number(a.routeOrder)||9999)-(Number(b.routeOrder)||9999));
 
   let moved=0;
-  // V994: 40 rondes waren te weinig voor 200 kinderen. Geef de splitzoeker
+  // V995: 200 zoekrondes blijven behouden; de splitzoeker weegt nu ook doelrouteconflicten, schooldeadlines en extra rijtijd mee. Geef de splitzoeker
   // meer kansen om lange routes stapsgewijs over beschikbare chauffeurs te verdelen.
   for(let pass=0;pass<200;pass++){
     let changed=false;
@@ -2878,10 +2878,30 @@ async function optimizeAllRoutes(options={}){
 
         // De kandidaat moet de bronroute daadwerkelijk verbeteren.
         if(cand.restMin>=bad.minutes)continue;
+        // V995: beoordeel de doelroute vóór de verplaatsing, niet alleen
+        // de vrijgekomen minuten. Zo kiest de AI liever een bus die ook qua
+        // reistijd, schooldeadline en belasting echt een goede match is.
+        const trialMinutes=routeDurationEstimate(trial,driverNames.indexOf(target));
+        let trialTimeConflictPenalty=0;
+        for(let i=1;i<trial.length;i++){
+          const gap=(Number(trial[i].timeMin)||0)-(Number(trial[i-1].timeMin)||0);
+          const travel=routeMinutesBetween(trial[i-1],trial[i],driverNames.indexOf(target));
+          trialTimeConflictPenalty+=Math.max(0,travel-gap-15);
+        }
+        const trialDeadlinePenalty=trial.reduce((sum,kid)=>{
+          return sum+Math.max(0,schoolArrivalMinutes(kid)-schoolDeadlineMinutes(kid));
+        },0);
+        const addedMinutes=Math.max(0,trialMinutes-routeMinutes(target));
+        const nearestDistance=tq.length
+          ? Math.min(...tq.map(existing=>geoDistanceKm(cand.k,existing)))
+          : 0;
         const gain=cand.reduction*3
-          - geoDistanceKm(cand.k,tq[0]||cand.k)*0.5
-          + (MAX-tq.length)*2;
-        if(!best||gain>best.gain)best={k:cand.k,target, gain};
+          - nearestDistance*0.5
+          + (MAX-tq.length)*2
+          - trialTimeConflictPenalty*35
+          - trialDeadlinePenalty*60
+          - addedMinutes*0.8;
+        if(!best||gain>best.gain)best={k:cand.k,target,gain};
       }
     }
 
@@ -5084,7 +5104,7 @@ function toggleCollapsible(id){
 })();
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=994").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=995").catch(()=>{}));}
 </script>
 
 
