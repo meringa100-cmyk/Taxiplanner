@@ -2850,9 +2850,9 @@ async function optimizeAllRoutes(options={}){
 
     if(!bad)break;
 
-    // Kandidaten: kinderen die het meeste helpen om de lange route korter te
-    // maken. We proberen eerst de kinderen die ver van de rest van de route
-    // liggen; de eerste (verste) stop blijft daardoor zo veel mogelijk intact.
+    // Kandidaten: beoordeel iedere stop, ook de eerste. Bij slechts twee
+    // kinderen kan juist de eerste stop de lange omweg veroorzaken; de bron- én
+    // doelroute worden daarna opnieuw gecontroleerd voordat de planning wordt opgeslagen.
     const candidates=bad.q.map(k=>{
       const rest=bad.q.filter(x=>x!==k);
       // Gebruik dezelfde berekening voor twee kinderen én voor een resterend
