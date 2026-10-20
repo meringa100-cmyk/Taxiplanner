@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V973</title>
+<title>Taxi Planner V974</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -270,10 +270,27 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 .planner-fold-collapsed{padding-bottom:10px!important}
 @media(max-width:600px){.planner-fold-toggle{margin-left:0}.planner-fold-title{align-items:flex-start}}
 </style>
-</head>
+<style id="v974-central-action-center-css">
+.central-action-center{margin-top:14px;padding:14px;border:1px solid #d8e0e8;border-radius:12px;background:#f8fafc}
+.central-action-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.central-action-head h3{margin:0}
+.central-action-counts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0}
+.central-action-count{padding:10px;border:1px solid #d9dee7;border-radius:10px;background:#fff;min-width:0}
+.central-action-count b{display:block;font-size:22px;line-height:1.2}
+.central-action-count small{display:block;margin-top:3px;color:#596775;font-size:12px}
+.central-action-count.is-alert{background:#fff4e5;border-color:#f0c77e}
+.central-action-list{display:grid;gap:7px}
+.central-action-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 11px;border:1px solid #e0e5eb;border-radius:10px;background:#fff}
+.central-action-copy{min-width:0;overflow-wrap:anywhere}
+.central-action-copy b{display:block;margin-bottom:3px}
+.central-action-copy small{color:#637080}
+.central-action-item button{flex-shrink:0}
+.central-action-empty{padding:12px;border:1px solid #b8d8bc;border-radius:10px;background:#eef8ef;color:#205b34}
+@media(max-width:600px){.central-action-center{padding:10px}.central-action-counts{grid-template-columns:repeat(2,minmax(0,1fr))}.central-action-item{align-items:flex-start;flex-direction:column}.central-action-item button{width:100%}}
+</style></head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V973</h1>
+<h1>🚕 Taxi Planner V974</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -287,7 +304,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 
 <main>
 <section id="planner" class="page active"><div id="plannerDelayAlerts"></div>
-<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Planner Dashboard</h2><div class="actions"><button class="primary" onclick="runAIAndCheck()">🤖 AI plannen & controleren</button><button type="button" id="runDayStartCheckButton" onclick="runDayStartCheck(); document.getElementById('dayStartCheck').scrollIntoView({behavior:'smooth',block:'start'})">🔎 Controleer planning</button><button type="button" onclick="exportPlanningCsv()">📥 Exporteer planning (CSV)</button><button type="button" onclick="exportAttentionCsv()">⚠️ Exporteer aandachtspunten (CSV)</button><button type="button" onclick="exportDailyReportCsv()">📊 Exporteer dagrapport (CSV)</button><button type="button" onclick="exportDriverLoadCsv()">🚐 Exporteer chauffeurbelasting (CSV)</button></div></div><div id="morningCockpitV901" class="grid" style="margin-top:12px"></div><div id="dashboard" class="grid" style="margin-top:12px"></div><div id="dayStartCheck"></div></div>
+<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Planner Dashboard</h2><div class="actions"><button class="primary" onclick="runAIAndCheck()">🤖 AI plannen & controleren</button><button type="button" id="runDayStartCheckButton" onclick="runDayStartCheck(); document.getElementById('dayStartCheck').scrollIntoView({behavior:'smooth',block:'start'})">🔎 Controleer planning</button><button type="button" onclick="exportPlanningCsv()">📥 Exporteer planning (CSV)</button><button type="button" onclick="exportAttentionCsv()">⚠️ Exporteer aandachtspunten (CSV)</button><button type="button" onclick="exportDailyReportCsv()">📊 Exporteer dagrapport (CSV)</button><button type="button" onclick="exportDriverLoadCsv()">🚐 Exporteer chauffeurbelasting (CSV)</button></div></div><div id="morningCockpitV901" class="grid" style="margin-top:12px"></div><div id="dashboard" class="grid" style="margin-top:12px"></div><div id="centralActionCenterV974" class="central-action-center" aria-live="polite"></div><div id="dayStartCheck"></div></div>
 
 <div class="card">
   <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
@@ -313,7 +330,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </div>
 </div>
 <div class="card"><h3>👨‍✈️ Chauffeurs</h3><input id="driverSearch" placeholder="Zoek chauffeur..." oninput="renderDashboard()"><div id="collapsibleDrivers" class="collapsible-section"><button type="button" class="collapsible-header" onclick="toggleCollapsible('collapsibleDrivers')"><span>🚕 Chauffeurs</span><span class="collapsible-arrow">▼</span></button><div class="collapsible-content"><div id="driverList"></div></div></div></div>
-<div class="card">
+<div class="card" id="attentionCardV712">
 <h3 style="margin-bottom:4px">⚠️ Meldingen & Acties</h3>
 <p class="muted" style="margin-top:0">Centraal overzicht voor de planner. Nieuwe meldingen verschijnen hier automatisch.</p>
 <div id="attentionDashboardV712"></div>
@@ -1887,6 +1904,44 @@ function renderAttention(){
   <div class="attention-open-list">${items.length?items.join(''):'<div class="attention-action-v712"><div><b>✅ Geen openstaande meldingen</b><div class="meta">Alle ritten, chauffeurs en bussen staan momenteel zonder actieve actie.</div></div></div>'}</div>`;
  }
  box.innerHTML='';
+ renderCentralActionCenterV974();
+}
+
+function renderCentralActionCenterV974(){
+ const box=document.getElementById('centralActionCenterV974');
+ if(!box)return;
+ const esc=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+ const delays=kids.filter(k=>Number(k.delay)>0&&active(k));
+ const absent=kids.filter(k=>k.status==='absent');
+ const loose=kids.filter(k=>k.status==='loose');
+ const broken=reportedBusIssueDrivers();
+ const unavailable=driverNames.filter(d=>isDriverUnavailable(d));
+ const full=driverNames.filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d)&&load(d)>=MAX);
+ const unassigned=kids.filter(k=>!k.driver&&active(k));
+ const replacements=Object.values(replacementAssignments||{}).filter(t=>t.status!=='assigned');
+ const items=[];
+ const push=(rank,icon,title,detail,kind,value)=>items.push({rank,icon,title,detail,kind,value});
+ broken.forEach(d=>push(1,'🚌','Busstoring — '+busForDriver(d),d+' · '+(busIssues[d]?.reason||'Storing')+' · '+affectedChildren(d).length+' actieve kinderen','driver',d));
+ unavailable.filter(d=>!broken.includes(d)).forEach(d=>push(2,'👨‍✈️','Chauffeur niet beschikbaar',d,'driver',d));
+ unassigned.forEach(k=>push(3,'⚠️','Rit zonder chauffeur',(k.name||'Naam onbekend')+' · '+(k.school||k.destination||'bestemming onbekend'),'child',k.id));
+ full.forEach(d=>push(4,'🚌','Bus vol — '+busForDriver(d),d+' · '+load(d)+'/'+MAX+' kinderen','driver',d));
+ loose.forEach(k=>push(5,'📋','Loosmelding — '+(k.name||'Naam onbekend'),(k.looseReason||'Melding')+' · '+(k.driver||'Geen chauffeur'),'child',k.id));
+ delays.forEach(k=>push(6,'⏱️','Vertraging — '+(k.name||'Naam onbekend'),k.delay+' minuten · '+(k.driver||'Geen chauffeur'),'child',k.id));
+ replacements.forEach(t=>push(7,'🔄','Vervangingsrit — '+t.id,(t.brokenBus||'Bus onbekend')+' · '+(t.children?.length||0)+' kinderen · '+(t.replacementDriver||'nog niet toegewezen'),'driver',t.brokenDriver||''));
+ absent.forEach(k=>push(8,'🚫','Afgemeld — '+(k.name||'Naam onbekend'),(k.time||'')+' · '+(k.school||'school onbekend'),'child',k.id));
+ const count=items.length;
+ const top=items.sort((a,b)=>a.rank-b.rank).slice(0,5);
+ const otherCount=delays.length+loose.length+replacements.length+absent.length+full.length;
+ const counts=[
+  {n:broken.length,label:'Busstoringen',danger:broken.length>0},
+  {n:unavailable.length,label:'Chauffeurs afwezig',danger:unavailable.length>0},
+  {n:unassigned.length,label:'Ritten zonder chauffeur',danger:unassigned.length>0},
+  {n:otherCount,label:'Overige acties',danger:otherCount>0}
+ ];
+ const rows=top.map(x=>'<div class="central-action-item"><div class="central-action-copy"><b>'+x.icon+' '+esc(x.title)+'</b><small>'+esc(x.detail)+'</small></div><button type="button" onclick="handleQuickAction(\''+x.kind+'\',\''+encodeURIComponent(String(x.value))+'\','+x.rank+')">Details bekijken</button></div>').join('');
+ box.innerHTML='<div class="central-action-head"><div><h3>🚦 Centraal actiecentrum</h3><div class="muted small">Belangrijkste open acties, direct bereikbaar vanaf de bovenkant van de planner.</div></div><span class="badge">'+count+' open actie(s)</span></div>'+
+ '<div class="central-action-counts">'+counts.map(c=>'<div class="central-action-count '+(c.danger?'is-alert':'')+'"><b>'+c.n+'</b><small>'+c.label+'</small></div>').join('')+'</div>'+
+ (count?'<div class="central-action-list">'+rows+'</div><div class="actions"><button type="button" onclick="document.getElementById(\'attentionCardV712\')?.scrollIntoView({behavior:\'smooth\',block:\'start\'})">Bekijk alle meldingen & acties ↓</button><button type="button" onclick="runDayStartCheck();document.getElementById(\'dayStartCheck\')?.scrollIntoView({behavior:\'smooth\',block:\'start\'})">🔎 Controleer routes en deadlines</button></div>':'<div class="central-action-empty"><b>✅ Geen openstaande acties gevonden</b><div class="small">Er zijn op dit moment geen meldingen in de belangrijkste actiecategorieën.</div></div>');
 }
 function handleQuickAction(kind,encodedValue,rank){
   const value=decodeURIComponent(encodedValue||'');
@@ -5400,7 +5455,7 @@ function toggleCollapsible(id){
 })();
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=970").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=974").catch(()=>{}));}
 </script>
 
 
