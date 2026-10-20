@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V981</title>
+<title>Taxi Planner V982</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -1549,10 +1549,8 @@ function renderMorningCockpitV901(){
     quickActionsHtml+
     '<div id="priorityCockpitPanelV952" style="grid-column:1/-1"></div>'+
     '<div id="recoverySuggestionsV953" style="grid-column:1/-1"></div>'+
-    '<div id="qualityStressTestV954" style="grid-column:1/-1"></div>'+
     '<div id="recoveryPlannerV959" style="grid-column:1/-1"></div>'+
     breakdownPanel+
-    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button type="button" onclick="runDayStartCheck();document.getElementById(\'dayStartCheck\').scrollIntoView({behavior:\'smooth\',block:\'start\'})">🔎 Bekijk volledige controle</button></div>'+
     '<p class="small muted" style="margin:8px 0 0">Bijgewerkt om '+updatedAt+'. Berekend uit de huidige planning. Controleer de volledige dagstart voor vertrek; dit overzicht wijzigt zelf niets.</p></div>';
 }
 
@@ -1639,23 +1637,6 @@ function renderRecoverySuggestionsV953(){
     return '<div class="row" style="margin:7px 0;padding:12px"><div style="display:flex;gap:8px;align-items:flex-start"><b style="min-width:25px">'+rank+'.</b><div style="flex:1;min-width:0"><b>'+esc(p.onderwerp||'Aandachtspunt')+'</b><div class="small muted">'+esc(p.details||'')+'</div><p style="margin:7px 0">'+esc(advice)+'</p>'+action+'</div></div></div>';
   }).join('');
   box.innerHTML='<div style="margin-top:12px;padding:12px;border:1px solid #b9d6f3;border-radius:12px;background:#f4f9ff"><h3 style="margin:0 0 5px">🧰 Herstelvoorstellen</h3><p class="small muted" style="margin:0 0 8px">Per belangrijk aandachtspunt staat een volgende stap. Bij ritten zonder chauffeur worden mogelijke kandidaten berekend op beschikbaarheid, capaciteit en eenvoudige tijd-/routecontroles. Dit zijn suggesties, geen garantie; niets wordt automatisch gewijzigd.</p>'+(cards||'<div class="priority-all-clear-v887"><b>✅ Geen herstelacties nodig</b><div>De huidige cockpit vindt geen open aandachtspunten.</div></div>')+'</div>';
-}
-
-
-function renderQualityStressTestV954(){
- const box=document.getElementById('qualityStressTestV954');if(!box)return;
- const ks=kids.filter(active),unassigned=ks.filter(k=>!k.driver||!driverNames.includes(k.driver));
- const loads=driverNames.map(d=>({d,n:load(d),q:ks.filter(k=>k.driver===d)}));
- const checks=[
- {n:unassigned.length,label:'Ritten zonder chauffeur'},
- {n:loads.filter(x=>x.n>MAX).length,label:'Overvolle routes'},
- {n:loads.filter(x=>x.n>0&&(isDriverUnavailable(x.d)||isBusUnavailable(x.d))).length,label:'Chauffeur/bus met kinderen niet beschikbaar'},
- {n:loads.filter(x=>x.n>0&&routeDurationEstimate(x.q,driverNames.indexOf(x.d))>routeLimitForRides(x.q)).length,label:'Routes boven tijdslimiet'},
- {n:loads.filter(x=>{const q=x.q.slice().sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));for(let i=1;i<q.length;i++){const gap=(q[i].timeMin||0)-(q[i-1].timeMin||0);if(gap<=0||routeMinutesBetween(q[i-1],q[i],driverNames.indexOf(x.d))>gap+15)return true;}return false;}).length,label:'Mogelijke tijdconflicten'},
- {n:ks.filter(k=>k.driver&&!schoolDeadlineOk(k)).length,label:'Kinderen mogelijk te laat op school'}
- ];
- const total=checks.reduce((n,x)=>n+x.n,0);
- box.innerHTML='<div style="margin-top:12px;padding:14px;border:1px solid '+(total?'#e6c96a':'#b8d8bc')+';border-radius:12px;background:'+(total?'#fff9e8':'#f0f9f1')+'"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h3 style="margin:0">🔎 Kwaliteitscontrole planning</h3><span class="badge">'+(total?'⚠ '+total+' signalen':'✓ Geen signalen')+'</span></div><p class="small muted" style="margin:6px 0 10px">Controleert de huidige planning op bezetting, beschikbaarheid, reistijd, tijdconflicten en schooldeadlines.</p><div class="grid" style="margin:8px 0">'+checks.map(x=>'<div class="row" style="margin:0;border-left:4px solid '+(x.n?'#c88719':'#2e7d32')+'"><b style="font-size:1.2em">'+x.n+'</b><span>'+x.label+'</span></div>').join('')+'</div><button type="button" class="primary" onclick="runDayStartCheck();document.getElementById(\'dayStartCheck\')?.scrollIntoView({behavior:\'smooth\',block:\'start\'})">🔎 Voer volledige controle uit</button></div>';
 }
 
 
@@ -1756,7 +1737,7 @@ function applyRecoveryPlanV961(){
  saveRecoveryAuditV964(audit);logRecoveryHistoryV965('Herverdeling',audit);window.taxiplannerLastRecoveryResultV963=audit;
  renderAll();runDayStartCheck();alert('V972 veiligheidscontrole geslaagd. Herverdeling toegepast: '+auditMoves.length+' kinderen. Controleer voor vertrek ook de volledige dagstart.');
 }
-function renderAll(){saveState();renderMorningCockpitV901();renderPriorityCockpitPanel();renderRecoverySuggestionsV953();renderQualityStressTestV954();renderRecoveryPlannerV961();renderDashboard();renderPlanning();renderDriver();renderParent();renderLive();renderDelayAlerts();updateParentDelayNotice();renderAttention();renderFleet();renderRouteControl();if(realMap)renderRealMapMarkers();}
+function renderAll(){saveState();renderMorningCockpitV901();renderPriorityCockpitPanel();renderRecoverySuggestionsV953();renderRecoveryPlannerV961();renderDashboard();renderPlanning();renderDriver();renderParent();renderLive();renderDelayAlerts();updateParentDelayNotice();renderAttention();renderFleet();renderRouteControl();if(realMap)renderRealMapMarkers();}
 
 
 function renderFleet(){
@@ -5094,7 +5075,7 @@ function toggleCollapsible(id){
 })();
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=981").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=982").catch(()=>{}));}
 </script>
 
 
