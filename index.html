@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V988</title>
+<title>Taxi Planner V989</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -273,7 +273,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V988</h1>
+<h1>🚕 Taxi Planner V989</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -2825,16 +2825,11 @@ async function optimizeAllRoutes(options={}){
   // Daarbij mag een bus maximaal 8 kinderen hebben en blijft de 90/99-min
   // limiet leidend. We gebruiken bewust extra chauffeurs als dat nodig is.
   const routeMinutes=(d)=>{
+    // V989: gebruik exact dezelfde routeberekening als de routecontrole.
+    // Ook een route met maar één kind telt dus de rit van ophaaladres naar school mee.
     const q=kids.filter(k=>k.driver===d&&active(k))
-      .sort((a,b)=>(Number(a.routeOrder)||9999)-(Number(b.routeOrder)||9999));
-    if(!q.length)return 0;
-    let total=0;
-    for(let i=1;i<q.length;i++){
-      total+=routeMinutesBetween(q[i-1],q[i],driverNames.indexOf(d));
-    }
-    const last=q[q.length-1], school=schoolPoint(last);
-    if(school)total+=routeMinutesBetween(last,{lat:school.lat,lon:school.lon},driverNames.indexOf(d));
-    return total;
+      .sort((a,b)=>(Number(a.timeMin)||0)-(Number(b.timeMin)||0));
+    return q.length ? Math.round(routeDurationEstimate(q,driverNames.indexOf(d))) : 0;
   };
 
   const routeQueue=d=>kids.filter(k=>k.driver===d&&active(k))
@@ -2858,16 +2853,13 @@ async function optimizeAllRoutes(options={}){
     // Kandidaten: kinderen die het meeste helpen om de lange route korter te
     // maken. We proberen eerst de kinderen die ver van de rest van de route
     // liggen; de eerste (verste) stop blijft daardoor zo veel mogelijk intact.
-    const candidates=bad.q.slice(1).map(k=>{
+    const candidates=bad.q.map(k=>{
       const rest=bad.q.filter(x=>x!==k);
-      const restMin=(()=>{
-        if(!rest.length)return 0;
-        let n=0;
-        for(let i=1;i<rest.length;i++)n+=routeMinutesBetween(rest[i-1],rest[i],driverNames.indexOf(bad.d));
-        const s=schoolPoint(rest[rest.length-1]);
-        if(s)n+=routeMinutesBetween(rest[rest.length-1],{lat:s.lat,lon:s.lon},driverNames.indexOf(bad.d));
-        return n;
-      })();
+      // Gebruik dezelfde berekening voor twee kinderen én voor een resterend
+      // enkel kind. Zo kan een lange schoolrit niet ongemerkt als 0 minuten tellen.
+      const restMin=rest.length
+        ? Math.round(routeDurationEstimate(rest,driverNames.indexOf(bad.d)))
+        : 0;
       return {k,restMin,reduction:bad.minutes-restMin};
     }).sort((a,b)=>b.reduction-a.reduction);
 
@@ -5076,7 +5068,7 @@ function toggleCollapsible(id){
 })();
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=988").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=989").catch(()=>{}));}
 </script>
 
 
