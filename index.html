@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V976</title>
+<title>Taxi Planner V977</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -273,7 +273,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V976</h1>
+<h1>🚕 Taxi Planner V977</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -303,16 +303,18 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
   </div>
 </div>
 
-<div class="card">
-<h3>Wat moet er vandaag gebeuren?</h3>
+<div class="card" id="plannerToolsCardV977">
+<h3>🧰 Extra planningsgereedschap</h3>
+<p class="muted" style="margin-top:0">De gewone start is bovenaan: ‘AI plannen & controleren’. Hieronder staan de aanvullende en beheerfuncties.</p>
 <div class="actions">
-<button class="primary" type="button" onclick="runAI()">🤖 AI plannen</button><button type="button" onclick="runBestPlanning()">🏆 Automatisch beste planning</button>
-<button type="button" onclick="optimizeAllRoutes()">🧭 Routes optimaal</button><button type="button" onclick="demoHardPlanVersion=''; const n=repairBuiltInDemoPlanningHard(); saveState(); renderAll(); alert('✅ Schone demo-planning opnieuw opgebouwd.')">🧹 Schone demo-planning</button>
-<button onclick="openAdd()">➕ Rit toevoegen</button>
-<button onclick="resetDemo()">↩️ Demo resetten</button>
+<button type="button" onclick="runBestPlanning()">🏆 Beste haalbare planning zoeken</button>
+<button type="button" onclick="optimizeAllRoutes()">🧭 Routes optimaliseren</button>
+<button type="button" onclick="demoHardPlanVersion=''; const n=repairBuiltInDemoPlanningHard(); saveState(); renderAll(); alert('✅ Schone demo-planning opnieuw opgebouwd.')">🧹 Demo-planning herstellen</button>
+<button type="button" onclick="openAdd()">➕ Rit toevoegen</button>
+<button type="button" onclick="resetDemo()">↩️ Demo resetten</button>
 </div>
 </div>
-<div class="card"><h3>👨‍✈️ Chauffeurs</h3><input id="driverSearch" placeholder="Zoek chauffeur..." oninput="renderDashboard()"><div id="collapsibleDrivers" class="collapsible-section"><button type="button" class="collapsible-header" onclick="toggleCollapsible('collapsibleDrivers')"><span>🚕 Chauffeurs</span><span class="collapsible-arrow">▼</span></button><div class="collapsible-content"><div id="driverList"></div></div></div></div>
+<div class="card" id="driverDirectoryCardV977"><h3>👨‍✈️ Chauffeurs en bezetting</h3><input id="driverSearch" placeholder="Zoek chauffeur..." oninput="renderDashboard()"><div id="driverList"></div></div>
 <div class="card" id="attentionCardV712">
 <h3 style="margin-bottom:4px">⚠️ Meldingen & Acties</h3>
 <p class="muted" style="margin-top:0">Centraal overzicht voor de planner. Nieuwe meldingen verschijnen hier automatisch.</p>
@@ -331,14 +333,14 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 <input id="quickChildSearch" placeholder="Typ naam of kindnummer..." oninput="renderQuickChildSearch()" style="width:100%">
 <div id="quickChildSearchResults" style="margin-top:10px"></div>
 </div>
-<div id="collapsibleRittenVandaag" class="collapsible-section open"><button type="button" class="collapsible-header" onclick="toggleCollapsible('collapsibleRittenVandaag')"><span>📋 Ritten vandaag</span><span class="collapsible-arrow">▼</span></button><div class="collapsible-content"><div class="card">
+<div class="card" id="collapsibleRittenVandaag">
 <h3>🗺️ Ritten vandaag</h3>
 <div class="actions">
 <input id="rideSearch" placeholder="Zoek kind, school of chauffeur..." oninput="renderPlanning()">
 <select id="rideFilter" onchange="renderPlanning()"><option value="all">Alle statussen</option><option value="waiting">Wachtend</option><option value="picked">Onderweg</option><option value="school">Op school</option><option value="absent">Afgemeld</option><option value="loose">Loosmelding</option></select>
 </div>
 <div id="planning"></div>
-</div></div></div>
+</div>
 </section>
 
 <section id="driver" class="page">
@@ -5387,8 +5389,10 @@ function toggleCollapsible(id){
       const btn=document.createElement('button');
       btn.type='button';
       btn.className='planner-fold-toggle';
-      btn.setAttribute('aria-expanded','true');
-      btn.textContent='Inklappen −';
+      const startCollapsed=['plannerToolsCardV977','driverDirectoryCardV977'].includes(card.id);
+      if(startCollapsed)card.classList.add('planner-fold-collapsed');
+      btn.setAttribute('aria-expanded',String(!startCollapsed));
+      btn.textContent=startCollapsed?'Uitklappen +':'Inklappen −';
       btn.addEventListener('click',function(){
         const collapsed=card.classList.toggle('planner-fold-collapsed');
         btn.setAttribute('aria-expanded',String(!collapsed));
@@ -5402,7 +5406,7 @@ function toggleCollapsible(id){
 })();
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=976").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=977").catch(()=>{}));}
 </script>
 
 
