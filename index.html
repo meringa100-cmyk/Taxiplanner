@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V987</title>
+<title>Taxi Planner V988</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -273,7 +273,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V987</h1>
+<h1>🚕 Taxi Planner V988</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1572,13 +1572,14 @@ function renderPriorityCockpitPanel(){
     const kind=x.type||'driver',value=x.waarde||String(x.details||'').split(' · ')[0];
     return '<button type="button" class="priority-action-v887 priority-rank-'+(Number(x.prioriteit)||7)+'" style="width:100%;margin:5px 0" onclick="handleQuickAction(\''+esc(kind)+'\',\''+encodeURIComponent(value)+'\',\''+(Number(x.prioriteit)||7)+'\')"><span class="priority-number-v887">'+(i+1)+'</span><span class="priority-copy-v887"><b>'+esc(x.onderwerp||'Aandachtspunt')+'</b><small>'+esc(x.details||'')+'</small></span><span class="priority-arrow-v887">Open ›</span></button>';
   }).join('');
-  box.innerHTML='<div style="padding:12px;border:1px solid #d9dee7;border-radius:11px;background:#f8fafc;margin-top:12px">'+
-    '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h3 style="margin:0">🎯 Prioriteitenfilter</h3><span class="badge">'+filtered.length+' van '+issues.length+'</span></div>'+
-    '<p class="small muted" style="margin:5px 0 9px">Filter op soort probleem. Open een melding om de betreffende chauffeur of rit te bekijken; deze cockpit past niets automatisch aan.</p>'+
+  box.innerHTML='<details style="margin-top:12px;padding:12px;border:1px solid #d9dee7;border-radius:11px;background:#f8fafc">'+
+    '<summary style="cursor:pointer;font-weight:700">🎯 Prioriteitenfilter · '+filtered.length+' van '+issues.length+' aandachtspunten <span class="small muted">(openen)</span></summary>'+
+    '<div style="padding-top:10px">'+
+    '<p class="small muted" style="margin:0 0 9px">Filter op soort probleem. Open een melding om de betreffende chauffeur of rit te bekijken; deze cockpit past niets automatisch aan.</p>'+
     '<div style="display:flex;flex-wrap:wrap;gap:6px">'+btn('all','Alles')+btn('urgent','🔴 Urgent')+btn('fleet','🚌 Chauffeurs & bussen')+btn('assignments','👦 Niet toegewezen')+btn('routes','🛣️ Routes & schooltijden')+'</div>'+
     (items?'<div style="margin-top:8px">'+items+'</div>':'<div class="priority-all-clear-v887" style="margin-top:9px"><b>✅ Geen meldingen in deze categorie</b><div>Kies een andere filter of voer eerst een nieuwe controle uit.</div></div>')+
     (filtered.length>6?'<button type="button" style="width:100%;margin-top:8px" onclick="togglePriorityCockpitExpandedV952()">'+(expanded?'Toon minder ▲':'Toon alle '+filtered.length+' meldingen ▼')+'</button>':'')+
-    '<div class="small muted" style="margin-top:8px">De lijst wordt bijgewerkt wanneer de planning opnieuw wordt getekend. Controleer de dagstart vóór vertrek.</div></div>';
+    '<div class="small muted" style="margin-top:8px">De lijst wordt bijgewerkt wanneer de planning opnieuw wordt getekend. Controleer de dagstart vóór vertrek.</div></div></details>';
 }
 function setPriorityCockpitFilterV952(filter){
   window.taxiplannerPriorityFilterV952=filter;
@@ -5075,7 +5076,7 @@ function toggleCollapsible(id){
 })();
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=987").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=988").catch(()=>{}));}
 </script>
 
 
