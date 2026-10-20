@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V986</title>
+<title>Taxi Planner V987</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -273,7 +273,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V986</h1>
+<h1>🚕 Taxi Planner V987</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1544,7 +1544,6 @@ function renderMorningCockpitV901(){
     '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap"><h3 style="margin:0">🌅 Ochtendcockpit</h3><span class="badge">'+(issueCount?'⚠ '+issueCount+' aandachtspunt(en)':'✓ Geen harde problemen gevonden')+'</span></div>'+
     readinessHtml+
     '<div class="grid" style="margin-top:10px">'+stats.map(x=>'<div class="row" style="margin:0;border-left:4px solid '+(x.bad?'#c62828':'#2e7d32')+'"><div style="font-size:1.15em">'+x.icon+' <b>'+x.value+'</b></div><div><b>'+x.label+'</b><div class="small muted">'+x.detail+'</div></div></div>').join('')+'</div>'+
-    quickActionsHtml+
     '<div id="priorityCockpitPanelV952" style="grid-column:1/-1"></div>'+
     '<div id="recoverySuggestionsV953" style="grid-column:1/-1"></div>'+
     '<div id="recoveryPlannerV959" style="grid-column:1/-1"></div>'+
@@ -5076,7 +5075,7 @@ function toggleCollapsible(id){
 })();
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=986").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=987").catch(()=>{}));}
 </script>
 
 
