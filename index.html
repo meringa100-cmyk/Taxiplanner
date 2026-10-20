@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V975</title>
+<title>Taxi Planner V976</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -273,7 +273,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V975</h1>
+<h1>🚕 Taxi Planner V976</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1951,11 +1951,11 @@ async function runDayStartCheck(){
   const priorities=[];
   broken.forEach(d=>priorities.push({rank:1,icon:'🚌',title:'Busstoring',detail:d+' · controleer vervanging',kind:'driver',value:d}));
   unavailable.filter(d=>!broken.includes(d)).forEach(d=>priorities.push({rank:2,icon:'👨‍✈️',title:'Chauffeur niet beschikbaar',detail:d,kind:'driver',value:d}));
-  unassigned.forEach(k=>priorities.push({rank:3,icon:'⚠️',title:'Rit zonder chauffeur',detail:(k.name||'Naam onbekend')+' · '+(k.school||k.destination||'bestemming onbekend'),kind:'child',value:k.id}));
-  overloaded.forEach(d=>priorities.push({rank:4,icon:'🔴',title:'Bus boven capaciteit',detail:d+' · '+load(d)+'/'+MAX+' kinderen',kind:'driver',value:d}));
-  [...new Set(routeProblems)].forEach(d=>priorities.push({rank:5,icon:'🛣️',title:'Routeconflict',detail:d,kind:'driver',value:d}));
-  longRoutes.forEach(d=>{const di=driverNames.indexOf(d);const q=kids.filter(k=>k.driver===d&&active(k));priorities.push({rank:6,icon:'⏱️',title:'Route te lang',detail:d+' · '+Math.round(routeDurationEstimate(q,di))+' min',kind:'driver',value:d});});
-  [...new Map(deadlineProblems.map(k=>[k.id,k])).values()].forEach(k=>priorities.push({rank:7,icon:'🏫',title:'Schooldeadline controleren',detail:(k.name||'Naam onbekend')+' · '+(k.driver||'geen chauffeur'),kind:'child',value:k.id}));
+  unassigned.forEach(k=>priorities.push({rank:2,icon:'⚠️',title:'Rit zonder chauffeur',detail:(k.name||'Naam onbekend')+' · '+(k.school||k.destination||'bestemming onbekend'),kind:'child',value:k.id}));
+  overloaded.forEach(d=>priorities.push({rank:5,icon:'🔴',title:'Bus boven capaciteit',detail:d+' · '+load(d)+'/'+MAX+' kinderen',kind:'driver',value:d}));
+  [...new Set(routeProblems)].forEach(d=>priorities.push({rank:6,icon:'🛣️',title:'Routeconflict',detail:d,kind:'driver',value:d}));
+  longRoutes.forEach(d=>{const di=driverNames.indexOf(d);const q=kids.filter(k=>k.driver===d&&active(k));priorities.push({rank:7,icon:'⏱️',title:'Route te lang',detail:d+' · '+Math.round(routeDurationEstimate(q,di))+' min',kind:'driver',value:d});});
+  [...new Map(deadlineProblems.map(k=>[k.id,k])).values()].forEach(k=>priorities.push({rank:4,icon:'🏫',title:'Schooldeadline controleren',detail:(k.name||'Naam onbekend')+' · '+(k.driver||'geen chauffeur'),kind:'child',value:k.id}));
   priorities.sort((a,b)=>a.rank-b.rank||a.detail.localeCompare(b.detail,'nl'));
 
   // V893: slimme planningsadviseur. Geeft aanbevelingen op basis van de
@@ -5402,7 +5402,7 @@ function toggleCollapsible(id){
 })();
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=975").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=976").catch(()=>{}));}
 </script>
 
 
