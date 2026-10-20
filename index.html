@@ -1927,7 +1927,7 @@ function renderCentralActionCenterV974(){
  full.forEach(d=>push(4,'🚌','Bus vol — '+busForDriver(d),d+' · '+load(d)+'/'+MAX+' kinderen','driver',d));
  loose.forEach(k=>push(5,'📋','Loosmelding — '+(k.name||'Naam onbekend'),(k.looseReason||'Melding')+' · '+(k.driver||'Geen chauffeur'),'child',k.id));
  delays.forEach(k=>push(6,'⏱️','Vertraging — '+(k.name||'Naam onbekend'),k.delay+' minuten · '+(k.driver||'Geen chauffeur'),'child',k.id));
- replacements.forEach(t=>push(7,'🔄','Vervangingsrit — '+t.id,(t.brokenBus||'Bus onbekend')+' · '+(t.children?.length||0)+' kinderen · '+(t.replacementDriver||'nog niet toegewezen'),'driver',t.brokenDriver||''));
+ replacements.forEach(t=>push(7,'🔄','Vervangingsrit — '+t.id,(t.brokenBus||'Bus onbekend')+' · '+(t.children?.length||0)+' kinderen · '+(t.replacementDriver||'nog niet toegewezen'),'replacement',t.brokenDriver||''));
  absent.forEach(k=>push(8,'🚫','Afgemeld — '+(k.name||'Naam onbekend'),(k.time||'')+' · '+(k.school||'school onbekend'),'child',k.id));
  const count=items.length;
  const top=items.sort((a,b)=>a.rank-b.rank).slice(0,5);
@@ -1943,6 +1943,18 @@ function renderCentralActionCenterV974(){
  '<div class="central-action-counts">'+counts.map(c=>'<div class="central-action-count '+(c.danger?'is-alert':'')+'"><b>'+c.n+'</b><small>'+c.label+'</small></div>').join('')+'</div>'+
  (count?'<div class="central-action-list">'+rows+'</div><div class="actions"><button type="button" onclick="document.getElementById(\'attentionCardV712\')?.scrollIntoView({behavior:\'smooth\',block:\'start\'})">Bekijk alle meldingen & acties ↓</button><button type="button" onclick="runDayStartCheck();document.getElementById(\'dayStartCheck\')?.scrollIntoView({behavior:\'smooth\',block:\'start\'})">🔎 Controleer routes en deadlines</button></div>':'<div class="central-action-empty"><b>✅ Geen openstaande acties gevonden</b><div class="small">Er zijn op dit moment geen meldingen in de belangrijkste actiecategorieën.</div></div>');
 }
+function openCentralActionV974(kind,encodedValue){
+  const value=decodeURIComponent(encodedValue||'');
+  if(kind==='child'){
+    const kid=find(value);
+    if(kid){editChild(kid.id);document.getElementById('modal')?.classList.remove('hidden');}
+    return;
+  }
+  showPage('planner',document.querySelector('nav .tab'));
+  if(kind==='replacement'){showBusReplacement(value,0);return;}
+  openDriverDetails(value);
+}
+
 function handleQuickAction(kind,encodedValue,rank){
   const value=decodeURIComponent(encodedValue||'');
   if(kind==='child'){
