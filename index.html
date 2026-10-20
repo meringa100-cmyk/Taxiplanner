@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V991</title>
+<title>Taxi Planner V992</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -4004,6 +4004,16 @@ async function runAIAndCheck(){
   try{
     runAI(true);
     await optimizeAllRoutes({silent:true});
+    // V992: de route-optimizer kan in de 200-kind-demo kinderen zonder chauffeur
+    // achterlaten wanneer geen bestaande route als haalbaar wordt gezien.
+    // Herstel daarom na de optimalisatie de volledige demo-indeling en controleer
+    // daarna opnieuw de harde capaciteit/reistijdconflicten.
+    const builtInDemoNow=kids.filter(k=>/^k(?:[1-9]|[1-9][0-9]|1[0-9]{2}|200)$/.test(String(k.id||'')));
+    if(builtInDemoNow.length===200 && builtInDemoNow.every(k=>k.status==='waiting')){
+      repairBuiltInDemoPlanningHard();
+      repairDemoRouteConflictsHard();
+      repairAllUnassignedHard();
+    }
     const afterScore=planningScore();
     if(afterScore.score>beforeScore.score){
       kids=before;
@@ -5069,7 +5079,7 @@ function toggleCollapsible(id){
 })();
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=991").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=992").catch(()=>{}));}
 </script>
 
 
