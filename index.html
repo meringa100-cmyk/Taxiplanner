@@ -5046,6 +5046,9 @@ function toggleCollapsible(id){
 <script id="v973-planner-collapse-js">
 (function(){
   function setupPlannerFolds(){
+    // V983: alle native inklapbare onderdelen starten gesloten; gebruiker opent ze zelf.
+    document.querySelectorAll('details[open]').forEach(el=>el.removeAttribute('open'));
+    document.querySelectorAll('.collapsible-section.open, #collapsibleRittenVandaag.open').forEach(el=>el.classList.remove('open'));
     const planner=document.getElementById('planner');
     if(!planner)return;
     const cards=Array.from(planner.children).filter(el=>el.classList&&el.classList.contains('card'));
@@ -5058,7 +5061,7 @@ function toggleCollapsible(id){
       const btn=document.createElement('button');
       btn.type='button';
       btn.className='planner-fold-toggle';
-      const startCollapsed=['plannerToolsCardV977','driverDirectoryCardV977','quickChildTimeCard'].includes(card.id);
+      const startCollapsed=index!==0; // V983: alle inklapbare plannercards standaard dicht, gebruiker opent zelf
       if(startCollapsed)card.classList.add('planner-fold-collapsed');
       btn.setAttribute('aria-expanded',String(!startCollapsed));
       btn.textContent=startCollapsed?'Uitklappen +':'Inklappen −';
