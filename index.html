@@ -3009,7 +3009,7 @@ async function optimizeAllRoutes(options={}){
     for(const source of longRoutes){
       const candidates=source.rides.map(k=>{
         const remaining=source.rides.filter(x=>x.id!==k.id);
-        const remainMinutes=remaining.length?Math.round(routeDurationEstimate(remaining,driverNames.indexOf(source.d)):0;
+        const remainMinutes=remaining.length?Math.round(routeDurationEstimate(remaining,driverNames.indexOf(source.d))):0;
         return {kid:k,remaining,remainMinutes,reduction:source.minutes-remainMinutes};
       }).sort((a,b)=>b.reduction-a.reduction);
       for(const cand of candidates){
