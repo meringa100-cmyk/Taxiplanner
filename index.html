@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V1011</title>
+<title>Taxi Planner V1012</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -273,7 +273,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V1011</h1>
+<h1>🚕 Taxi Planner V1012</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -2701,21 +2701,59 @@ function planningScore(){
 }
 
 async function runBestPlanning(){
-  // V1011: voer meerdere pogingen uit vanaf exact dezelfde uitgangsplanning
-  // en bewaar uitsluitend de planning met de laagste score.
+  // V1012: meerdere echt verschillende starts. De demo-AI is grotendeels deterministisch,
+  // dus alleen dezelfde uitgangsplanning herhalen leverde nauwelijks nieuwe oplossingen op.
   const baselineKids=JSON.parse(JSON.stringify(kids));
   const baselineLock=demoPlanningSpreadLocked;
   let bestKids=JSON.parse(JSON.stringify(baselineKids));
   let bestLock=baselineLock;
-  let bestScore=planningScore();
+  let bestScore=Infinity;
   const attempts=3;
   const box=document.getElementById('dayStartCheck');
-  if(box)box.innerHTML='<div class="daystart-result daystart-warn"><b>🏆 AI vergelijkt '+attempts+' planningspogingen…</b><div class="small muted">Elke poging begint met dezelfde uitgangsplanning. Alleen de beste score wordt bewaard.</div></div>';
+
+  const routeFor=d=>kids.filter(k=>k.driver===d&&active(k))
+    .sort((a,b)=>(Number(a.routeOrder)||9999)-(Number(b.routeOrder)||9999));
+  const diversify=()=>{
+    // Verplaats maximaal vier kinderen uit de langste routes naar een route
+    // waar ze passen. Alleen uitvoeren als de bron korter wordt en doel haalbaar blijft.
+    const sources=driverNames.map(d=>({d,q:routeFor(d)}))
+      .filter(x=>x.q.length>1)
+      .sort((a,b)=>routeDurationEstimate(b.q,driverNames.indexOf(b.d))-routeDurationEstimate(a.q,driverNames.indexOf(a.d)));
+    let moved=0;
+    for(const source of sources){
+      if(moved>=4)break;
+      const sourceMinutes=routeDurationEstimate(source.q,driverNames.indexOf(source.d));
+      if(sourceMinutes<=routeLimitForRides(source.q))continue;
+      const candidates=[...source.q].reverse();
+      for(const kid of candidates){
+        if(moved>=4)break;
+        const remaining=source.q.filter(k=>k.id!==kid.id);
+        const remainMinutes=routeDurationEstimate(remaining,driverNames.indexOf(source.d));
+        if(remainMinutes>=sourceMinutes)continue;
+        const targets=driverNames.filter(d=>d!==source.d&&!isDriverUnavailable(d)&&!isBusUnavailable(d))
+          .map(d=>({d,q:routeFor(d)}))
+          .filter(x=>x.q.length<MAX&&!x.q.some(k=>Number(k.timeMin)===Number(kid.timeMin)))
+          .map(x=>({...x,trial:[...x.q,kid].sort((a,b)=>(Number(a.routeOrder)||9999)-(Number(b.routeOrder)||9999))}))
+          .filter(x=>routeDurationEstimate(x.trial,driverNames.indexOf(x.d))<=routeLimitForRides(x.trial))
+          .filter(x=>x.trial.every(schoolDeadlineOk))
+          .sort((a,b)=>routeDurationEstimate(a.trial,driverNames.indexOf(a.d))-routeDurationEstimate(b.trial,driverNames.indexOf(b.d)));
+        const target=targets[0];
+        if(!target)continue;
+        kid.driver=target.d;
+        kid.routeOrder=target.q.length;
+        moved++;
+        break;
+      }
+    }
+    return moved;
+  };
 
   for(let attempt=1;attempt<=attempts;attempt++){
     kids=JSON.parse(JSON.stringify(baselineKids));
     demoPlanningSpreadLocked=baselineLock;
     runAI(true);
+    let diversified=0;
+    if(attempt>1)diversified=diversify();
     await optimizeAllRoutes();
     const candidate=planningScore();
     if(candidate.score<bestScore){
@@ -2723,7 +2761,7 @@ async function runBestPlanning(){
       bestKids=JSON.parse(JSON.stringify(kids));
       bestLock=demoPlanningSpreadLocked;
     }
-    if(box)box.innerHTML='<div class="daystart-result daystart-warn"><b>🏆 AI vergelijkt planningen… ('+attempt+'/'+attempts+')</b><div class="small muted">Beste gevonden: '+bestScore.toFixed(1)+' punten. Lagere score betekent minder route- en planningsproblemen.</div></div>';
+    if(box)box.innerHTML='<div class="daystart-result daystart-warn"><b>🏆 AI vergelijkt planningen… ('+attempt+'/'+attempts+')</b><div class="small muted">Deze poging varieerde '+diversified+' rit(ten). Beste score tot nu toe: '+bestScore.toFixed(1)+'.</div></div>';
   }
 
   kids=bestKids;
@@ -2732,14 +2770,14 @@ async function runBestPlanning(){
   saveState();
   renderAll();
   const ok=result.longRoutes===0&&result.conflicts===0&&result.deadlineLate===0&&result.unassigned===0&&result.overloaded===0;
-  alert((ok?'🏆 Geldige planning gevonden!':'⚠️ Beste van '+attempts+' pogingen teruggezet.')+'\\n\\n'+
+  alert((ok?'🏆 Geldige planning gevonden!':'⚠️ Beste van '+attempts+' verschillende pogingen teruggezet.')+'\\n\\n'+
     '🚌 '+result.used+' chauffeurs gebruikt\\n'+
     '👦 '+kids.filter(active).length+' kinderen gepland\\n'+
     '📦 Vrije plaatsen: '+result.capacityWaste+'\\n'+
     '⏱️ Routes boven limiet: '+result.longRoutes+'\\n'+
     '🚦 Tijdconflicten: '+result.conflicts+'\\n'+
     '🏫 Schooldeadline-problemen: '+result.deadlineLate+'\\n\\n'+
-    'Alle pogingen zijn vergeleken; de planner heeft de laagste totaalscore behouden.');
+    'De planner heeft de laagste totaalscore behouden.');
 }
 
 async function repairAllTimeConflicts(){
@@ -5283,7 +5321,7 @@ function toggleCollapsible(id){
 })();
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=1011").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=1012").catch(()=>{}));}
 </script>
 
 
