@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V1002</title>
+<title>Taxi Planner V1003</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -273,7 +273,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V1002</h1>
+<h1>🚕 Taxi Planner V1003</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -938,32 +938,20 @@ function routeLimitForRides(rides){
 }
 // V1002: demo-startpunten voor chauffeurs verspreid over Drenthe.
 // Dit zijn plaatsniveau-demo-coördinaten, geen echte woonadressen.
-function driverStartPoint(driverIndex){
-  const places=drentheDemoLocations;
-  if(!places||!places.length)return {lat:52.7858,lon:6.8976};
-  const idx=((Number(driverIndex)||0)%50+50)%50;
-  const town=places[Math.floor(idx*places.length/50)%places.length];
-  const ring=Math.floor(idx/places.length)+1;
-  const angle=(idx*137.508)*Math.PI/180;
-  return {
-    lat:town.lat+Math.sin(angle)*0.006*ring,
-    lon:town.lon+Math.cos(angle)*0.009*ring
-  };
-}
 function routeDurationEstimate(rides,driverIndex){
   if(!rides || !rides.length)return 0;
+  // V1003: herstel de stabiele routeberekening zonder fictieve chauffeurstart.
+  // Chauffeur-startpunten worden pas meegerekend zodra echte standplaatsen/adressen
+  // en betrouwbare routeafstanden beschikbaar zijn.
   const ordered=[...rides].sort((a,b)=>(Number(a.routeOrder)||9999)-(Number(b.routeOrder)||9999));
-  const start=driverStartPoint(driverIndex);
-  let total=routeMinutesBetween(start,ordered[0],driverIndex);
   if(ordered.length===1){
     const school=schoolPoint(ordered[0]);
-    return total+(school ? routeMinutesBetween(ordered[0],{lat:school.lat,lon:school.lon},driverIndex) : 0);
+    return school ? routeMinutesBetween(ordered[0],{lat:school.lat,lon:school.lon},driverIndex) : 0;
   }
+  let total=0;
   for(let i=1;i<ordered.length;i++){
     total+=routeMinutesBetween(ordered[i-1],ordered[i],driverIndex);
   }
-  // De rit eindigt op de school. Deze laatste etappe telt dus ook mee
-  // voor de harde maximale routetijd van 90 minuten.
   const last=ordered[ordered.length-1];
   const schoolsForRoute=routeSchools(ordered);
   if(schoolsForRoute.length<=1){
@@ -971,9 +959,6 @@ function routeDurationEstimate(rides,driverIndex){
     if(school) total+=routeMinutesBetween(last,{lat:school.lat,lon:school.lon},driverIndex);
     return total;
   }
-
-  // Bij meerdere scholen: vanaf de laatste ophaalstop naar de dichtstbijzijnde
-  // school en daarna naar de volgende school. Zo telt de rit naar beide scholen.
   let current={lat:last.lat,lon:last.lon};
   const remainingSchools=schoolsForRoute.slice();
   while(remainingSchools.length){
@@ -5194,7 +5179,7 @@ function toggleCollapsible(id){
 })();
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=1002").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=1003").catch(()=>{}));}
 </script>
 
 
