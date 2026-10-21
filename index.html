@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V1010</title>
+<title>Taxi Planner V1011</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -273,7 +273,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V1010</h1>
+<h1>🚕 Taxi Planner V1011</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -2701,35 +2701,45 @@ function planningScore(){
 }
 
 async function runBestPlanning(){
-  // V815: nooit een slechtere planning accepteren.
-  const before=JSON.parse(JSON.stringify(kids));
-  const beforeScore=planningScore();
-  const beforeLock=demoPlanningSpreadLocked;
+  // V1011: voer meerdere pogingen uit vanaf exact dezelfde uitgangsplanning
+  // en bewaar uitsluitend de planning met de laagste score.
+  const baselineKids=JSON.parse(JSON.stringify(kids));
+  const baselineLock=demoPlanningSpreadLocked;
+  let bestKids=JSON.parse(JSON.stringify(baselineKids));
+  let bestLock=baselineLock;
+  let bestScore=planningScore();
+  const attempts=3;
   const box=document.getElementById('dayStartCheck');
-  if(box)box.innerHTML='<div class="daystart-result daystart-warn"><b>🏆 AI zoekt de beste planning…</b><div class="small muted">Capaciteit, routeafstand, verste kind eerst, reistijd en schooldeadline worden samen beoordeeld.</div></div>';
-  runAI(true);
-  await optimizeAllRoutes();
-  let result=planningScore();
-  if(result.score>beforeScore.score){
-    kids=before;
-    demoPlanningSpreadLocked=beforeLock;
-    result=planningScore();
-    saveState();
-    renderAll();
-    if(box)box.innerHTML='<div class="daystart-result daystart-warn"><b>🛡️ AI-resultaat geweigerd</b><div class="small muted">De vorige planning was beter en is behouden.</div></div>';
-  }else{
-    saveState();
-    renderAll();
+  if(box)box.innerHTML='<div class="daystart-result daystart-warn"><b>🏆 AI vergelijkt '+attempts+' planningspogingen…</b><div class="small muted">Elke poging begint met dezelfde uitgangsplanning. Alleen de beste score wordt bewaard.</div></div>';
+
+  for(let attempt=1;attempt<=attempts;attempt++){
+    kids=JSON.parse(JSON.stringify(baselineKids));
+    demoPlanningSpreadLocked=baselineLock;
+    runAI(true);
+    await optimizeAllRoutes();
+    const candidate=planningScore();
+    if(candidate.score<bestScore){
+      bestScore=candidate.score;
+      bestKids=JSON.parse(JSON.stringify(kids));
+      bestLock=demoPlanningSpreadLocked;
+    }
+    if(box)box.innerHTML='<div class="daystart-result daystart-warn"><b>🏆 AI vergelijkt planningen… ('+attempt+'/'+attempts+')</b><div class="small muted">Beste gevonden: '+bestScore.toFixed(1)+' punten. Lagere score betekent minder route- en planningsproblemen.</div></div>';
   }
+
+  kids=bestKids;
+  demoPlanningSpreadLocked=bestLock;
+  const result=planningScore();
+  saveState();
+  renderAll();
   const ok=result.longRoutes===0&&result.conflicts===0&&result.deadlineLate===0&&result.unassigned===0&&result.overloaded===0;
-  alert((ok?'🏆 Beste planning gevonden!':'⚠️ Beste haalbare planning gevonden.')+'\\n\\n'+
+  alert((ok?'🏆 Geldige planning gevonden!':'⚠️ Beste van '+attempts+' pogingen teruggezet.')+'\\n\\n'+
     '🚌 '+result.used+' chauffeurs gebruikt\\n'+
     '👦 '+kids.filter(active).length+' kinderen gepland\\n'+
     '📦 Vrije plaatsen: '+result.capacityWaste+'\\n'+
     '⏱️ Routes boven limiet: '+result.longRoutes+'\\n'+
     '🚦 Tijdconflicten: '+result.conflicts+'\\n'+
     '🏫 Schooldeadline-problemen: '+result.deadlineLate+'\\n\\n'+
-    'De planner heeft capaciteit, geografische route, verste-kind-eerst en de bestaande tijdsregels meegenomen.');
+    'Alle pogingen zijn vergeleken; de planner heeft de laagste totaalscore behouden.');
 }
 
 async function repairAllTimeConflicts(){
@@ -5273,7 +5283,7 @@ function toggleCollapsible(id){
 })();
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=1010").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=1011").catch(()=>{}));}
 </script>
 
 
