@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V1007</title>
+<title>Taxi Planner V1008</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -273,7 +273,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V1007</h1>
+<h1>🚕 Taxi Planner V1008</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -2846,8 +2846,9 @@ async function optimizeAllRoutes(options={}){
   const routeMinutes=(d)=>{
     // V989: gebruik exact dezelfde routeberekening als de routecontrole.
     // Ook een route met maar één kind telt dus de rit van ophaaladres naar school mee.
+    // V1008: gebruik dezelfde routevolgorde als routeQueue en routeDurationEstimate.
     const q=kids.filter(k=>k.driver===d&&active(k))
-      .sort((a,b)=>(Number(a.timeMin)||0)-(Number(b.timeMin)||0));
+      .sort((a,b)=>(Number(a.routeOrder)||9999)-(Number(b.routeOrder)||9999));
     return q.length ? Math.round(routeDurationEstimate(q,driverNames.indexOf(d))) : 0;
   };
 
@@ -5269,7 +5270,7 @@ function toggleCollapsible(id){
 })();
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=1007").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=1008").catch(()=>{}));}
 </script>
 
 
