@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V999</title>
+<title>Taxi Planner V1000</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -273,7 +273,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V999</h1>
+<h1>🚕 Taxi Planner V1000</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -2984,60 +2984,6 @@ async function optimizeAllRoutes(options={}){
     await optimizeDriverRoute(best.to);
   }
 
-  // V998: aparte veilige herstelronde voor resterende te lange routes.
-  // Een verplaatsing wordt alleen geaccepteerd als bron én doel binnen de routegrens
-  // blijven, geen nieuwe tijdsconflicten krijgen en alle schooldeadlines haalbaar blijven.
-  let longRouteMoves=0;
-  const orderedRides=d=>kids.filter(k=>k.driver===d&&active(k))
-    .sort((a,b)=>(Number(a.timeMin)||0)-(Number(b.timeMin)||0));
-  const routeHasTimeConflict=(rides,d)=>{
-    const idx=driverNames.indexOf(d);
-    for(let i=1;i<rides.length;i++){
-      const gap=(Number(rides[i].timeMin)||0)-(Number(rides[i-1].timeMin)||0);
-      if(gap<=0 || routeMinutesBetween(rides[i-1],rides[i],idx)>gap+15)return true;
-    }
-    return false;
-  };
-  for(let pass=0;pass<200;pass++){
-    const longRoutes=driverNames.map(d=>{
-      const rides=orderedRides(d);
-      return {d,rides,minutes:rides.length?Math.round(routeDurationEstimate(rides,driverNames.indexOf(d))):0,limit:routeLimitForRides(rides)};
-    }).filter(x=>x.rides.length&&x.minutes>x.limit)
-      .sort((a,b)=>(b.minutes-b.limit)-(a.minutes-a.limit));
-    if(!longRoutes.length)break;
-    let chosen=null;
-    for(const source of longRoutes){
-      const candidates=source.rides.map(k=>{
-        const remaining=source.rides.filter(x=>x.id!==k.id);
-        const remainMinutes=remaining.length?Math.round(routeDurationEstimate(remaining,driverNames.indexOf(source.d))):0;
-        return {kid:k,remaining,remainMinutes,reduction:source.minutes-remainMinutes};
-      }).sort((a,b)=>b.reduction-a.reduction);
-      for(const cand of candidates){
-        for(const targetDriver of driverNames){
-          if(targetDriver===source.d||isDriverUnavailable(targetDriver)||isBusUnavailable(targetDriver))continue;
-          const target=orderedRides(targetDriver);
-          if(target.length>=MAX)continue;
-          if(target.some(x=>x.id!==cand.kid.id&&Number(x.timeMin)===Number(cand.kid.timeMin)))continue;
-          const trialTarget=[...target,cand.kid].sort((a,b)=>(Number(a.timeMin)||0)-(Number(b.timeMin)||0));
-          if(cand.remaining.length&&cand.remainMinutes>=source.minutes)continue; // Alleen eisen dat de bronroute echt korter wordt; volgende iteraties kunnen haar verder splitsen.
-          const targetMinutes=Math.round(routeDurationEstimate(trialTarget,driverNames.indexOf(targetDriver)));
-          if(targetMinutes>routeLimitForRides(trialTarget))continue;
-          if(routeHasTimeConflict(cand.remaining,source.d)||routeHasTimeConflict(trialTarget,targetDriver))continue;
-          if([...cand.remaining,...trialTarget].some(k=>!schoolDeadlineOk(k)))continue;
-          const score=cand.reduction*2-(targetMinutes-(target.length?routeDurationEstimate(target,driverNames.indexOf(targetDriver)):0))*0.5+(MAX-target.length);
-          if(!chosen||score>chosen.score)chosen={kid:cand.kid,from:source.d,to:targetDriver,score};
-        }
-      }
-      if(chosen)break;
-    }
-    if(!chosen)break;
-    chosen.kid.driver=chosen.to;
-    longRouteMoves++;
-    await optimizeDriverRoute(chosen.from);
-    await optimizeDriverRoute(chosen.to);
-  }
-  if(longRouteMoves)saveState();
-
   // V932: verplaatsingen om lange routes te splitsen kunnen nieuwe tijdconflicten
   // veroorzaken. Controleer daarom daarna nogmaals de tijdvensters en orden opnieuw.
   const finalTimeRepair=await repairAllTimeConflicts();
@@ -3097,6 +3043,61 @@ async function optimizeAllRoutes(options={}){
     await repairAllTimeConflicts();
     for(const d of driverNames)await optimizeDriverRoute(d);
   }
+
+  // V1000: laatste veilige herstelronde vlak vóór de eindcontrole voor resterende te lange routes.
+  // Een verplaatsing wordt alleen geaccepteerd als bron én doel binnen de routegrens
+  // blijven, geen nieuwe tijdsconflicten krijgen en alle schooldeadlines haalbaar blijven.
+  let longRouteMoves=0;
+  const orderedRides=d=>kids.filter(k=>k.driver===d&&active(k))
+    .sort((a,b)=>(Number(a.timeMin)||0)-(Number(b.timeMin)||0));
+  const routeHasTimeConflict=(rides,d)=>{
+    const idx=driverNames.indexOf(d);
+    for(let i=1;i<rides.length;i++){
+      const gap=(Number(rides[i].timeMin)||0)-(Number(rides[i-1].timeMin)||0);
+      if(gap<=0 || routeMinutesBetween(rides[i-1],rides[i],idx)>gap+15)return true;
+    }
+    return false;
+  };
+  for(let pass=0;pass<200;pass++){
+    const longRoutes=driverNames.map(d=>{
+      const rides=orderedRides(d);
+      return {d,rides,minutes:rides.length?Math.round(routeDurationEstimate(rides,driverNames.indexOf(d))):0,limit:routeLimitForRides(rides)};
+    }).filter(x=>x.rides.length&&x.minutes>x.limit)
+      .sort((a,b)=>(b.minutes-b.limit)-(a.minutes-a.limit));
+    if(!longRoutes.length)break;
+    let chosen=null;
+    for(const source of longRoutes){
+      const candidates=source.rides.map(k=>{
+        const remaining=source.rides.filter(x=>x.id!==k.id);
+        const remainMinutes=remaining.length?Math.round(routeDurationEstimate(remaining,driverNames.indexOf(source.d))):0;
+        return {kid:k,remaining,remainMinutes,reduction:source.minutes-remainMinutes};
+      }).sort((a,b)=>b.reduction-a.reduction);
+      for(const cand of candidates){
+        for(const targetDriver of driverNames){
+          if(targetDriver===source.d||isDriverUnavailable(targetDriver)||isBusUnavailable(targetDriver))continue;
+          const target=orderedRides(targetDriver);
+          if(target.length>=MAX)continue;
+          if(target.some(x=>x.id!==cand.kid.id&&Number(x.timeMin)===Number(cand.kid.timeMin)))continue;
+          const trialTarget=[...target,cand.kid].sort((a,b)=>(Number(a.timeMin)||0)-(Number(b.timeMin)||0));
+          if(cand.remaining.length&&cand.remainMinutes>=source.minutes)continue; // Alleen eisen dat de bronroute echt korter wordt; volgende iteraties kunnen haar verder splitsen.
+          const targetMinutes=Math.round(routeDurationEstimate(trialTarget,driverNames.indexOf(targetDriver)));
+          if(targetMinutes>routeLimitForRides(trialTarget))continue;
+          if(routeHasTimeConflict(cand.remaining,source.d)||routeHasTimeConflict(trialTarget,targetDriver))continue;
+          if([...cand.remaining,...trialTarget].some(k=>!schoolDeadlineOk(k)))continue;
+          const score=cand.reduction*2-(targetMinutes-(target.length?routeDurationEstimate(target,driverNames.indexOf(targetDriver)):0))*0.5+(MAX-target.length);
+          if(!chosen||score>chosen.score)chosen={kid:cand.kid,from:source.d,to:targetDriver,score};
+        }
+      }
+      if(chosen)break;
+    }
+    if(!chosen)break;
+    chosen.kid.driver=chosen.to;
+    longRouteMoves++;
+    await optimizeDriverRoute(chosen.from);
+    await optimizeDriverRoute(chosen.to);
+  }
+  if(longRouteMoves)saveState();
+
 
   // Definitieve controle.
   let total=0,conflicts=0,drivers=0,longRoutes=0;
@@ -5178,7 +5179,7 @@ function toggleCollapsible(id){
 })();
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=999").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=1000").catch(()=>{}));}
 </script>
 
 
