@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V1015</title>
+<title>Taxi Planner V1016</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -332,11 +332,12 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 <h3>⚙️ Beheer & onderhoud</h3>
 <p class="muted" style="margin-top:0">Voor dagelijks werk gebruik je het dashboard, Meldingen & Acties en Ritten vandaag. Hieronder staan de minder vaak gebruikte beheeracties.</p>
 <div class="actions">
-<button type="button" onclick="optimizeAllRoutes()">🧭 Routes optimaliseren</button>
+<button id="routeOptimizeButton" type="button" onclick="runRouteOptimizationFromButton(this)">🧭 Routes optimaliseren</button>
 <button type="button" onclick="demoHardPlanVersion=''; const n=repairBuiltInDemoPlanningHard(); saveState(); renderAll(); alert('✅ Schone demo-planning opnieuw opgebouwd.')">🧹 Demo-planning herstellen</button>
 <button type="button" onclick="openAdd()">➕ Rit toevoegen</button>
 <button type="button" onclick="resetDemo()">↩️ Demo resetten</button>
 </div>
+<div id="routeOptimizeStatus" class="small muted" role="status" aria-live="polite" style="margin-top:8px">Route-optimalisatie is klaar om te starten.</div>
 </div>
 <div class="card" id="driverDirectoryCardV977"><h3>👨‍✈️ Chauffeurs en bezetting</h3><input id="driverSearch" placeholder="Zoek chauffeur..." oninput="renderDashboard()"><div id="driverList"></div></div>
 </section>
@@ -2880,6 +2881,23 @@ async function repairAllTimeConflicts(){
 
   if(repairs||moved)saveState(); // V996: bewaar gecorrigeerde tijden en conflictgeheugen direct.
   return {repairs,moved};
+}
+
+async function runRouteOptimizationFromButton(button){
+  const status=document.getElementById('routeOptimizeStatus');
+  if(button?.disabled)return;
+  if(button)button.disabled=true;
+  if(status)status.textContent='⏳ Route-optimalisatie gestart. Dit kan even duren; laat deze pagina open.';
+  try{
+    await optimizeAllRoutes();
+    if(status)status.textContent='✅ Route-optimalisatie is afgerond. Controleer de eindmelding en het aantal aandachtspunten.';
+  }catch(error){
+    console.error('Route-optimalisatie mislukt:',error);
+    if(status)status.textContent='❌ Route-optimalisatie is afgebroken: '+(error?.message||String(error));
+    alert('Route-optimalisatie is niet goed afgerond. Fout: '+(error?.message||String(error))+'\\n\\nMaak een screenshot van deze melding.');
+  }finally{
+    if(button)button.disabled=false;
+  }
 }
 
 async function optimizeAllRoutes(options={}){
