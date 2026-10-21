@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V1008</title>
+<title>Taxi Planner V1009</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -273,7 +273,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V1008</h1>
+<h1>🚕 Taxi Planner V1009</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -1508,7 +1508,7 @@ function renderMorningCockpitV901(){
     {icon:'👦',label:'Kinderen ingepland',value:assigned.length+'/'+activeKids.length,detail:unassigned.length?unassigned.length+' zonder chauffeur':'Alle actieve ritten toegewezen',bad:unassigned.length>0},
     {icon:'👨‍✈️',label:'Chauffeurs beschikbaar',value:availableDrivers.length+'/'+driverNames.length,detail:unavailable.length?unavailable.length+' niet beschikbaar':'Geen chauffeurs als afwezig gemeld',bad:unavailable.length>0},
     {icon:'🚌',label:'Busstoringen',value:String(broken.length),detail:broken.length?broken.map(d=>busIssues[d]?.bus||busForDriver(d)).join(', '):'Geen storing gemeld',bad:broken.length>0},
-    {icon:'🛣️',label:'Routes met aandacht',value:String(routeDrivers.size),detail:conflictCount+' tijdconflict(en) · '+longRoutes.length+' te lang · '+uniqueLate.length+' schooldeadlineprobleem/-problemen',bad:routeDrivers.size>0}
+    {icon:'🛣️',label:'Chauffeurs met route-aandacht',value:String(routeDrivers.size),detail:conflictCount+' tijdconflict(en) · '+longRoutes.length+' te lange route(s) · '+uniqueLate.length+' schooldeadlineprobleem/-problemen. Dit is het aantal unieke chauffeurs; de vertrekcontrole telt afzonderlijke problemen.',bad:routeDrivers.size>0}
   ];
   const esc=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const updatedAt=new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
@@ -1841,7 +1841,9 @@ async function runDayStartCheck(){
   const deadlineProblems=[];
 
   driverNames.forEach((d,di)=>{
-    const q=kids.filter(k=>k.driver===d&&active(k)).sort((a,b)=>a.timeMin-b.timeMin);
+    // V1009: gebruik één expliciete stopvolgorde voor route- en vertrekcontrole.
+    const q=kids.filter(k=>k.driver===d&&active(k))
+      .sort((a,b)=>(Number(a.routeOrder)||9999)-(Number(b.routeOrder)||9999));
     if(!q.length)return;
 
     const minutes=routeDurationEstimate(q,di);
@@ -5270,7 +5272,7 @@ function toggleCollapsible(id){
 })();
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=1008").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=1009").catch(()=>{}));}
 </script>
 
 
