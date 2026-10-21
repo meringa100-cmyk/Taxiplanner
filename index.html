@@ -2751,6 +2751,7 @@ async function repairAllTimeConflicts(){
         // V996: probeer de kleinste verschuiving in stappen van 1 minuut.
         // De aangepaste tijd wordt op het kind opgeslagen en dus onthouden
         // bij volgende controles/herladen. Schooldeadline en andere ritten bewaken.
+        let adjustedTime=false;
         if(cur.status==='waiting'){
           const old=Number(cur.timeMin)||0;
           for(let delta=1;delta<=30;delta++){
@@ -2764,9 +2765,10 @@ async function repairAllTimeConflicts(){
             cur.timeConflictMemory={...(cur.timeConflictMemory||{}),lastConflictWith:prev.id,adjustedBy:delta,correctedAt:Date.now()};
             repairs++;
             changed=true;
+            adjustedTime=true;
             break;
           }
-          if(changed)continue;
+          if(adjustedTime)continue;
         }
 
         // Als later opschuiven niet veilig kan, probeer de eerdere wachtende rit
@@ -2783,9 +2785,10 @@ async function repairAllTimeConflicts(){
             prev.timeConflictMemory={...(prev.timeConflictMemory||{}),lastConflictWith:cur.id,adjustedBy:-delta,correctedAt:Date.now()};
             repairs++;
             changed=true;
+            adjustedTime=true;
             break;
           }
-          if(changed)continue;
+          if(adjustedTime)continue;
         }
 
         // Als tijden niet meer verschoven kunnen worden, verplaats het kind
