@@ -2824,6 +2824,7 @@ async function repairAllTimeConflicts(){
     for(const d of driverNames) await optimizeDriverRoute(d);
   }
 
+  if(repairs||moved)saveState(); // V996: bewaar gecorrigeerde tijden en conflictgeheugen direct.
   return {repairs,moved};
 }
 
