@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V1014</title>
+<title>Taxi Planner V1015</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -2883,6 +2883,11 @@ async function repairAllTimeConflicts(){
 }
 
 async function optimizeAllRoutes(options={}){
+  // V1015: maak de bestaande planning een veiligheidscheckpoint. Een optimalisatieronde
+  // mag nooit een aantoonbaar slechtere planning achterlaten.
+  const v1015OriginalKids=JSON.parse(JSON.stringify(kids));
+  const v1015OriginalScore=planningScore().score;
+  let v1015RolledBack=false;
   const box=document.getElementById('routeInfo');
   if(box)box.textContent='🧭 Routes worden geografisch geoptimaliseerd en overvolle/te lange routes worden automatisch gesplitst…';
 
@@ -3257,9 +3262,24 @@ async function optimizeAllRoutes(options={}){
     }
   }
 
+  // V1015: vergelijk de volledige eindscore met de planning van vóór de optimalisatie.
+  // Bij verslechtering herstellen we de checkpoint in plaats van de slechtere uitkomst te bewaren.
+  const v1015FinalScore=planningScore().score;
+  if(v1015FinalScore>v1015OriginalScore){
+    kids=v1015OriginalKids;
+    saveState();
+    v1015RolledBack=true;
+    const restored=planningScore();
+    total=kids.filter(active).length;
+    conflicts=restored.conflicts;
+    longRoutes=restored.longRoutes;
+    drivers=restored.used;
+  }
+
   renderAll();
 
   let msg='🧭 Route-optimalisatie klaar!\\n\\n';
+  if(v1015RolledBack)msg+='🛡️ De nieuwe poging maakte de totaalscore slechter. De vorige planning is daarom automatisch hersteld.\\n\\n';
   if(timeRepair.repairs||timeRepair.moved||finalTimeRepair.repairs||finalTimeRepair.moved)msg+='🕒 '+(timeRepair.repairs+finalTimeRepair.repairs)+' tijdvensters hersteld en '+(timeRepair.moved+finalTimeRepair.moved)+' kind(eren) indien nodig verplaatst.\\n';
   if(deadlineTimeRepairs)msg+='🏫 '+deadlineTimeRepairs+' ophaaltijd(en) maximaal 15 minuten vervroegd voor schooldeadline.\\n';
   if(deadlineSearchRepairs)msg+='🎯 '+deadlineSearchRepairs+' extra tijdoptimalisatie(s) voor schooldeadlines geprobeerd.\\n';
