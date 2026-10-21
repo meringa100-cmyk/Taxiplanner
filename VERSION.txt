@@ -1,3 +1,3 @@
-Taxi Planner V74
-Deployment refresh: 2026-10-04
-Code cleanup and route/address validation groundwork.
+Taxi Planner V1017
+Deployment refresh: 2026-10-21
+Invalidate stale V1014 PWA cache and verify live Pages update.
