@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V1004</title>
+<title>Taxi Planner V1005</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -273,7 +273,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V1004</h1>
+<h1>🚕 Taxi Planner V1005</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -3129,6 +3129,54 @@ async function optimizeAllRoutes(options={}){
   }
   if(longRouteMoves)saveState();
 
+
+  // V1005: tweede herstelstrategie — gecontroleerde wissels tussen twee routes.
+  // Dit helpt wanneer geen losse verplaatsing haalbaar is, maar twee kinderen onderling
+  // kunnen wisselen zodat beide routes geografisch en qua tijden beter passen.
+  let routeSwapMoves=0;
+  const routeHardState=()=>{
+    const s=planningScore();
+    return {score:s.score,conflicts:s.conflicts,deadlineLate:s.deadlineLate,unassigned:s.unassigned,overloaded:s.overloaded,longRoutes:s.longRoutes};
+  };
+  for(let pass=0;pass<80;pass++){
+    const base=routeHardState();
+    let bestSwap=null;
+    const activeDrivers=driverNames.filter(d=>orderedRides(d).length);
+    for(let ai=0;ai<activeDrivers.length;ai++){
+      const da=activeDrivers[ai], qa=orderedRides(da);
+      for(let bi=ai+1;bi<activeDrivers.length;bi++){
+        const db=activeDrivers[bi], qb=orderedRides(db);
+        if(!qa.length||!qb.length)continue;
+        for(const ka of qa){
+          for(const kb of qb){
+            if(Number(ka.timeMin)===Number(kb.timeMin))continue;
+            const oldA=ka.driver,oldB=kb.driver;
+            ka.driver=db;kb.driver=da;
+            const trial=routeHardState();
+            const minutesA=routeDurationEstimate(kids.filter(k=>k.driver===da&&active(k)),driverNames.indexOf(da));
+            const minutesB=routeDurationEstimate(kids.filter(k=>k.driver===db&&active(k)),driverNames.indexOf(db));
+            const capA=kids.filter(k=>k.driver===da&&active(k)).length<=MAX;
+            const capB=kids.filter(k=>k.driver===db&&active(k)).length<=MAX;
+            ka.driver=oldA;kb.driver=oldB;
+            const hardSafe=capA&&capB&&trial.conflicts<=base.conflicts&&trial.deadlineLate<=base.deadlineLate&&trial.unassigned===base.unassigned&&trial.overloaded===base.overloaded;
+            const routeExcessBefore=Math.max(0,routeDurationEstimate(qa,driverNames.indexOf(da))-routeLimitForRides(qa))+Math.max(0,routeDurationEstimate(qb,driverNames.indexOf(db))-routeLimitForRides(qb));
+            const trialA=qa.filter(k=>k!==ka).concat(kb).sort((x,y)=>(Number(x.timeMin)||0)-(Number(y.timeMin)||0));
+            const trialB=qb.filter(k=>k!==kb).concat(ka).sort((x,y)=>(Number(x.timeMin)||0)-(Number(y.timeMin)||0));
+            const routeExcessAfter=Math.max(0,routeDurationEstimate(trialA,driverNames.indexOf(da))-routeLimitForRides(trialA))+Math.max(0,routeDurationEstimate(trialB,driverNames.indexOf(db))-routeLimitForRides(trialB));
+            const excessGain=routeExcessBefore-routeExcessAfter;
+            if(hardSafe&&trial.score<base.score&&excessGain>0&&(!bestSwap||excessGain>bestSwap.excessGain))bestSwap={ka,kb,da,db,excessGain};
+          }
+        }
+      }
+    }
+    if(!bestSwap)break;
+    bestSwap.ka.driver=bestSwap.db;
+    bestSwap.kb.driver=bestSwap.da;
+    routeSwapMoves++;
+    await optimizeDriverRoute(bestSwap.da);
+    await optimizeDriverRoute(bestSwap.db);
+  }
+  if(routeSwapMoves)saveState();
 
   // Definitieve controle.
   let total=0,conflicts=0,drivers=0,longRoutes=0;
