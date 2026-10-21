@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V1003</title>
+<title>Taxi Planner V1004</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -273,7 +273,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V1003</h1>
+<h1>🚕 Taxi Planner V1004</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -940,7 +940,7 @@ function routeLimitForRides(rides){
 // Dit zijn plaatsniveau-demo-coördinaten, geen echte woonadressen.
 function routeDurationEstimate(rides,driverIndex){
   if(!rides || !rides.length)return 0;
-  // V1003: herstel de stabiele routeberekening zonder fictieve chauffeurstart.
+  // V1004: herstel de stabiele routeberekening zonder fictieve chauffeurstart.
   // Chauffeur-startpunten worden pas meegerekend zodra echte standplaatsen/adressen
   // en betrouwbare routeafstanden beschikbaar zijn.
   const ordered=[...rides].sort((a,b)=>(Number(a.routeOrder)||9999)-(Number(b.routeOrder)||9999));
@@ -3089,6 +3089,37 @@ async function optimizeAllRoutes(options={}){
         }
       }
       if(chosen)break;
+    }
+    // V1004: als geen enkele losse verplaatsing direct een volledig korte doelroute oplevert,
+    // accepteer alleen een tussenstap die de gezamenlijke overschrijding aantoonbaar verkleint.
+    // De volgende iteratie pakt de resterende lange route(s) verder aan.
+    if(!chosen){
+      let bridge=null;
+      for(const source of longRoutes){
+        const sourceExcess=Math.max(0,source.minutes-source.limit);
+        for(const kid of source.rides){
+          const remaining=source.rides.filter(x=>x.id!==kid.id);
+          if(!remaining.length)continue;
+          const sourceAfter=Math.round(routeDurationEstimate(remaining,driverNames.indexOf(source.d)));
+          if(sourceAfter>=source.minutes)continue;
+          if(routeHasTimeConflict(remaining,source.d)||remaining.some(k=>!schoolDeadlineOk(k)))continue;
+          for(const targetDriver of driverNames){
+            if(targetDriver===source.d||isDriverUnavailable(targetDriver)||isBusUnavailable(targetDriver))continue;
+            const target=orderedRides(targetDriver);
+            if(target.length>=MAX||target.some(x=>Number(x.timeMin)===Number(kid.timeMin)))continue;
+            const trial=[...target,kid].sort((a,b)=>(Number(a.timeMin)||0)-(Number(b.timeMin)||0));
+            if(routeHasTimeConflict(trial,targetDriver)||trial.some(k=>!schoolDeadlineOk(k)))continue;
+            const targetBefore=target.length?Math.round(routeDurationEstimate(target,driverNames.indexOf(targetDriver))):0;
+            const targetAfter=Math.round(routeDurationEstimate(trial,driverNames.indexOf(targetDriver)));
+            const targetLimit=routeLimitForRides(trial);
+            const beforeExcess=sourceExcess+Math.max(0,targetBefore-routeLimitForRides(target));
+            const afterExcess=Math.max(0,sourceAfter-routeLimitForRides(remaining))+Math.max(0,targetAfter-targetLimit);
+            const gain=beforeExcess-afterExcess;
+            if(gain>0&&(!bridge||gain>bridge.gain))bridge={kid,from:source.d,to:targetDriver,gain};
+          }
+        }
+      }
+      if(bridge)chosen={kid:bridge.kid,from:bridge.from,to:bridge.to,score:bridge.gain};
     }
     if(!chosen)break;
     chosen.kid.driver=chosen.to;
