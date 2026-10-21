@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V996</title>
+<title>Taxi Planner V997</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -273,7 +273,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V996</h1>
+<h1>🚕 Taxi Planner V997</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -4053,8 +4053,11 @@ async function runAIAndCheck(){
       // repairBuiltInDemoPlanningHard() bouwt de vaste groepen opnieuw op en
       // overschrijft daarmee juist de route-splitsingen die de optimizer maakte.
       // Dat kon de te-lange routes bij iedere AI-run opnieuw introduceren.
-      repairDemoRouteConflictsHard();
+      // V997: behoud de route-splitsingen van optimizeAllRoutes.
+      // De oude harde demo-herverdeling kon die verdeling direct ongedaan maken
+      // en opnieuw tijdsconflicten introduceren.
       repairAllUnassignedHard();
+      await repairAllTimeConflicts();
     }
     const afterScore=planningScore();
     if(afterScore.score>beforeScore.score){
@@ -5121,7 +5124,7 @@ function toggleCollapsible(id){
 })();
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=996").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=997").catch(()=>{}));}
 </script>
 
 
