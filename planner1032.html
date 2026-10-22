@@ -5756,6 +5756,9 @@ function simulateDeadlineRepairV1032(){
     show('Simulatie afgebroken; de planning is niet gewijzigd.\nFout: '+(e?.message||String(e)));
   }
 }
+// Explicit global binding for mobile browsers and inline onclick handlers.
+window.simulateDeadlineRepairV1032 = simulateDeadlineRepairV1032;
+
 </script>
 
 
