@@ -5486,15 +5486,15 @@ async function runBestPlanningV1023(){
           const targetNew=v1023AuditRoute(to,targetTrial);
           if(targetNew.conflicts>targetOld.conflicts||targetNew.late>targetOld.late||targetNew.over>targetOld.over)continue;
           if(targetNew.penalty>targetOld.penalty+1)continue;
-          const oldDriver=kid.driver,oldOrder=kid.routeOrder;
+          const oldDriver=kid.driver;
+          const orderSnapshot=new Map(kids.map(x=>[x.id,x.routeOrder]));
           kid.driver=to;
           targetTrial.forEach((k,i)=>{const real=kids.find(x=>x.id===k.id);if(real)real.routeOrder=i+1;});
           sourceTrial.forEach((k,i)=>{const real=kids.find(x=>x.id===k.id);if(real)real.routeOrder=i+1;});
           const score=v1023StrictScore().score;
-          kid.driver=oldDriver;kid.routeOrder=oldOrder;
-          // Restore route orders for both routes before evaluating another candidate.
-          sourceOld.ordered.forEach(k=>{const real=kids.find(x=>x.id===k.id);if(real)real.routeOrder=k.routeOrder;});
-          targetOld.ordered.forEach(k=>{const real=kids.find(x=>x.id===k.id);if(real)real.routeOrder=k.routeOrder;});
+          kid.driver=oldDriver;
+          // Restore every route order exactly after this hypothetical test.
+          kids.forEach(x=>{x.routeOrder=orderSnapshot.get(x.id);});
           if(score<current.score-1&&(!best||score<best.score))best={kid,from,to,score,sourceTrial,targetTrial};
         }
       }
