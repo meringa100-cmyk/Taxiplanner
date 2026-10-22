@@ -1,4 +1,4 @@
-const CACHE="taxi-planner-v1033-route-audit";
+const CACHE="taxi-planner-v1034-assignment-diagnostic";
 const SHELL=["./","./index.html","./manifest.webmanifest","./icon.svg"];
 
 self.addEventListener("install",event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()))});
