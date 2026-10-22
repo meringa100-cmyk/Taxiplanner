@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V1030</title>
+<title>Taxi Planner V1032</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -273,7 +273,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner V1030</h1>
+<h1>🚕 Taxi Planner V1032</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -5685,7 +5685,7 @@ function diagnoseDeadlineV1030(){
       }catch(e){errors.push((k.name||k.childName||k.id||'Onbekend kind')+': '+(e?.message||'onbekende berekeningsfout'));}
     });
     late.sort((a,b)=>b.d.late-a.d.late);
-    const lines=['V1030 — alleen diagnose; planning niet gewijzigd.','',
+    const lines=['V1032 — alleen diagnose; planning niet gewijzigd.','',
       'Actieve ritten: '+activeKids.length,
       'Kinderen zonder chauffeur: '+unassigned.length,
       'Kinderen met berekende deadline-overschrijding: '+late.length];
