@@ -5597,9 +5597,9 @@ function compareAssignmentsV1030(){
  const show=message=>{if(box){box.style.display='block';box.textContent=message;box.scrollIntoView({behavior:'smooth',block:'center'});}else alert(message);};
  try{
   const oldState=JSON.parse(localStorage.getItem('taxiPlannerStateV749')||'null');
-  const newState=JSON.parse(localStorage.getItem('taxiPlannerStateV1030')||'null');
+  const newState=JSON.parse(localStorage.getItem('taxiPlannerStateV1029')||'null');
   if(!oldState||!Array.isArray(oldState.kids)){show('V749-opslag ontbreekt of is niet leesbaar. Er is niets gewijzigd.');return;}
-  if(!newState||!Array.isArray(newState.kids)){show('V1030-opslag ontbreekt of is niet leesbaar. Er is niets gewijzigd.');return;}
+  if(!newState||!Array.isArray(newState.kids)){show('V1029-opslag ontbreekt of is niet leesbaar. Er is niets gewijzigd.');return;}
   const key=k=>String(k?.id??k?.name??k?.childName??'').trim();
   const label=k=>String(k?.name??k?.childName??k?.id??'Onbekend kind');
   const driver=k=>String(k?.driver??'').trim();
@@ -5608,8 +5608,8 @@ function compareAssignmentsV1030(){
   const lost=[], gained=[], changed=[], absent=[];
   for(const [id,oldKid] of oldMap){
    const now=newMap.get(id);
-   if(!now){absent.push(label(oldKid)+' ['+id+'] ontbreekt in V1030');continue;}
-   if(driver(oldKid)&&!driver(now))lost.push(label(now)+' ['+id+']: V749 chauffeur '+driver(oldKid)+' → V1030 geen chauffeur');
+   if(!now){absent.push(label(oldKid)+' ['+id+'] ontbreekt in V1029');continue;}
+   if(driver(oldKid)&&!driver(now))lost.push(label(now)+' ['+id+']: V749 chauffeur '+driver(oldKid)+' → V1029 geen chauffeur');
    else if(!driver(oldKid)&&driver(now))gained.push(label(now)+' ['+id+']: geen chauffeur → '+driver(now));
    else if(driver(oldKid)&&driver(now)&&driver(oldKid)!==driver(now))changed.push(label(now)+' ['+id+']: '+driver(oldKid)+' → '+driver(now));
   }
@@ -5618,12 +5618,12 @@ function compareAssignmentsV1030(){
   const newAssigned=[...newMap.values()].filter(k=>driver(k)).length;
   const lines=['V1030 — verschil V749 versus V1030; alleen lezen, geen ritten gewijzigd.','',
    'V749: '+oldMap.size+' herkenbare kinderen, '+oldAssigned+' met chauffeur.',
-   'V1030: '+newMap.size+' herkenbare kinderen, '+newAssigned+' met chauffeur.',
+   'V1029: '+newMap.size+' herkenbare kinderen, '+newAssigned+' met chauffeur.',
    'Kinderen die chauffeur verloren: '+lost.length,
    'Kinderen die chauffeur kregen: '+gained.length,
    'Chauffeur gewijzigd: '+changed.length,
    'Ontbreken in V1030: '+absent.length,
-   'Nieuw in V1030: '+added.length];
+   'Nieuw in V1029: '+added.length];
   const section=(title,arr)=>{lines.push('','— '+title+' —'); if(!arr.length)lines.push('Geen.');else arr.slice(0,35).forEach(x=>lines.push('• '+x));if(arr.length>35)lines.push('… en nog '+(arr.length-35));};
   section('Chauffeur verloren',lost);
   section('Chauffeur gewijzigd',changed);
