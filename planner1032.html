@@ -42,53 +42,6 @@ input,select{padding:9px;border:1px solid #cbd3da;border-radius:8px}
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="">
-/* V1032: read-only simulation. Never edits kids, route order, or local storage. */
-function simulateDeadlineRepairV1032(){
-  const box=document.getElementById('deadlineSimulationV1032');
-  const show=message=>{if(box){box.style.display='block';box.textContent=message;box.scrollIntoView({behavior:'smooth',block:'center'});}else alert(message);};
-  try{
-    if(!Array.isArray(kids)||!Array.isArray(driverNames))throw new Error('De planningsgegevens zijn nog niet geladen.');
-    const activeKids=kids.filter(k=>active(k));
-    const assigned=activeKids.filter(k=>k.driver&&driverNames.includes(k.driver));
-    const late=assigned.map(k=>({k,d:v1024DeadlineState(k)})).filter(x=>!x.d.ok)
-      .sort((a,b)=>b.d.late-a.d.late);
-    const unassigned=activeKids.filter(k=>!k.driver||!driverNames.includes(k.driver));
-    const lines=[
-      'V1032 — deadline-herstel simulatie; alleen lezen.',
-      'De bestaande planning, chauffeurs, ophaaltijden en opslag zijn niet gewijzigd.',
-      '',
-      'Actieve ritten: '+activeKids.length,
-      'Zonder chauffeur: '+unassigned.length,
-      'Deadline-overschrijdingen in de huidige schatting: '+late.length,
-      '',
-      'Voor elk te laat geschat kind wordt berekend hoe vroeg de ophaaltijd theoretisch nodig zou zijn, met de bestaande directe rijtijdschatting. Dit is nog geen uitvoerbare herplanning.'
-    ];
-    if(!late.length) lines.push('','Geen deadline-overschrijdingen gevonden door deze controle.');
-    late.slice(0,20).forEach(({k,d})=>{
-      const latest=d.school-d.travel;
-      const shift=Math.max(0,d.pickup-latest);
-      const route=kids.filter(x=>active(x)&&x.driver===k.driver&&x.id!==k.id)
-        .sort((a,b)=>(Number(a.timeMin)||0)-(Number(b.timeMin)||0));
-      const earlier=route.filter(x=>(Number(x.timeMin)||0)>latest && (Number(x.timeMin)||0)<=d.pickup);
-      const warning=latest<360?'benodigde tijd vóór 06:00 — handmatige controle nodig':
-        earlier.length?'mogelijk tijdconflict met andere rit(ten) van deze chauffeur':
-        'volgorde en totale route moeten nog worden gecontroleerd';
-      lines.push(
-        '',
-        '• '+(k.name||k.childName||k.id||'Onbekend kind')+' — '+k.driver,
-        '  Nu: ophalen '+fmtTime(d.pickup)+' → geschatte aankomst '+fmtTime(d.arrival)+'; deadline '+fmtTime(d.school)+' ('+d.late+' min te laat).',
-        '  Theoretisch uiterlijk ophalen: '+fmtTime(Math.max(0,latest))+'; vervroegen met circa '+shift+' min.',
-        '  Controle: '+warning+(earlier.length?' ('+earlier.slice(0,3).map(x=>x.name||x.childName||x.id).join(', ')+')':'')+'.'
-      );
-    });
-    if(late.length>20)lines.push('','… en nog '+(late.length-20)+' ritten. Gebruik de gewone deadline-diagnose voor de volledige lijst.');
-    lines.push('','Belangrijk: dit gebruikt een eenvoudige schatting van ophaal-naar-schooltijd, geen live verkeer of volledige routevolgorde. Pas geen tijden automatisch toe op basis van deze simulatie.');
-    show(lines.join('\n'));
-  }catch(e){
-    show('Simulatie afgebroken; de planning is niet gewijzigd.\nFout: '+(e?.message||String(e)));
-  }
-}
-
 </script>
 
 <style id="desktop-delay-fix">
@@ -5755,6 +5708,52 @@ function diagnoseDeadlineV1031(){
     show(lines.join('\n'));
   }catch(e){
     show('De diagnose kon niet worden uitgevoerd. De planning is niet gewijzigd.\nFout: '+(e?.message||String(e)));
+  }
+}
+/* V1032: read-only simulation. Never edits kids, route order, or local storage. */
+function simulateDeadlineRepairV1032(){
+  const box=document.getElementById('deadlineSimulationV1032');
+  const show=message=>{if(box){box.style.display='block';box.textContent=message;box.scrollIntoView({behavior:'smooth',block:'center'});}else alert(message);};
+  try{
+    if(!Array.isArray(kids)||!Array.isArray(driverNames))throw new Error('De planningsgegevens zijn nog niet geladen.');
+    const activeKids=kids.filter(k=>active(k));
+    const assigned=activeKids.filter(k=>k.driver&&driverNames.includes(k.driver));
+    const late=assigned.map(k=>({k,d:v1024DeadlineState(k)})).filter(x=>!x.d.ok)
+      .sort((a,b)=>b.d.late-a.d.late);
+    const unassigned=activeKids.filter(k=>!k.driver||!driverNames.includes(k.driver));
+    const lines=[
+      'V1032 — deadline-herstel simulatie; alleen lezen.',
+      'De bestaande planning, chauffeurs, ophaaltijden en opslag zijn niet gewijzigd.',
+      '',
+      'Actieve ritten: '+activeKids.length,
+      'Zonder chauffeur: '+unassigned.length,
+      'Deadline-overschrijdingen in de huidige schatting: '+late.length,
+      '',
+      'Voor elk te laat geschat kind wordt berekend hoe vroeg de ophaaltijd theoretisch nodig zou zijn, met de bestaande directe rijtijdschatting. Dit is nog geen uitvoerbare herplanning.'
+    ];
+    if(!late.length) lines.push('','Geen deadline-overschrijdingen gevonden door deze controle.');
+    late.slice(0,20).forEach(({k,d})=>{
+      const latest=d.school-d.travel;
+      const shift=Math.max(0,d.pickup-latest);
+      const route=kids.filter(x=>active(x)&&x.driver===k.driver&&x.id!==k.id)
+        .sort((a,b)=>(Number(a.timeMin)||0)-(Number(b.timeMin)||0));
+      const earlier=route.filter(x=>(Number(x.timeMin)||0)>latest && (Number(x.timeMin)||0)<=d.pickup);
+      const warning=latest<360?'benodigde tijd vóór 06:00 — handmatige controle nodig':
+        earlier.length?'mogelijk tijdconflict met andere rit(ten) van deze chauffeur':
+        'volgorde en totale route moeten nog worden gecontroleerd';
+      lines.push(
+        '',
+        '• '+(k.name||k.childName||k.id||'Onbekend kind')+' — '+k.driver,
+        '  Nu: ophalen '+fmtTime(d.pickup)+' → geschatte aankomst '+fmtTime(d.arrival)+'; deadline '+fmtTime(d.school)+' ('+d.late+' min te laat).',
+        '  Theoretisch uiterlijk ophalen: '+fmtTime(Math.max(0,latest))+'; vervroegen met circa '+shift+' min.',
+        '  Controle: '+warning+(earlier.length?' ('+earlier.slice(0,3).map(x=>x.name||x.childName||x.id).join(', ')+')':'')+'.'
+      );
+    });
+    if(late.length>20)lines.push('','… en nog '+(late.length-20)+' ritten. Gebruik de gewone deadline-diagnose voor de volledige lijst.');
+    lines.push('','Belangrijk: dit gebruikt een eenvoudige schatting van ophaal-naar-schooltijd, geen live verkeer of volledige routevolgorde. Pas geen tijden automatisch toe op basis van deze simulatie.');
+    show(lines.join('\n'));
+  }catch(e){
+    show('Simulatie afgebroken; de planning is niet gewijzigd.\nFout: '+(e?.message||String(e)));
   }
 }
 </script>
