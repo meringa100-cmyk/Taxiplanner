@@ -5637,7 +5637,7 @@ function compareAssignmentsV1031(){
   section('Kinderen ontbrekend in V1031',absent);
   section('Nieuwe kinderen in V1031',added);
   lines.push('','Deze vergelijking gebruikt kind-ID waar beschikbaar en leest alleen lokale opslag. Een chauffeurveld betekent niet automatisch dat de route of schooldeadline haalbaar is.');
-  show(lines.join('\\n'));
+  show(lines.join('\n'));
  }catch(e){show('Vergelijking mislukt; planning niet gewijzigd. Fout: '+(e?.message||String(e)));}
 }
 function compareSavedPlansV1031(){
@@ -5823,7 +5823,7 @@ function auditDeadlineRoutesV1033(){
     section('Afstand / volgorde / tijd nader controleren',suspicious);
     lines.push('','Veilige vervolgstap: vergelijk deze uitkomsten met de werkelijke adressen en wegroute. Pas geen tijden of chauffeurs automatisch aan op basis van deze diagnose.');
     show(lines.join('\\n'));
-  }catch(e){show('Route-audit afgebroken; de planning is niet gewijzigd.\\nFout: '+(e?.message||String(e)));}
+  }catch(e){show('Route-audit afgebroken; de planning is niet gewijzigd.\nFout: '+(e?.message||String(e)));}
 }
 window.auditDeadlineRoutesV1033 = auditDeadlineRoutesV1033;
 
