@@ -2074,6 +2074,7 @@ async function runDayStartCheck(){
     [['Actieve ritten',auditActive.length],['Toegewezen',auditAssigned.length],['Zonder chauffeur',auditNoDriver.length],['Actieve chauffeurs met ritten',auditRouteRows.length],['Routeconflicten',routeConflictDetails.length],['Schooldeadline overschreden',auditLate.length],['Boven route-limiet',auditRouteRows.filter(x=>x.minutes>x.limit).length],['Boven buscapaciteit',auditOverCapacity.length]].map(x=>'<div style="padding:9px;background:white;border:1px solid #e3d7bd;border-radius:8px"><b style="font-size:1.25em">'+x[1]+'</b><div style="font-size:.9em">'+x[0]+'</div></div>').join('')+
     '</div><button type="button" onclick="simulateDeadlineRepairV1032()" style="width:100%;padding:12px;margin:4px 0 12px;border:0;border-radius:9px;background:#1769aa;color:white;font-weight:700;font-size:1em">🔎 Onderzoek deadlineproblemen (alleen lezen)</button><h4 style="margin:8px 0">Langste geschatte routes</h4>'+
     (auditRouteRows.length?auditRouteRows.slice(0,15).map(x=>'<div style="padding:8px 0;border-top:1px solid #e3d7bd"><b>'+escapeAdvisorText(x.d)+'</b> — '+x.rides.length+'/'+MAX+' kinderen; '+x.minutes+' min (limiet '+x.limit+' min); tijdconflicten '+x.conflicts+'; deadlineproblemen '+x.late.length+'</div>').join(''):'<p>Geen actieve routes gevonden.</p>')+
+    '<button type="button" onclick="simulateSafeDeadlinePlanV1050()" style="width:100%;padding:12px;margin:4px 0 12px;border:0;border-radius:9px;background:#1769aa;color:white;font-weight:700;font-size:1em">🧪 Simuleer veiligere ophaaltijden (niet opslaan)</button>'+
     '<h4 style="margin:8px 0">Kinderen met deadline-overschrijding</h4>'+
     (auditLate.length?auditLate.slice(0,30).map(k=>'<div style="padding:6px 0;border-top:1px solid #e3d7bd">'+escapeAdvisorText(k.name||'Naam onbekend')+' — '+escapeAdvisorText(k.driver||'Geen chauffeur')+'; geschatte aankomst '+fmtTime(schoolArrivalMinutes(k))+'; deadline '+fmtTime(schoolDeadlineMinutes(k))+'</div>').join(''):'<p>Geen deadline-overschrijdingen volgens deze schatting.</p>')+
     (auditNoDriver.length?'<h4>Kinderen zonder chauffeur</h4>'+auditNoDriver.slice(0,30).map(k=>'<div>'+escapeAdvisorText(k.name||k.id||'Onbekend kind')+'</div>').join(''):'');
@@ -6005,6 +6006,88 @@ function simulateDeadlineRepairV1032(){
 }
 // Explicit global binding for mobile browsers and inline onclick handlers.
 window.simulateDeadlineRepairV1032 = simulateDeadlineRepairV1032;
+
+function simulateSafeDeadlinePlanV1050(){
+  const box=document.getElementById('deadlineSimulationV1032');
+  const show=message=>{if(box){box.style.display='block';box.textContent=message;box.scrollIntoView({behavior:'smooth',block:'center'});}else alert(message);};
+  try{
+    if(!Array.isArray(kids)||!Array.isArray(driverNames))throw new Error('De planningsgegevens zijn nog niet geladen.');
+    const original=kids;
+    const sim=original.map(k=>({...k}));
+    const isActive=k=>active(k);
+    const stateFor=k=>{
+      const pickup=Number(k.timeMin)||0, school=schoolDeadlineMinutes(k), travel=pickupToSchoolMinutes(k);
+      return {pickup,school,travel,arrival:pickup+travel,late:Math.max(0,pickup+travel-school)};
+    };
+    const countConflicts=(list,d)=>{
+      const route=list.filter(k=>isActive(k)&&k.driver===d).sort((a,b)=>(Number(a.timeMin)||0)-(Number(b.timeMin)||0));
+      let n=0;
+      for(let i=1;i<route.length;i++){
+        const gap=(Number(route[i].timeMin)||0)-(Number(route[i-1].timeMin)||0);
+        const travel=routeMinutesBetween(route[i-1],route[i],driverNames.indexOf(d));
+        if(gap<=0||travel>gap+15)n++;
+      }
+      return n;
+    };
+    const countLate=list=>list.filter(k=>isActive(k)&&k.driver&&driverNames.includes(k.driver)&&stateFor(k).late>0).length;
+    const countAllConflicts=list=>driverNames.reduce((n,d)=>n+countConflicts(list,d),0);
+    const beforeLate=countLate(sim), beforeConflicts=countAllConflicts(sim);
+    const changed=[];
+    const candidates=sim.filter(k=>isActive(k)&&k.driver&&driverNames.includes(k.driver)&&stateFor(k).late>0)
+      .sort((a,b)=>stateFor(b).late-stateFor(a).late);
+    for(const child of candidates){
+      const st=stateFor(child);
+      const proposed=Math.max(0,st.school-st.travel-5); // 5 min buffer before deadline
+      if(proposed<360)continue; // do not suggest before 06:00 automatically
+      if(proposed>st.pickup)continue;
+      const old=child.timeMin;
+      if(Math.round(old)===Math.round(proposed))continue;
+      child.timeMin=proposed;
+      const conflicts=countAllConflicts(sim);
+      if(conflicts<=beforeConflicts){
+        changed.push({child,old,proposed,lateBefore:st.late,conflicts});
+      }else child.timeMin=old;
+    }
+    const afterLate=countLate(sim), afterConflicts=countAllConflicts(sim);
+    const routeRows=driverNames.map(d=>{
+      const route=sim.filter(k=>isActive(k)&&k.driver===d);
+      if(!route.length)return null;
+      const minutes=Math.round(routeDurationEstimate(route,driverNames.indexOf(d)));
+      const limit=routeLimitForRides(route);
+      return {d,minutes,limit,over:minutes>limit};
+    }).filter(Boolean);
+    const longRoutes=routeRows.filter(x=>x.over);
+    const lines=[
+      'V1050 — veilige ophaaltijd-simulatie; ALLEEN LEZEN.',
+      'De echte planning en alle opgeslagen gegevens zijn niet gewijzigd.',
+      '',
+      'Actieve ritten: '+sim.filter(isActive).length,
+      'Deadlineproblemen vóór: '+beforeLate,
+      'Deadlineproblemen na voorgestelde wijzigingen: '+afterLate,
+      'Tijdconflicten vóór: '+beforeConflicts,
+      'Tijdconflicten na simulatie: '+afterConflicts,
+      'Ophaaltijden in simulatie vervroegd: '+changed.length,
+      'Routes boven hun ingestelde limiet: '+longRoutes.length,
+      '',
+      'Voorgestelde wijzigingen (maximaal 30):'
+    ];
+    if(!changed.length)lines.push('Geen veilige vervroeging gevonden met de huidige eenvoudige regels. Handmatige routecontrole nodig.');
+    changed.slice(0,30).forEach(x=>{
+      lines.push('• '+(x.child.name||x.child.childName||x.child.id||'Onbekend kind')+' — '+x.child.driver+
+        ': '+fmtTime(x.old)+' → '+fmtTime(x.proposed)+' (was circa '+x.lateBefore+' min te laat geschat).');
+    });
+    if(changed.length>30)lines.push('… en nog '+(changed.length-30)+' wijzigingen.');
+    lines.push('','Routes die nog boven de limiet zitten:');
+    if(!longRoutes.length)lines.push('Geen volgens de bestaande routeschatting.');
+    else longRoutes.sort((a,b)=>b.minutes-a.minutes).slice(0,12).forEach(x=>lines.push('• '+x.d+': '+x.minutes+' min (limiet '+x.limit+' min).'));
+    lines.push('','BELANGRIJK: dit is een proefberekening met geschatte reistijden. Er is geen echte wegroute, schoolaankomst of haalbaarheid gegarandeerd. Controleer adressen en de volledige route voordat een wijziging wordt overgenomen.');
+    show(lines.join('\n'));
+  }catch(e){
+    show('Simulatie afgebroken; de planning is niet gewijzigd.\nFout: '+(e?.message||String(e)));
+  }
+}
+window.simulateSafeDeadlinePlanV1050=simulateSafeDeadlinePlanV1050;
+
 
 </script>
 
