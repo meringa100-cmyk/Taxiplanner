@@ -5701,47 +5701,8 @@ function diagnoseDeadlineV1031(){
       lines.push('','Geen overschrijding gevonden met de directe ophaal-naar-schoolschatting.');
       lines.push('Het dashboard kan een andere controle gebruiken; wijzig daarom nog geen ritten.');
     }
-    // V1032: aanvullende diagnose — uitsluitend lezen; geen ritten of opslag wijzigen.
-    lines.push('','WAARSCHIJNLIJKE OORZAAK / VEILIGE VERVOLGSTAP');
-    lines.push('De deadlineberekening gebruikt ophaaltijd + geschatte rit van kind naar school.');
-    lines.push('Een andere chauffeur alleen verandert die berekening niet; een te late rit vraagt eerst controle van ophaaltijd, schooldeadline en routegegevens.');
-    if(late.length){
-      lines.push('','Te late ritten: indicatieve minimale vervroeging van ophalen (als de schatting klopt):');
-      late.slice(0,8).forEach(({k,d,driver})=>lines.push(
-        '• '+(k.name||k.childName||k.id||'Onbekend kind')+' / '+driver+
-        ': minimaal '+d.late+' min eerder ophalen óf school-/adres-/reistijdgegevens controleren.'));
-    }
-    if(unassigned.length){
-      lines.push('','Eerste chauffeurkandidaten voor ritten zonder chauffeur (alleen voorstel; niets toegewezen):');
-      unassigned.slice(0,10).forEach(k=>{
-        const label=k.name||k.childName||k.id||'Onbekend kind';
-        const candidates=[];
-        for(const d of driverNames){
-          if(isDriverUnavailable(d)||isBusUnavailable(d))continue;
-          const route=v1024Route(d);
-          if(route.length>=MAX)continue;
-          try{
-            const audit=v1024AuditRoute(d,v1024Route(d,k));
-            candidates.push({d,load:route.length+1,audit});
-          }catch(e){}
-        }
-        candidates.sort((a,b)=>
-          (a.audit.conflicts-b.audit.conflicts)||
-          (a.audit.over-b.audit.over)||
-          (a.audit.penalty-b.audit.penalty)||
-          (a.load-b.load));
-        if(!candidates.length){
-          lines.push('• '+label+': geen kandidaat gevonden die aan de eenvoudige beschikbaarheids-/capaciteitscontrole voldoet.');
-        }else{
-          lines.push('• '+label+': '+candidates.slice(0,3).map(c=>
-            c.d+' ('+c.load+'/'+MAX+' kinderen; '+c.audit.minutes+'/'+c.audit.limit+' min; '+
-            c.audit.conflicts+' tijdconflict(en); '+c.audit.late+' deadlineprobleem/-problemen)'
-          ).join('; ')+'.');
-        }
-      });
-    }
     if(errors.length)lines.push('','Niet te beoordelen ('+errors.length+'): '+errors.slice(0,8).join(' | '));
-    lines.push('','Dit zijn geschatte tijden, geen live verkeersgegevens. Diagnose is alleen-lezen; er zijn geen toewijzingen of opgeslagen gegevens aangepast.');
+    lines.push('','Dit zijn geschatte tijden, geen live verkeersgegevens.');
     show(lines.join('\n'));
   }catch(e){
     show('De diagnose kon niet worden uitgevoerd. De planning is niet gewijzigd.\nFout: '+(e?.message||String(e)));
