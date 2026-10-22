@@ -1083,11 +1083,10 @@ async function redistributeUnavailableDriver(brokenDriver,changeReason='ziek/nie
 
 let plannerAutomationTimer=null;
 function startPlannerAutomation(){
+ // V1031 diagnosemodus: geen periodieke automatische toewijzing.
+ // De planner blijft stabiel totdat de gebruiker bewust een herstelactie start.
  if(plannerAutomationTimer)clearInterval(plannerAutomationTimer);
- plannerAutomationTimer=setInterval(()=>{
-   const changed=repairPlannerAssignments();
-   if(changed)renderAll();
- },15000);
+ plannerAutomationTimer=null;
 }
 
 
