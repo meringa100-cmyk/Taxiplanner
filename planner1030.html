@@ -5726,15 +5726,27 @@ function diagnoseDeadlineV1030(){
         candidates.sort((a,b)=>
           (a.audit.conflicts-b.audit.conflicts)||
           (a.audit.over-b.audit.over)||
+          (a.audit.late-b.audit.late)||
           (a.audit.penalty-b.audit.penalty)||
           (a.load-b.load));
         if(!candidates.length){
-          lines.push('• '+label+': geen kandidaat gevonden die aan de eenvoudige beschikbaarheids-/capaciteitscontrole voldoet.');
+          lines.push('• '+label+': geen beschikbare kandidaat met vrije capaciteit gevonden.');
         }else{
-          lines.push('• '+label+': '+candidates.slice(0,3).map(c=>
-            c.d+' ('+c.load+'/'+MAX+' kinderen; '+c.audit.minutes+'/'+c.audit.limit+' min; '+
-            c.audit.conflicts+' tijdconflict(en); '+c.audit.late+' deadlineprobleem/-problemen)'
-          ).join('; ')+'.');
+          const fullyFeasible=candidates.filter(c=>
+            c.load<=MAX && c.audit.conflicts===0 && c.audit.over===0 && c.audit.late===0);
+          if(fullyFeasible.length){
+            lines.push('• '+label+': volledig passend volgens de eenvoudige controles: '+
+              fullyFeasible.slice(0,3).map(c=>
+                c.d+' ('+c.load+'/'+MAX+' kinderen; '+c.audit.minutes+'/'+c.audit.limit+' min)'
+              ).join('; ')+'.');
+          }else{
+            lines.push('• '+label+': GEEN volledig passende kandidaat gevonden. Dichtstbijzijnde opties, nog niet toewijzen: '+
+              candidates.slice(0,3).map(c=>
+                c.d+' ('+c.load+'/'+MAX+' kinderen; '+c.audit.minutes+'/'+c.audit.limit+' min; '+
+                c.audit.conflicts+' tijdconflict(en); '+c.audit.late+' deadlineprobleem/-problemen'+
+                (c.audit.over>0?'; '+c.audit.over+' min boven routelimiet':'')+')'
+              ).join('; ')+'. Een chauffeurwissel alleen herstelt een gemiste schooldeadline niet als ophaaltijd en reistijd gelijk blijven.');
+          }
         }
       });
     }
