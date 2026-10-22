@@ -588,7 +588,7 @@ async function geocodeExactDemoAddresses(){
       const key=hit.address.toLowerCase();
       if(seen.has(key))continue;
       seen.add(key);
-      const match=hit.address.match(/\\s(\\d+[a-zA-Z]?)\\s*,/);
+      const match=hit.address.match(/\\s(\d+[a-zA-Z]?)\\s*,/);
       all.push({town,street,number:match?match[1]:'',address:hit.address,lat:hit.lat,lon:hit.lon});
       if(all.length>=8)break;
     }
@@ -5598,9 +5598,9 @@ function compareSavedPlansV1029(){
   const keys=[];
   for(let i=0;i<localStorage.length;i++){
    const key=localStorage.key(i);
-   if(key && /^taxiPlannerStateV\\d+$/.test(key))keys.push(key);
+   if(key && /^taxiPlannerStateV\d+$/.test(key))keys.push(key);
   }
-  keys.sort((a,b)=>Number(b.match(/V(\\d+)$/)?.[1]||0)-Number(a.match(/V(\\d+)$/)?.[1]||0));
+  keys.sort((a,b)=>Number(b.match(/V(\d+)$/)?.[1]||0)-Number(a.match(/V(\d+)$/)?.[1]||0));
   lines.push('Opslagkeys gevonden: '+keys.length);
   if(!keys.length)lines.push('Geen taxiPlannerStateV... opslagkeys gevonden in deze browsercontext.');
   keys.forEach(key=>{
