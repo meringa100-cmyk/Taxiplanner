@@ -5668,7 +5668,7 @@ function compareSavedPlansV1031(){
   });
   lines.push('','Huidige pagina (in geheugen): '+(Array.isArray(kids)?kids.length:0)+' kinderen; '+(Array.isArray(kids)?kids.filter(k=>k && typeof k.driver==='string'&&k.driver.trim()).length:0)+' met chauffeursveld.');
   lines.push('','Let op: alleen aantallen en statussen vergeleken. Deze controle wijzigt niets en kiest niet automatisch een planning als de juiste.');
-  show(lines.join('\\n'));
+  show(lines.join('\n'));
  }catch(e){show('Vergelijking mislukt; opgeslagen planningen niet gewijzigd. Fout: '+(e?.message||String(e)));}
 }
 function diagnoseDeadlineV1031(){
@@ -5822,7 +5822,7 @@ function auditDeadlineRoutesV1033(){
     section('Ontbrekende coördinaten',missing);
     section('Afstand / volgorde / tijd nader controleren',suspicious);
     lines.push('','Veilige vervolgstap: vergelijk deze uitkomsten met de werkelijke adressen en wegroute. Pas geen tijden of chauffeurs automatisch aan op basis van deze diagnose.');
-    show(lines.join('\\n'));
+    show(lines.join('\n'));
   }catch(e){show('Route-audit afgebroken; de planning is niet gewijzigd.\nFout: '+(e?.message||String(e)));}
 }
 window.auditDeadlineRoutesV1033 = auditDeadlineRoutesV1033;
