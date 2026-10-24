@@ -5470,7 +5470,7 @@ function v1023StrictScore(){
   }
   return {score,routeProblems,conflicts,late,longRoutes,unassigned:activeKids.filter(k=>!k.driver||!driverNames.includes(k.driver)).length};
 }
-async async function runBestPlanningV1024(){
+async function runBestPlanningV1024(){
   const button=[...document.querySelectorAll('button')].find(b=>b.textContent.includes('AI plannen & controleren'));
   if(button?.disabled)return;
   if(button)button.disabled=true;
