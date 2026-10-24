@@ -3899,7 +3899,7 @@ function runAI(silent=false){
     // V804: laatste controle na geografische packing.
     for(let pass=0;pass<20;pass++){
       let changed=false;
-      for(const d of driverNames){
+      driverSearch: for(const d of driverNames){
         const source=demoKids.filter(k=>k.driver===d);
         if(!source.length) continue;
         const sourceLimit=routeLimitForRides(source);
@@ -5478,6 +5478,8 @@ async function runBestPlanningV1024(){
   if(!progress){progress=document.createElement('div');progress.id='v1051AiProgress';progress.setAttribute('role','status');progress.setAttribute('aria-live','polite');progress.style.cssText='margin:10px 0;padding:10px 12px;border-radius:9px;background:#eaf4ff;border:1px solid #9bc7f5;color:#17324d;font-weight:700;display:none';if(button)button.insertAdjacentElement('afterend',progress);}
   const showProgress=(text)=>{progress.textContent=text;progress.style.display='block';};
   let work=0;
+  const MAX_WORK=12000;
+  let budgetReached=false;
   const yieldToBrowser=()=>new Promise(resolve=>setTimeout(resolve,0));
   showProgress('AI-planning gestart… voorbereiden van veilige routecontroles.');
   await yieldToBrowser();
@@ -5487,7 +5489,7 @@ async function runBestPlanningV1024(){
   try{
     const unassigned=kids.filter(k=>active(k)&&(!k.driver||!driverNames.includes(k.driver)))
       .sort((a,b)=>schoolDeadlineMinutes(a)-schoolDeadlineMinutes(b)||Number(a.timeMin)-Number(b.timeMin));
-    for(const child of unassigned){
+    assignmentSearch: for(const child of unassigned){
       let best=null;
       const originalTime=Number(child.timeMin)||0;
       const travelToSchool=pickupToSchoolMinutes(child);
@@ -5520,11 +5522,13 @@ async function runBestPlanningV1024(){
             Math.abs(originalTime-candidateTime)*0.2;
           child.driver=oldDriver;child.timeMin=oldTime;child.routeOrder=oldOrder;
           work++;
-          if(work%20===0){showProgress(`AI-planning bezig… ${work} kandidaatcontroles uitgevoerd.`);await yieldToBrowser();}
+          if(work%100===0){showProgress(`AI-planning bezig… ${work.toLocaleString('nl-NL')} controles uitgevoerd.`);await yieldToBrowser();}
+          if(work>=MAX_WORK){budgetReached=true;showProgress(`Veilige grens van ${MAX_WORK.toLocaleString('nl-NL')} controles bereikt; AI rondt de huidige stap af.`);break driverSearch;}
           if(!ownDeadlineOk||!adjacentFeasible)continue;
           if(!best||cost<best.cost)best={d,candidateTime,cost};
         }
       }
+      if(budgetReached)break assignmentSearch;
       if(best){
         child.driver=best.d;
         child.timeMin=best.candidateTime;
@@ -5538,16 +5542,16 @@ async function runBestPlanningV1024(){
     }
     // Conservative relocation pass: test complete hypothetical changes and
     // restore all route fields exactly after each test.
-    for(let pass=0;pass<80;pass++){
+    relocationSearch: for(let pass=0;pass<12;pass++){
       const current=v1024StrictScore();
       let best=null;
-      for(const kid of kids.filter(k=>active(k)&&k.driver)){
+      kidSearch: for(const kid of kids.filter(k=>active(k)&&k.driver)){
         const from=kid.driver;
         const sourceOld=v1024AuditRoute(from,v1024Route(from));
         const sourceTrial=v1024Route(from,null,kid.id);
         const sourceNew=v1024AuditRoute(from,sourceTrial);
         if(sourceTrial.length&&sourceNew.penalty>sourceOld.penalty+1)continue;
-        for(const to of driverNames){
+        targetSearch: for(const to of driverNames){
           if(to===from||isDriverUnavailable(to)||isBusUnavailable(to))continue;
           const targetOldRoute=v1024Route(to);
           if(targetOldRoute.length>=MAX)continue;
@@ -5563,7 +5567,8 @@ async function runBestPlanningV1024(){
           const score=v1024StrictScore().score;
           snapshot.forEach(x=>{const real=kids.find(k=>k.id===x.id);if(real){real.driver=x.driver;real.routeOrder=x.routeOrder;real.timeMin=x.timeMin;}});
           work++;
-          if(work%20===0){showProgress(`AI-planning bezig… ${work} kandidaatcontroles uitgevoerd.`);await yieldToBrowser();}
+          if(work%100===0){showProgress(`AI-planning bezig… ${work.toLocaleString('nl-NL')} controles uitgevoerd.`);await yieldToBrowser();}
+          if(work>=MAX_WORK){budgetReached=true;showProgress(`Veilige grens van ${MAX_WORK.toLocaleString('nl-NL')} controles bereikt; AI rondt de huidige stap af.`);break relocationSearch;}
           if(score<current.score-1&&(!best||score<best.score))best={kid,from,to,score,sourceTrial,targetTrial};
         }
       }
@@ -5576,15 +5581,16 @@ async function runBestPlanningV1024(){
     // LIVE: probeer reeds toegewezen late ritten voorzichtig eerder te plannen.
     // Alleen wijzigingen behouden die de totaalscore verbeteren zonder meer conflicten/langere routes.
     let repairedAssignedDeadlines=0;
-    for(let pass=0;pass<3;pass++){
+    deadlineRepairSearch: for(let pass=0;pass<3;pass++){
       let anyRepair=false;
       const currentScore=v1024StrictScore();
       const lateAssigned=kids.filter(k=>active(k)&&k.driver&&driverNames.includes(k.driver)&&!schoolDeadlineOk(k))
         .sort((a,b)=>v1024DeadlineState(b).late-v1024DeadlineState(a).late);
-      for(const kid of lateAssigned){
+      lateKidSearch: for(const kid of lateAssigned){
         const oldTime=Number(kid.timeMin)||0, oldOrder=kid.routeOrder;
         let best=null;
         for(let shift=5;shift<=90;shift+=5){
+          if(work>=MAX_WORK){budgetReached=true;break;}
           const candidate=oldTime-shift;
           if(candidate<360)break;
           kid.timeMin=candidate;
@@ -5597,12 +5603,13 @@ async function runBestPlanningV1024(){
         kid.timeMin=oldTime;kid.routeOrder=oldOrder;
         work++;
         if(work%20===0){showProgress(`AI-planning bezig… ${work} tijdsvarianten gecontroleerd.`);await yieldToBrowser();}
+        if(budgetReached)break lateKidSearch;
         if(best){
           kid.timeMin=best.time;kid.time=fmtTime(best.time);
           repairedAssignedDeadlines++;anyRepair=true;
         }
       }
-      if(!anyRepair)break;
+      if(budgetReached||!anyRepair)break;
     }
     const after=v1024StrictScore();
     if(after.score>=baseline.score){
@@ -5612,7 +5619,7 @@ async function runBestPlanningV1024(){
       return;
     }
     saveState();renderAll();
-    showProgress(`Klaar: ${assigned} nieuwe toewijzingen, ${moved} verplaatsingen gecontroleerd. Controleer de planning vóór vertrek.`);
+    showProgress(`Klaar: ${assigned} nieuwe toewijzingen, ${moved} verplaatsingen. ${budgetReached?'Controlelimiet bereikt; planning is gedeeltelijk geoptimaliseerd.':'Optimalisatie afgerond.'} Controleer de planning vóór vertrek.`);
     alert('AI V1024 — veilige herplanning afgerond.\\n\\nNieuwe toewijzingen: '+assigned+'\\nGerichte verplaatsingen: '+moved+'\\nOphaaltijden vervroegd: '+(timeAdjusted+repairedAssignedDeadlines)+'\\nNiet passend binnen deadline/routecontrole: '+blockedDeadline+'\\nRitten zonder chauffeur: '+after.unassigned+'\\nTijdconflicten: '+after.conflicts+'\\nSchooldeadlineproblemen: '+after.late+'\\nTe lange routes: '+after.longRoutes+'\\n\\nAlleen deadline-veilige kandidaatritten zijn toegevoegd. Controleer de planning vóór vertrek.');
   }catch(error){
     kids=before;saveState();renderAll();
