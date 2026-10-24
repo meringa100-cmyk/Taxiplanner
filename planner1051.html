@@ -5500,7 +5500,7 @@ async function runBestPlanningV1024(){
       if(originalTime<=latestPickup)timeCandidates.push(originalTime);
       for(let t=Math.min(originalTime-5,latestPickup);t>=Math.max(360,latestPickup-90);t-=5)timeCandidates.push(t);
       const uniqueTimes=[...new Set(timeCandidates)].sort((a,b)=>Math.abs(a-originalTime)-Math.abs(b-originalTime));
-      for(const d of driverNames){
+      driverSearch: for(const d of driverNames){
         if(isDriverUnavailable(d)||isBusUnavailable(d))continue;
         const oldRoute=v1024Route(d);
         if(oldRoute.length>=MAX)continue;
