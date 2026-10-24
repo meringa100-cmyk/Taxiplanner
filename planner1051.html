@@ -5477,9 +5477,9 @@ async function runBestPlanningV1024(){
   let progress=document.getElementById('v1051AiProgress');
   if(!progress){progress=document.createElement('div');progress.id='v1051AiProgress';progress.setAttribute('role','status');progress.setAttribute('aria-live','polite');progress.style.cssText='margin:10px 0;padding:10px 12px;border-radius:9px;background:#eaf4ff;border:1px solid #9bc7f5;color:#17324d;font-weight:700;display:none';if(button)button.insertAdjacentElement('afterend',progress);}
   const showProgress=(text)=>{progress.textContent=text;progress.style.display='block';};
-  let work=0;
-  const MAX_WORK=12000;
-  let budgetReached=false;
+  let work=0, assignmentWork=0, relocationWork=0, deadlineWork=0;
+  const MAX_ASSIGNMENT_WORK=12000, MAX_RELOCATION_WORK=20000, MAX_DEADLINE_WORK=3000;
+  let budgetReached=false, assignmentBudgetReached=false, relocationBudgetReached=false, deadlineBudgetReached=false;
   const yieldToBrowser=()=>new Promise(resolve=>setTimeout(resolve,0));
   showProgress('AI-planning gestart… voorbereiden van veilige routecontroles.');
   await yieldToBrowser();
@@ -5521,9 +5521,9 @@ async function runBestPlanningV1024(){
             (oldRoute.length?Math.min(...oldRoute.map(k=>geoDistanceKm(k,child)))*0.3:0)+
             Math.abs(originalTime-candidateTime)*0.2;
           child.driver=oldDriver;child.timeMin=oldTime;child.routeOrder=oldOrder;
-          work++;
-          if(work%100===0){showProgress(`AI-planning bezig… ${work.toLocaleString('nl-NL')} controles uitgevoerd.`);await yieldToBrowser();}
-          if(work>=MAX_WORK){budgetReached=true;showProgress(`Veilige grens van ${MAX_WORK.toLocaleString('nl-NL')} controles bereikt; AI rondt de huidige stap af.`);break driverSearch;}
+          work++; assignmentWork++;
+          if(work%100===0){showProgress(`AI-planning bezig… ${work.toLocaleString('nl-NL')} controles uitgevoerd (toewijzingen: ${assignmentWork.toLocaleString('nl-NL')}).`);await yieldToBrowser();}
+          if(assignmentWork>=MAX_ASSIGNMENT_WORK){budgetReached=true;assignmentBudgetReached=true;showProgress(`Toewijzingszoeklimiet bereikt; AI gaat door met het verbeteren van bestaande routes.`);break driverSearch;}
           if(!ownDeadlineOk||!adjacentFeasible)continue;
           if(!best||cost<best.cost)best={d,candidateTime,cost};
         }
@@ -5566,9 +5566,9 @@ async function runBestPlanningV1024(){
           sourceTrial.forEach((k,i)=>{const real=kids.find(x=>x.id===k.id);if(real)real.routeOrder=i+1;});
           const score=v1024StrictScore().score;
           snapshot.forEach(x=>{const real=kids.find(k=>k.id===x.id);if(real){real.driver=x.driver;real.routeOrder=x.routeOrder;real.timeMin=x.timeMin;}});
-          work++;
-          if(work%100===0){showProgress(`AI-planning bezig… ${work.toLocaleString('nl-NL')} controles uitgevoerd.`);await yieldToBrowser();}
-          if(work>=MAX_WORK){budgetReached=true;showProgress(`Veilige grens van ${MAX_WORK.toLocaleString('nl-NL')} controles bereikt; AI rondt de huidige stap af.`);break relocationSearch;}
+          work++; relocationWork++;
+          if(work%100===0){showProgress(`AI-planning bezig… ${work.toLocaleString('nl-NL')} controles uitgevoerd (routeverbeteringen: ${relocationWork.toLocaleString('nl-NL')}).`);await yieldToBrowser();}
+          if(relocationWork>=MAX_RELOCATION_WORK){budgetReached=true;relocationBudgetReached=true;showProgress(`Zoeklimiet voor routeverbeteringen bereikt; beste veilige verbeteringen worden behouden.`);break relocationSearch;}
           if(score<current.score-1&&(!best||score<best.score))best={kid,from,to,score,sourceTrial,targetTrial};
         }
       }
@@ -5590,7 +5590,8 @@ async function runBestPlanningV1024(){
         const oldTime=Number(kid.timeMin)||0, oldOrder=kid.routeOrder;
         let best=null;
         for(let shift=5;shift<=90;shift+=5){
-          if(work>=MAX_WORK){budgetReached=true;break;}
+          if(deadlineWork>=MAX_DEADLINE_WORK){budgetReached=true;deadlineBudgetReached=true;break;}
+          deadlineWork++; work++;
           const candidate=oldTime-shift;
           if(candidate<360)break;
           kid.timeMin=candidate;
@@ -5619,7 +5620,8 @@ async function runBestPlanningV1024(){
       return;
     }
     saveState();renderAll();
-    showProgress(`Klaar: ${assigned} nieuwe toewijzingen, ${moved} verplaatsingen. ${budgetReached?'Controlelimiet bereikt; planning is gedeeltelijk geoptimaliseerd.':'Optimalisatie afgerond.'} Controleer de planning vóór vertrek.`);
+    const budgetNote=budgetReached?`Zoeklimiet bereikt${assignmentBudgetReached?' bij nieuwe toewijzingen':''}${relocationBudgetReached?' bij routeverbeteringen':''}${deadlineBudgetReached?' bij deadlineherstel':''}; controleer resterende ritten.`:'Alle zoekfasen afgerond.';
+    showProgress(`Klaar: ${assigned} nieuwe toewijzingen, ${moved} verplaatsingen. ${budgetNote} Controleer de planning vóór vertrek.`);
     alert('AI V1024 — veilige herplanning afgerond.\\n\\nNieuwe toewijzingen: '+assigned+'\\nGerichte verplaatsingen: '+moved+'\\nOphaaltijden vervroegd: '+(timeAdjusted+repairedAssignedDeadlines)+'\\nNiet passend binnen deadline/routecontrole: '+blockedDeadline+'\\nRitten zonder chauffeur: '+after.unassigned+'\\nTijdconflicten: '+after.conflicts+'\\nSchooldeadlineproblemen: '+after.late+'\\nTe lange routes: '+after.longRoutes+'\\n\\nAlleen deadline-veilige kandidaatritten zijn toegevoegd. Controleer de planning vóór vertrek.');
   }catch(error){
     kids=before;saveState();renderAll();
