@@ -5604,13 +5604,13 @@ async function runBestPlanningV1024(){
         kid.timeMin=oldTime;kid.routeOrder=oldOrder;
         work++;
         if(work%20===0){showProgress(`AI-planning bezig… ${work} tijdsvarianten gecontroleerd.`);await yieldToBrowser();}
-        if(budgetReached)break lateKidSearch;
+        if(deadlineBudgetReached)break lateKidSearch;
         if(best){
           kid.timeMin=best.time;kid.time=fmtTime(best.time);
           repairedAssignedDeadlines++;anyRepair=true;
         }
       }
-      if(budgetReached||!anyRepair)break;
+      if(deadlineBudgetReached||!anyRepair)break;
     }
     const after=v1024StrictScore();
     if(after.score>=baseline.score){
