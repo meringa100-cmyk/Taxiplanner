@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner — stresstest V1051</title>
+<title>Taxi Planner — automatische AI-vervolgronde V1052</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -274,7 +274,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner STRESSTEST V1050</h1>
+<h1>🚕 Taxi Planner — AI automatisch verder V1052</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -5620,6 +5620,13 @@ async function runBestPlanningV1024(){
       return;
     }
     saveState();renderAll();
+    // V1052: when a work budget is reached and this pass improved the plan,
+    // automatically run another pass instead of making the user press the button again.
+    if(budgetReached){
+      showProgress(`Tussenresultaat opgeslagen (${assigned} nieuwe toewijzingen, ${moved} verplaatsingen). AI gaat automatisch verder met de volgende zoekronde…`);
+      setTimeout(()=>runBestPlanningV1024(),50);
+      return;
+    }
     const budgetNote=budgetReached?`Zoeklimiet bereikt${assignmentBudgetReached?' bij nieuwe toewijzingen':''}${relocationBudgetReached?' bij routeverbeteringen':''}${deadlineBudgetReached?' bij deadlineherstel':''}; controleer resterende ritten.`:'Alle zoekfasen afgerond.';
     showProgress(`Klaar: ${assigned} nieuwe toewijzingen, ${moved} verplaatsingen. ${budgetNote} Controleer de planning vóór vertrek.`);
     alert('AI V1024 — veilige herplanning afgerond.\\n\\nNieuwe toewijzingen: '+assigned+'\\nGerichte verplaatsingen: '+moved+'\\nOphaaltijden vervroegd: '+(timeAdjusted+repairedAssignedDeadlines)+'\\nNiet passend binnen deadline/routecontrole: '+blockedDeadline+'\\nRitten zonder chauffeur: '+after.unassigned+'\\nTijdconflicten: '+after.conflicts+'\\nSchooldeadlineproblemen: '+after.late+'\\nTe lange routes: '+after.longRoutes+'\\n\\nAlleen deadline-veilige kandidaatritten zijn toegevoegd. Controleer de planning vóór vertrek.');
