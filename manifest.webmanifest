@@ -1,11 +1,18 @@
 {
-  "name":"Taxi Planner V74",
-  "short_name":"Taxi Planner",
-  "start_url":"./?v=74",
-  "scope":"./",
-  "display":"standalone",
-  "background_color":"#f3f5f7",
-  "theme_color":"#17324d",
-  "description":"Taxi Planner V74 met automatische routeherverdeling, geografische route-optimalisatie, planner, chauffeur, ouderportaal en Live Centrum.",
-  "icons":[{"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+  "name": "Taxi Planner V1052",
+  "short_name": "Taxi Planner",
+  "start_url": "./planner1051.html?v=1052",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3f5f7",
+  "theme_color": "#17324d",
+  "description": "Taxi Planner V1052 met automatische AI-vervolgrondes.",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
 }
