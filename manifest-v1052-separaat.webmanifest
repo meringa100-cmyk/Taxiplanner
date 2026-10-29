@@ -1,0 +1,19 @@
+{
+  "id": "./planner1052-installatie-b.html",
+  "name": "Taxi Planner V1052 Installatie B",
+  "short_name": "Taxi B1052",
+  "start_url": "./planner1052-installatie-b.html?install=b1052",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3f5f7",
+  "theme_color": "#17324d",
+  "description": "Taxi Planner V1052 als zelfstandige app",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
