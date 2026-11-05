@@ -425,6 +425,9 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 <script>
 const MAX=8;
 const driverNames=["Jan de Vries — 1001","Peter Jansen — 1002","Mark Smit — 1003","Erik Bakker — 1004","Ronald Meijer — 1005","Dennis Mulder — 1006","Patrick Visser — 1007","Richard Bos — 1008","Marco de Boer — 1009","Jeroen Dijkstra — 1010","Willem Kuiper — 1011","Henk van Dijk — 1012","Arjan de Jong — 1013","Michel Vos — 1014","Robert Schipper — 1015","Frank Hendriks — 1016","Sander Post — 1017","Gert van der Meer — 1018","Kees Brouwer — 1019","Theo van den Berg — 1020","Danny Prins — 1021","Johan Kok — 1022","Rene van Leeuwen — 1023","Dennis de Graaf — 1024","Bas van der Wal — 1025","Niels Timmerman — 1026","Tom Willems — 1027","Maarten van Dam — 1028","Rik Sanders — 1029","Bart van der Veen — 1030","Joost Martens — 1031","Wouter de Wit — 1032","Pieter van Beek — 1033","Stefan Jacobs — 1034","Gerard Hoekstra — 1035","Lars Meijer — 1036","Ruben Dekker — 1037","Andre Koster — 1038","Daan van der Heijden — 1039","Mike de Groot — 1040","Chris Verhoeven — 1041","Edwin Blom — 1042","Alex van der Linden — 1043","Timo van der Horst — 1044","Roy van Vliet — 1045","Bram de Bruin — 1046","Koen van der Meer — 1047","Nick Smeets — 1048","Jasper van den Broek — 1049","Ramon van der Laan — 1050","Femke Koster — 1051","Ilse van Dijk — 1052","Patrick de Boer — 1053","Sandra Wolters — 1054","Dennis Kuipers — 1055","Marieke Vos — 1056","Ron van Es — 1057","Anita Bos — 1058","Jelle Hendriks — 1059","Karin Smit — 1060"];
+/* V1052: 10 aanvullende fictieve chauffeurs bovenop de bestaande lijst. */
+driverNames.push("Testchauffeur 01 — T0701","Testchauffeur 02 — T0702","Testchauffeur 03 — T0703","Testchauffeur 04 — T0704","Testchauffeur 05 — T0705","Testchauffeur 06 — T0706","Testchauffeur 07 — T0707","Testchauffeur 08 — T0708","Testchauffeur 09 — T0709","Testchauffeur 10 — T0710");
+
 const names=['Jamie','Noa','Luca','Milan','Sophie','Sem','Daan','Emma','Finn','Lisa','Mees','Tess'];
 const schools=['Terra College','De Atlas','Praktijkschool','Speciale school'];
 
@@ -5273,7 +5276,43 @@ function repairDemoRouteConflictsHard(){
   return moved;
 }
 
+
 if(!loadState())seed();
+
+/* V1052: voeg eenmalig 50 fictieve testkinderen toe aan de bestaande opslag.
+   Unieke IDs voorkomen duplicaten bij herhaald openen; bestaande records blijven staan. */
+(function addFiftyTestKidsV1052(){
+ const already=new Set(kids.map(k=>String(k.id)));
+ const locations=[
+  {street:"Testlaan",lat:52.7860,lon:6.8950},{street:"Proefstraat",lat:52.7920,lon:6.9100},
+  {street:"Oefenweg",lat:52.7780,lon:6.9250},{street:"Simulatieweg",lat:52.8000,lon:6.9350},
+  {street:"Testpad",lat:52.7650,lon:6.9000},{street:"Routehof",lat:52.7750,lon:6.8750},
+  {street:"Planningslaan",lat:52.8050,lon:6.8850},{street:"Ophaalstraat",lat:52.7900,lon:6.9500},
+  {street:"Ritweg",lat:52.7550,lon:6.9300},{street:"Chauffeursplein",lat:52.8100,lon:6.9150}
+ ];
+ let added=0;
+ for(let i=0;i<50;i++){
+  const id="TEST1052-K"+String(i+1).padStart(3,"0");
+  if(already.has(id))continue;
+  const group=Math.floor(i/5),pos=i%5,loc=locations[group],school=schools[group%schools.length];
+  const driver=driverNames[60+group],timeMin=420+pos*10;
+  const address=loc.street+" "+(2+pos*2)+", Emmen (fictief testadres)";
+  kids.push({
+   id,parentId:"TESTOUDER"+String(i+1).padStart(3,"0"),parentName:"Testouder "+(i+1),parentPin:"1234",
+   name:["Testkind Noor","Testkind Milan","Testkind Sara","Testkind Sem","Testkind Luca"][pos]+" "+(i+1),
+   timeMin,time:fmtTime(timeMin),arrivalDeadlineMin:SCHOOL_DEADLINE_MIN,
+   address,pickupAddress:address,pickupCity:"Emmen",
+   destinationAddress:schoolLocations[school]?.address||school,school,destination:school,
+   lat:loc.lat+(pos%3)*0.00035,lon:loc.lon+(pos%2)*0.00035,
+   driver,routeOrder:pos+1,fixed:false,status:"waiting",
+   approach:"Fictief testrecord.",safety:"Test: gordelcontrole.",important:"Fictieve gegevens; geen echt kind."
+  });
+  added++;
+ }
+ if(added){demoCounter=Math.max(Number(demoCounter)||101,301);saveState();}
+ window.v1052TestBatch={added,total:50,drivers:10};
+})();
+
 
 // V1031 veilige diagnose: bij openen worden geen chauffeurs of routevolgordes herverdeeld.
 // De bestaande V1030-opslag wordt alleen gelezen; V1031 schrijft uitsluitend naar zijn eigen opslagkey.
