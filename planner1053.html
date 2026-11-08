@@ -4335,12 +4335,12 @@ async function runAIAndCheck(){
   try{
     runAI(true);
     await optimizeAllRoutes({silent:true});
-    // V992: de route-optimizer kan in de 200-kind-demo kinderen zonder chauffeur
+    // V992: de route-optimizer kan in de 300-kind-demo kinderen zonder chauffeur
     // achterlaten wanneer geen bestaande route als haalbaar wordt gezien.
     // Herstel daarom na de optimalisatie de volledige demo-indeling en controleer
     // daarna opnieuw de harde capaciteit/reistijdconflicten.
     const builtInDemoNow=kids.filter(k=>/^k[0-9]+$/.test(String(k.id||''))&&Number(k.id.slice(1))>=1&&Number(k.id.slice(1))<=300);
-    if(builtInDemoNow.length===200 && builtInDemoNow.every(k=>k.status==='waiting')){
+    if(builtInDemoNow.length===300 && builtInDemoNow.every(k=>k.status==='waiting')){
       // V993: herstel na AI alleen de resterende echte conflicten.
       // repairBuiltInDemoPlanningHard() bouwt de vaste groepen opnieuw op en
       // overschrijft daarmee juist de route-splitsingen die de optimizer maakte.
