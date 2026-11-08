@@ -5684,10 +5684,10 @@ function v1024AuditRoute(driver,route){
   }
   const minutes=ordered.length?Math.round(routeDurationEstimate(ordered,di)):0;
   const limit=routeLimitForRides(ordered),over=Math.max(0,minutes-limit);
-  // Kilometerwinst telt mee als optimalisatiedoel, maar kan nooit een
-  // deadline-, capaciteits-, tijdconflict- of routeoverschrijding goedpraten.
+  // Geschatte kilometers zijn een lichte tie-breaker: eerst blijven de
+  // bestaande veiligheids-, deadline- en routevoorwaarden leidend.
   const distance=v1053EstimatedRouteKm(ordered,di);
-  const distancePenalty=distance.km*2.5;
+  const distancePenalty=distance.km*0.5;
   return {ordered,conflicts,conflictPenalty,late,latePenalty,minutes,limit,over,
     estimatedKm:distance.km,distancePenalty,
     penalty:conflictPenalty+latePenalty+over*40+Math.max(0,ordered.length-MAX)*10000+distancePenalty};
