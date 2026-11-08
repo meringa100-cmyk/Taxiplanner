@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Taxi Planner">
-<title>Taxi Planner V1053 Installatie B</title>
+<title>Taxi Planner V1053 — kilometerbewuste AI</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#18222d}
 header{background:#17324d;color:#fff;padding:18px 22px}header h1{margin:0;font-size:24px}header p{margin:5px 0 0;opacity:.85}
@@ -274,7 +274,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner — AI automatisch verder V1052</h1>
+<h1>🚕 Taxi Planner — kilometerbewuste AI V1053.1 • 300 kinderen</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -425,9 +425,6 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 <script>
 const MAX=8;
 const driverNames=["Jan de Vries — 1001","Peter Jansen — 1002","Mark Smit — 1003","Erik Bakker — 1004","Ronald Meijer — 1005","Dennis Mulder — 1006","Patrick Visser — 1007","Richard Bos — 1008","Marco de Boer — 1009","Jeroen Dijkstra — 1010","Willem Kuiper — 1011","Henk van Dijk — 1012","Arjan de Jong — 1013","Michel Vos — 1014","Robert Schipper — 1015","Frank Hendriks — 1016","Sander Post — 1017","Gert van der Meer — 1018","Kees Brouwer — 1019","Theo van den Berg — 1020","Danny Prins — 1021","Johan Kok — 1022","Rene van Leeuwen — 1023","Dennis de Graaf — 1024","Bas van der Wal — 1025","Niels Timmerman — 1026","Tom Willems — 1027","Maarten van Dam — 1028","Rik Sanders — 1029","Bart van der Veen — 1030","Joost Martens — 1031","Wouter de Wit — 1032","Pieter van Beek — 1033","Stefan Jacobs — 1034","Gerard Hoekstra — 1035","Lars Meijer — 1036","Ruben Dekker — 1037","Andre Koster — 1038","Daan van der Heijden — 1039","Mike de Groot — 1040","Chris Verhoeven — 1041","Edwin Blom — 1042","Alex van der Linden — 1043","Timo van der Horst — 1044","Roy van Vliet — 1045","Bram de Bruin — 1046","Koen van der Meer — 1047","Nick Smeets — 1048","Jasper van den Broek — 1049","Ramon van der Laan — 1050","Femke Koster — 1051","Ilse van Dijk — 1052","Patrick de Boer — 1053","Sandra Wolters — 1054","Dennis Kuipers — 1055","Marieke Vos — 1056","Ron van Es — 1057","Anita Bos — 1058","Jelle Hendriks — 1059","Karin Smit — 1060"];
-/* V1052: 10 aanvullende fictieve chauffeurs bovenop de bestaande lijst. */
-driverNames.push("Testchauffeur 01 — T0701","Testchauffeur 02 — T0702","Testchauffeur 03 — T0703","Testchauffeur 04 — T0704","Testchauffeur 05 — T0705","Testchauffeur 06 — T0706","Testchauffeur 07 — T0707","Testchauffeur 08 — T0708","Testchauffeur 09 — T0709","Testchauffeur 10 — T0710");
-
 const names=['Jamie','Noa','Luca','Milan','Sophie','Sem','Daan','Emma','Finn','Lisa','Mees','Tess'];
 const schools=['Terra College','De Atlas','Praktijkschool','Speciale school'];
 
@@ -503,7 +500,7 @@ async function pdokAddress(street,town,number){
 function applyGuaranteedDemoHomeSpread(){
   const demoKids=kids.filter(k=>{
     const n=parseInt(String(k.id).slice(1),10);
-    return /^k[0-9]+$/.test(String(k.id)) && Number.isInteger(n) && n>=1 && n<=200;
+    return /^k[0-9]+$/.test(String(k.id)) && Number.isInteger(n) && n>=1 && n<=300;
   }).sort((a,b)=>Number(String(a.id).slice(1))-Number(String(b.id).slice(1)));
   if(!demoKids.length)return false;
 
@@ -722,7 +719,7 @@ async function geocodeExactDemoAddresses(){
 }
 function demoLocationForKid(k){
   const n=parseInt(String(k?.id||'').slice(1),10);
-  if(!Number.isFinite(n)||n<1||n>200)return null;
+  if(!Number.isFinite(n)||n<1||n>300)return null;
   const group=Math.floor((n-1)/8);
   return drentheDemoLocations[group%drentheDemoLocations.length]||null;
 }
@@ -769,7 +766,7 @@ let demoAddressSpreadVersion='';
 let demoPlanningSpreadLocked=false;
 let demoHardPlanVersion='';
 
-const busNumbers=Array.from({length:70},(_,i)=>'Bus '+String(i+1).padStart(2,'0'));
+const busNumbers=Array.from({length:60},(_,i)=>'Bus '+String(i+1).padStart(2,'0'));
 let busIssues={};
 let replacementAssignments={};
 let replacementSeq=1;
@@ -1119,7 +1116,7 @@ function normalizeBuiltInDemo(){
   // V73: elke demo-groep wordt eerst hard teruggezet naar zijn eigen plaats.
   // Daarna mag alleen een verse BAG-hit binnen diezelfde straat + plaats volgen.
   const demoKids=kids.filter(k=>/^k[0-9]+$/.test(String(k.id)));
-  const isDemo=demoKids.length===200 && demoKids.every(k=>k.status==='waiting'||k.status==='picked'||k.status==='school');
+  const isDemo=demoKids.length===300 && demoKids.every(k=>k.status==='waiting'||k.status==='picked'||k.status==='school');
   if(!isDemo)return false;
   let changed=false;
   demoKids.forEach(k=>{
@@ -1194,7 +1191,7 @@ function loadState(){
   // geldige adressen en coördinaten ongemoeid.
   const demoKids=kids.filter(k=>/^k[0-9]+$/.test(String(k.id||'')))
     .sort((a,b)=>Number(String(a.id).slice(1))-Number(String(b.id).slice(1)));
-  if(demoKids.length===250){
+  if(demoKids.length===300){
     demoKids.forEach((k,i)=>{
       const group=Math.floor(i/8), pos=i%8;
       const loc=drentheDemoLocations[group%drentheDemoLocations.length];
@@ -1221,7 +1218,7 @@ function loadState(){
 
 function ensureExtraDemoKids(){
  const existing=new Set(kids.map(k=>String(k.id)));
- for(let i=100;i<250;i++){
+ for(let i=100;i<300;i++){
   const id='k'+(i+1);
   if(existing.has(id))continue;
   const group=Math.floor(i/8), pos=i%8;
@@ -1245,11 +1242,11 @@ function ensureExtraDemoKids(){
    demoTown:loc.town,demoStreet:loc.street,geocodeStatus:'demo'
   });
  }
- demoCounter=Math.max(Number(demoCounter)||101,201);
+ demoCounter=Math.max(Number(demoCounter)||101,301);
 }
 function seed(){
  kids=[];
- for(let i=0;i<250;i++){
+ for(let i=0;i<300;i++){
   const group=Math.floor(i/8);
   const pos=i%8;
   const school=schools[group%schools.length];
@@ -3585,15 +3582,15 @@ function demoGroupValid(group){
 function runAI(silent=false){
   previousPlan=kids.map(k=>({id:k.id,driver:k.driver,fixed:k.fixed,status:k.status}));
 
-  // V990: de ingebouwde 200-kind-demo wordt verdeeld over 25 groepen van maximaal 8.
+  // V990: de ingebouwde 300-kind-demo wordt verdeeld over 25 groepen van maximaal 8.
   // Gebruik daarvoor een deterministische plaatsing.
   // Zo kan een bestaande/kapotte opgeslagen demo-planning de AI niet meer
   // onnodig leegtrekken voordat de echte routecontrole begint.
   const demoKids=kids.filter(k=>{
     const n=parseInt(String(k.id).slice(1),10);
-    return /^k[0-9]+$/.test(String(k.id)) && Number.isInteger(n) && n>=1 && n<=200;
+    return /^k[0-9]+$/.test(String(k.id)) && Number.isInteger(n) && n>=1 && n<=300;
   });
-  const isBuiltInDemo=demoKids.length===200 &&
+  const isBuiltInDemo=demoKids.length===300 &&
     demoKids.every(k=>k.status==='waiting' && Number.isFinite(Number(k.timeMin)));
   // V781: bewaar de huidige chauffeurverdeling vóór AI. Een AI-run mag
   // bij de ingebouwde demo NOOIT kinderen naar andere chauffeurs verplaatsen.
@@ -3811,7 +3808,7 @@ function runAI(silent=false){
       q.forEach((k,i)=>k.routeOrder=i+1);
     });
 
-    // V750: nieuwe ritten mogen de vaste 200-kind-demo niet opnieuw laten
+    // V750: nieuwe ritten mogen de vaste 300-kind-demo niet opnieuw laten
     // opbouwen. Alleen extra/niet-demo kinderen worden apart ingepland.
     const extraKids=kids.filter(k=>!demoKids.includes(k) && active(k));
     for(const k of extraKids){
@@ -4014,14 +4011,14 @@ function runAI(silent=false){
 
     renderAll();
     const message='🤖 AI-planning klaar!\\n\\n'+
-      '200 demo-ritten gecontroleerd zonder chauffeurwissels.\\n'+
+      '300 demo-ritten gecontroleerd zonder chauffeurwissels.\\n'+
       '• maximaal 8 kinderen per bus — harde grens\\n'+
       '• vaste demo-groepen behouden\\n'+
       '• geen ritten onnodig zonder chauffeur\\n'+
       '• normale route-, reistijd- en schoolcontrole blijft actief\\n'+
       '• '+conflictRepairs+' routeconflict'+(conflictRepairs===1?'':'en')+' gericht hersteld\\n'+
       '\\n🚌 '+fullBuses+' volledig gevulde bus(sen), '+partialBuses+' gedeeltelijk gevulde bus(sen).\\n'+
-      '✅ Alle 200 demo-ritten hebben een chauffeur.';
+      '✅ Alle 300 demo-ritten hebben een chauffeur.';
     if(!silent)alert(message);
     return {changes:kids.filter(k=>{
       const old=previousPlan.find(p=>p.id===k.id);
@@ -4338,12 +4335,12 @@ async function runAIAndCheck(){
   try{
     runAI(true);
     await optimizeAllRoutes({silent:true});
-    // V992: de route-optimizer kan in de 200-kind-demo kinderen zonder chauffeur
+    // V992: de route-optimizer kan in de 300-kind-demo kinderen zonder chauffeur
     // achterlaten wanneer geen bestaande route als haalbaar wordt gezien.
     // Herstel daarom na de optimalisatie de volledige demo-indeling en controleer
     // daarna opnieuw de harde capaciteit/reistijdconflicten.
-    const builtInDemoNow=kids.filter(k=>/^k(?:[1-9]|[1-9][0-9]|1[0-9]{2}|200)$/.test(String(k.id||'')));
-    if(builtInDemoNow.length===200 && builtInDemoNow.every(k=>k.status==='waiting')){
+    const builtInDemoNow=kids.filter(k=>/^k[0-9]+$/.test(String(k.id||''))&&Number(k.id.slice(1))>=1&&Number(k.id.slice(1))<=300);
+    if(builtInDemoNow.length===300 && builtInDemoNow.every(k=>k.status==='waiting')){
       // V993: herstel na AI alleen de resterende echte conflicten.
       // repairBuiltInDemoPlanningHard() bouwt de vaste groepen opnieuw op en
       // overschrijft daarmee juist de route-splitsingen die de optimizer maakte.
@@ -5153,13 +5150,13 @@ function find(id){return kids.find(k=>k.id===id)}
 function closeModal(){document.getElementById('modal').classList.add('hidden')}
 document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
 function repairBuiltInDemoPlanningHard(){
-  const DEMO_GROUP_TARGET=4; // V991: 200 kinderen over maximaal 50 chauffeurs verdelen.
+  const DEMO_GROUP_TARGET=4; // V991: 300 kinderen over maximaal 50 chauffeurs verdelen.
   // V990: chauffeur rijdt bij voorkeur binnen één plaats; kinderen wonen verspreid over verschillende straten.
   const demoKids=kids.filter(k=>{
     const n=parseInt(String(k.id).slice(1),10);
-    return /^k[0-9]+$/.test(String(k.id)) && Number.isInteger(n) && n>=1 && n<=200 && active(k);
+    return /^k[0-9]+$/.test(String(k.id)) && Number.isInteger(n) && n>=1 && n<=300 && active(k);
   });
-  if(demoKids.length!==200)return 0;
+  if(demoKids.length!==300)return 0;
   const available=driverNames.filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d));
   if(!available.length)return 0;
   const distance=(a,b)=>geoDistanceKm(a,b);
@@ -5218,10 +5215,10 @@ function repairBuiltInDemoPlanningHard(){
 function repairDemoRouteConflictsHard(){
   // V990: echte conflictvrije verdeling. Niet alleen de routevolgorde wijzigen:
   // als twee opeenvolgende ophaalmomenten fysiek niet haalbaar zijn, verplaatsen
-  // we het kind naar een andere beschikbare bus. Met 50 bussen voor 200 demo-
+  // we het kind naar een andere beschikbare bus. Met 50 bussen voor 300 demo-
   // kinderen is daar bewust voldoende capaciteit voor.
   const demoKids=kids.filter(k=>/^k[0-9]+$/.test(String(k.id))&&active(k));
-  if(demoKids.length!==200)return 0;
+  if(demoKids.length!==300)return 0;
 
   const routeOf=d=>demoKids.filter(k=>k.driver===d).sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
   const valid=(q,d)=>{
@@ -5276,43 +5273,7 @@ function repairDemoRouteConflictsHard(){
   return moved;
 }
 
-
 if(!loadState())seed();
-
-/* V1052: voeg eenmalig 50 fictieve testkinderen toe aan de bestaande opslag.
-   Unieke IDs voorkomen duplicaten bij herhaald openen; bestaande records blijven staan. */
-(function addFiftyTestKidsV1052(){
- const already=new Set(kids.map(k=>String(k.id)));
- const locations=[
-  {street:"Testlaan",lat:52.7860,lon:6.8950},{street:"Proefstraat",lat:52.7920,lon:6.9100},
-  {street:"Oefenweg",lat:52.7780,lon:6.9250},{street:"Simulatieweg",lat:52.8000,lon:6.9350},
-  {street:"Testpad",lat:52.7650,lon:6.9000},{street:"Routehof",lat:52.7750,lon:6.8750},
-  {street:"Planningslaan",lat:52.8050,lon:6.8850},{street:"Ophaalstraat",lat:52.7900,lon:6.9500},
-  {street:"Ritweg",lat:52.7550,lon:6.9300},{street:"Chauffeursplein",lat:52.8100,lon:6.9150}
- ];
- let added=0;
- for(let i=0;i<50;i++){
-  const id="TEST1052-K"+String(i+1).padStart(3,"0");
-  if(already.has(id))continue;
-  const group=Math.floor(i/5),pos=i%5,loc=locations[group],school=schools[group%schools.length];
-  const driver=driverNames[60+group],timeMin=420+pos*10;
-  const address=loc.street+" "+(2+pos*2)+", Emmen (fictief testadres)";
-  kids.push({
-   id,parentId:"TESTOUDER"+String(i+1).padStart(3,"0"),parentName:"Testouder "+(i+1),parentPin:"1234",
-   name:["Testkind Noor","Testkind Milan","Testkind Sara","Testkind Sem","Testkind Luca"][pos]+" "+(i+1),
-   timeMin,time:fmtTime(timeMin),arrivalDeadlineMin:SCHOOL_DEADLINE_MIN,
-   address,pickupAddress:address,pickupCity:"Emmen",
-   destinationAddress:schoolLocations[school]?.address||school,school,destination:school,
-   lat:loc.lat+(pos%3)*0.00035,lon:loc.lon+(pos%2)*0.00035,
-   driver,routeOrder:pos+1,fixed:false,status:"waiting",
-   approach:"Fictief testrecord.",safety:"Test: gordelcontrole.",important:"Fictieve gegevens; geen echt kind."
-  });
-  added++;
- }
- if(added){demoCounter=Math.max(Number(demoCounter)||101,301);saveState();}
- window.v1052TestBatch={added,total:50,drivers:10};
-})();
-
 
 // V1031 veilige diagnose: bij openen worden geen chauffeurs of routevolgordes herverdeeld.
 // De bestaande V1030-opslag wordt alleen gelezen; V1031 schrijft uitsluitend naar zijn eigen opslagkey.
@@ -5340,7 +5301,7 @@ setTimeout(()=>{
 
 // V844: nooit terugvallen op verzonnen adressen of centrum-offsets.
 setTimeout(()=>{
-  const demo=kids.filter(k=>/^k[0-9]+$/.test(String(k.id))&&Number(k.id.slice(1))>=1&&Number(k.id.slice(1))<=200);
+  const demo=kids.filter(k=>/^k[0-9]+$/.test(String(k.id))&&Number(k.id.slice(1))>=1&&Number(k.id.slice(1))<=300);
   const located=demo.filter(k=>Number.isFinite(k.lat)&&Number.isFinite(k.lon)&&k.pickupAddress&&k.demoStreet&&k.demoTown);
   if(located.length<demo.length){
     console.warn('V844: '+located.length+'/'+demo.length+' demo-adressen hebben een echte PDOK-locatie; overige kinderen blijven ongepositioneerd.');
@@ -5458,7 +5419,7 @@ function toggleCollapsible(id){
 })();
 </script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=1053").catch(()=>{}));}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=1053.1").catch(()=>{}));}
 
 /* V1023 — isolated, conservative AI planner.
    Does not call legacy runAI()/optimizeAllRoutes(); only accepts assignments
@@ -5520,7 +5481,7 @@ async function runBestPlanningV1024(){
   const MAX_ASSIGNMENT_WORK=12000, MAX_RELOCATION_WORK=20000, MAX_DEADLINE_WORK=3000;
   let budgetReached=false, assignmentBudgetReached=false, relocationBudgetReached=false, deadlineBudgetReached=false;
   const yieldToBrowser=()=>new Promise(resolve=>setTimeout(resolve,0));
-  showProgress('AI-planning gestart… voorbereiden van veilige routecontroles.');
+  showProgress('AI-planning gestart… veilige controles én minder onnodige kilometers worden meegewogen.');
   await yieldToBrowser();
   const before=JSON.parse(JSON.stringify(kids));
   const baseline=v1024StrictScore();
@@ -5652,23 +5613,30 @@ async function runBestPlanningV1024(){
       if(deadlineBudgetReached||!anyRepair)break;
     }
     const after=v1024StrictScore();
-    if(after.score>=baseline.score){
+    const changedThisPass=JSON.stringify(kids)!==JSON.stringify(before);
+    // V1053.1: preserve a safe partial result at a work-budget boundary.
+    // Continue only when this pass actually changed the plan, preventing endless retries.
+    if(after.score>baseline.score){
       kids=before;saveState();renderAll();
-      showProgress('Klaar: geen aantoonbaar betere planning gevonden. De oorspronkelijke planning is behouden.');
-      alert('AI V1024 heeft geen aantoonbaar betere planning gevonden. De oorspronkelijke planning is behouden.');
+      showProgress('AI gestopt: deze zoekronde maakte de planning minder goed. De vorige veilige planning is hersteld.');
+      alert('AI heeft geen veilige verbetering gevonden. De vorige planning is hersteld.');
+      return;
+    }
+    if(after.score>=baseline.score && !changedThisPass){
+      kids=before;saveState();renderAll();
+      showProgress('AI klaar: geen veilige verbetering meer gevonden. Resterende problemen vragen mogelijk om extra capaciteit of handmatige beoordeling.');
+      alert('AI heeft geen verdere veilige verbetering gevonden. De resterende problemen zijn niet automatisch oplosbaar binnen de huidige voorwaarden.');
       return;
     }
     saveState();renderAll();
-    // V1052: when a work budget is reached and this pass improved the plan,
-    // automatically run another pass instead of making the user press the button again.
-    if(budgetReached){
-      showProgress(`Tussenresultaat opgeslagen (${assigned} nieuwe toewijzingen, ${moved} verplaatsingen). AI gaat automatisch verder met de volgende zoekronde…`);
-      setTimeout(()=>runBestPlanningV1024(),50);
+    if(budgetReached && changedThisPass){
+      showProgress('Tussenstand veilig opgeslagen. AI start automatisch de volgende zoekronde…');
+      setTimeout(()=>runBestPlanningV1024(),100);
       return;
     }
     const budgetNote=budgetReached?`Zoeklimiet bereikt${assignmentBudgetReached?' bij nieuwe toewijzingen':''}${relocationBudgetReached?' bij routeverbeteringen':''}${deadlineBudgetReached?' bij deadlineherstel':''}; controleer resterende ritten.`:'Alle zoekfasen afgerond.';
     showProgress(`Klaar: ${assigned} nieuwe toewijzingen, ${moved} verplaatsingen. ${budgetNote} Controleer de planning vóór vertrek.`);
-    alert('AI V1024 — veilige herplanning afgerond.\\n\\nNieuwe toewijzingen: '+assigned+'\\nGerichte verplaatsingen: '+moved+'\\nOphaaltijden vervroegd: '+(timeAdjusted+repairedAssignedDeadlines)+'\\nNiet passend binnen deadline/routecontrole: '+blockedDeadline+'\\nRitten zonder chauffeur: '+after.unassigned+'\\nTijdconflicten: '+after.conflicts+'\\nSchooldeadlineproblemen: '+after.late+'\\nTe lange routes: '+after.longRoutes+'\\n\\nAlleen deadline-veilige kandidaatritten zijn toegevoegd. Controleer de planning vóór vertrek.');
+    alert('AI V1053 — veilige herplanning met kilometerweging afgerond.\\n\\nNieuwe toewijzingen: '+assigned+'\\nGerichte verplaatsingen: '+moved+'\\nOphaaltijden vervroegd: '+(timeAdjusted+repairedAssignedDeadlines)+'\\nNiet passend binnen deadline/routecontrole: '+blockedDeadline+'\\nRitten zonder chauffeur: '+after.unassigned+'\\nTijdconflicten: '+after.conflicts+'\\nSchooldeadlineproblemen: '+after.late+'\\nTe lange routes: '+after.longRoutes+'\\n\\nAlleen deadline-veilige kandidaatritten zijn toegevoegd. Controleer de planning vóór vertrek.');
   }catch(error){
     kids=before;saveState();renderAll();
     showProgress('Fout: AI-planning veilig afgebroken; oorspronkelijke planning teruggezet.');
@@ -5692,6 +5660,21 @@ function v1024Route(driver,extraKid=null,excludeId=null){
   route.sort((a,b)=>(Number(a.timeMin)||0)-(Number(b.timeMin)||0));
   return route.map((k,i)=>({...k,routeOrder:i+1}));
 }
+/* V1053 — kilometerbewuste AI-score.
+   Gebruikt geografische afstand tussen opeenvolgende ophaalpunten als schatting.
+   Harde regels voor capaciteit, tijdconflicten, schooldeadlines en routelengte blijven zwaarder wegen. */
+function v1053EstimatedRouteKm(route,driverIndex){
+  let km=0,segments=0;
+  for(let i=1;i<route.length;i++){
+    const a=coordForKid(route[i-1],driverIndex,i-1);
+    const b=coordForKid(route[i],driverIndex,i);
+    if(!a||!b||!Number.isFinite(a[0])||!Number.isFinite(a[1])||
+       !Number.isFinite(b[0])||!Number.isFinite(b[1]))continue;
+    const leg=geoDistanceKm({lat:a[1],lon:a[0]},{lat:b[1],lon:b[0]});
+    if(Number.isFinite(leg)){km+=leg;segments++;}
+  }
+  return {km,segments};
+}
 function v1024AuditRoute(driver,route){
   const di=driverNames.indexOf(driver);
   const ordered=[...route].sort((a,b)=>(Number(a.timeMin)||0)-(Number(b.timeMin)||0))
@@ -5708,8 +5691,13 @@ function v1024AuditRoute(driver,route){
   }
   const minutes=ordered.length?Math.round(routeDurationEstimate(ordered,di)):0;
   const limit=routeLimitForRides(ordered),over=Math.max(0,minutes-limit);
+  // Geschatte kilometers zijn een lichte tie-breaker: eerst blijven de
+  // bestaande veiligheids-, deadline- en routevoorwaarden leidend.
+  const distance=v1053EstimatedRouteKm(ordered,di);
+  const distancePenalty=distance.km*0.5;
   return {ordered,conflicts,conflictPenalty,late,latePenalty,minutes,limit,over,
-    penalty:conflictPenalty+latePenalty+over*40+Math.max(0,ordered.length-MAX)*10000};
+    estimatedKm:distance.km,distancePenalty,
+    penalty:conflictPenalty+latePenalty+over*40+Math.max(0,ordered.length-MAX)*10000+distancePenalty};
 }
 function v1024StrictScore(){
   const activeKids=kids.filter(active);
