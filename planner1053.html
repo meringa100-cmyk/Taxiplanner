@@ -274,7 +274,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner — kilometerbewuste AI V1053 • 300 kinderen</h1>
+<h1>🚕 Taxi Planner — kilometerbewuste AI V1053.1 • 300 kinderen</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -5613,18 +5613,25 @@ async function runBestPlanningV1024(){
       if(deadlineBudgetReached||!anyRepair)break;
     }
     const after=v1024StrictScore();
-    if(after.score>=baseline.score){
+    const changedThisPass=JSON.stringify(kids)!==JSON.stringify(before);
+    // V1053.1: preserve a safe partial result at a work-budget boundary.
+    // Continue only when this pass actually changed the plan, preventing endless retries.
+    if(after.score>baseline.score){
       kids=before;saveState();renderAll();
-      showProgress('Klaar: geen aantoonbaar betere planning gevonden. De oorspronkelijke planning is behouden.');
-      alert('AI V1024 heeft geen aantoonbaar betere planning gevonden. De oorspronkelijke planning is behouden.');
+      showProgress('AI gestopt: deze zoekronde maakte de planning minder goed. De vorige veilige planning is hersteld.');
+      alert('AI heeft geen veilige verbetering gevonden. De vorige planning is hersteld.');
+      return;
+    }
+    if(after.score>=baseline.score && !changedThisPass){
+      kids=before;saveState();renderAll();
+      showProgress('AI klaar: geen veilige verbetering meer gevonden. Resterende problemen vragen mogelijk om extra capaciteit of handmatige beoordeling.');
+      alert('AI heeft geen verdere veilige verbetering gevonden. De resterende problemen zijn niet automatisch oplosbaar binnen de huidige voorwaarden.');
       return;
     }
     saveState();renderAll();
-    // V1052: when a work budget is reached and this pass improved the plan,
-    // automatically run another pass instead of making the user press the button again.
-    if(budgetReached){
-      showProgress(`Tussenresultaat opgeslagen (${assigned} nieuwe toewijzingen, ${moved} verplaatsingen). AI gaat automatisch verder met de volgende zoekronde…`);
-      setTimeout(()=>runBestPlanningV1024(),50);
+    if(budgetReached && changedThisPass){
+      showProgress('Tussenstand veilig opgeslagen. AI start automatisch de volgende zoekronde…');
+      setTimeout(()=>runBestPlanningV1024(),100);
       return;
     }
     const budgetNote=budgetReached?`Zoeklimiet bereikt${assignmentBudgetReached?' bij nieuwe toewijzingen':''}${relocationBudgetReached?' bij routeverbeteringen':''}${deadlineBudgetReached?' bij deadlineherstel':''}; controleer resterende ritten.`:'Alle zoekfasen afgerond.';
