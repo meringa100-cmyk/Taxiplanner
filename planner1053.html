@@ -274,7 +274,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 </head>
 <body>
 <header>
-<h1>🚕 Taxi Planner — AI automatisch verder V1052</h1>
+<h1>🚕 Taxi Planner — kilometerbewuste AI V1053 • 300 kinderen</h1>
 <p>Bewerkbare kindprofielen • chauffeurgerichte informatie • routevolgorde • maximaal 8 kinderen per bus</p>
 </header>
 
@@ -500,7 +500,7 @@ async function pdokAddress(street,town,number){
 function applyGuaranteedDemoHomeSpread(){
   const demoKids=kids.filter(k=>{
     const n=parseInt(String(k.id).slice(1),10);
-    return /^k[0-9]+$/.test(String(k.id)) && Number.isInteger(n) && n>=1 && n<=200;
+    return /^k[0-9]+$/.test(String(k.id)) && Number.isInteger(n) && n>=1 && n<=300;
   }).sort((a,b)=>Number(String(a.id).slice(1))-Number(String(b.id).slice(1)));
   if(!demoKids.length)return false;
 
@@ -719,7 +719,7 @@ async function geocodeExactDemoAddresses(){
 }
 function demoLocationForKid(k){
   const n=parseInt(String(k?.id||'').slice(1),10);
-  if(!Number.isFinite(n)||n<1||n>200)return null;
+  if(!Number.isFinite(n)||n<1||n>300)return null;
   const group=Math.floor((n-1)/8);
   return drentheDemoLocations[group%drentheDemoLocations.length]||null;
 }
@@ -1116,7 +1116,7 @@ function normalizeBuiltInDemo(){
   // V73: elke demo-groep wordt eerst hard teruggezet naar zijn eigen plaats.
   // Daarna mag alleen een verse BAG-hit binnen diezelfde straat + plaats volgen.
   const demoKids=kids.filter(k=>/^k[0-9]+$/.test(String(k.id)));
-  const isDemo=demoKids.length===200 && demoKids.every(k=>k.status==='waiting'||k.status==='picked'||k.status==='school');
+  const isDemo=demoKids.length===300 && demoKids.every(k=>k.status==='waiting'||k.status==='picked'||k.status==='school');
   if(!isDemo)return false;
   let changed=false;
   demoKids.forEach(k=>{
@@ -1191,7 +1191,7 @@ function loadState(){
   // geldige adressen en coördinaten ongemoeid.
   const demoKids=kids.filter(k=>/^k[0-9]+$/.test(String(k.id||'')))
     .sort((a,b)=>Number(String(a.id).slice(1))-Number(String(b.id).slice(1)));
-  if(demoKids.length===250){
+  if(demoKids.length===300){
     demoKids.forEach((k,i)=>{
       const group=Math.floor(i/8), pos=i%8;
       const loc=drentheDemoLocations[group%drentheDemoLocations.length];
@@ -1218,7 +1218,7 @@ function loadState(){
 
 function ensureExtraDemoKids(){
  const existing=new Set(kids.map(k=>String(k.id)));
- for(let i=100;i<250;i++){
+ for(let i=100;i<300;i++){
   const id='k'+(i+1);
   if(existing.has(id))continue;
   const group=Math.floor(i/8), pos=i%8;
@@ -1242,11 +1242,11 @@ function ensureExtraDemoKids(){
    demoTown:loc.town,demoStreet:loc.street,geocodeStatus:'demo'
   });
  }
- demoCounter=Math.max(Number(demoCounter)||101,201);
+ demoCounter=Math.max(Number(demoCounter)||101,301);
 }
 function seed(){
  kids=[];
- for(let i=0;i<250;i++){
+ for(let i=0;i<300;i++){
   const group=Math.floor(i/8);
   const pos=i%8;
   const school=schools[group%schools.length];
@@ -3582,15 +3582,15 @@ function demoGroupValid(group){
 function runAI(silent=false){
   previousPlan=kids.map(k=>({id:k.id,driver:k.driver,fixed:k.fixed,status:k.status}));
 
-  // V990: de ingebouwde 200-kind-demo wordt verdeeld over 25 groepen van maximaal 8.
+  // V990: de ingebouwde 300-kind-demo wordt verdeeld over 25 groepen van maximaal 8.
   // Gebruik daarvoor een deterministische plaatsing.
   // Zo kan een bestaande/kapotte opgeslagen demo-planning de AI niet meer
   // onnodig leegtrekken voordat de echte routecontrole begint.
   const demoKids=kids.filter(k=>{
     const n=parseInt(String(k.id).slice(1),10);
-    return /^k[0-9]+$/.test(String(k.id)) && Number.isInteger(n) && n>=1 && n<=200;
+    return /^k[0-9]+$/.test(String(k.id)) && Number.isInteger(n) && n>=1 && n<=300;
   });
-  const isBuiltInDemo=demoKids.length===200 &&
+  const isBuiltInDemo=demoKids.length===300 &&
     demoKids.every(k=>k.status==='waiting' && Number.isFinite(Number(k.timeMin)));
   // V781: bewaar de huidige chauffeurverdeling vóór AI. Een AI-run mag
   // bij de ingebouwde demo NOOIT kinderen naar andere chauffeurs verplaatsen.
@@ -3808,7 +3808,7 @@ function runAI(silent=false){
       q.forEach((k,i)=>k.routeOrder=i+1);
     });
 
-    // V750: nieuwe ritten mogen de vaste 200-kind-demo niet opnieuw laten
+    // V750: nieuwe ritten mogen de vaste 300-kind-demo niet opnieuw laten
     // opbouwen. Alleen extra/niet-demo kinderen worden apart ingepland.
     const extraKids=kids.filter(k=>!demoKids.includes(k) && active(k));
     for(const k of extraKids){
@@ -4011,14 +4011,14 @@ function runAI(silent=false){
 
     renderAll();
     const message='🤖 AI-planning klaar!\\n\\n'+
-      '200 demo-ritten gecontroleerd zonder chauffeurwissels.\\n'+
+      '300 demo-ritten gecontroleerd zonder chauffeurwissels.\\n'+
       '• maximaal 8 kinderen per bus — harde grens\\n'+
       '• vaste demo-groepen behouden\\n'+
       '• geen ritten onnodig zonder chauffeur\\n'+
       '• normale route-, reistijd- en schoolcontrole blijft actief\\n'+
       '• '+conflictRepairs+' routeconflict'+(conflictRepairs===1?'':'en')+' gericht hersteld\\n'+
       '\\n🚌 '+fullBuses+' volledig gevulde bus(sen), '+partialBuses+' gedeeltelijk gevulde bus(sen).\\n'+
-      '✅ Alle 200 demo-ritten hebben een chauffeur.';
+      '✅ Alle 300 demo-ritten hebben een chauffeur.';
     if(!silent)alert(message);
     return {changes:kids.filter(k=>{
       const old=previousPlan.find(p=>p.id===k.id);
@@ -4339,7 +4339,7 @@ async function runAIAndCheck(){
     // achterlaten wanneer geen bestaande route als haalbaar wordt gezien.
     // Herstel daarom na de optimalisatie de volledige demo-indeling en controleer
     // daarna opnieuw de harde capaciteit/reistijdconflicten.
-    const builtInDemoNow=kids.filter(k=>/^k(?:[1-9]|[1-9][0-9]|1[0-9]{2}|200)$/.test(String(k.id||'')));
+    const builtInDemoNow=kids.filter(k=>/^k[0-9]+$/.test(String(k.id||''))&&Number(k.id.slice(1))>=1&&Number(k.id.slice(1))<=300);
     if(builtInDemoNow.length===200 && builtInDemoNow.every(k=>k.status==='waiting')){
       // V993: herstel na AI alleen de resterende echte conflicten.
       // repairBuiltInDemoPlanningHard() bouwt de vaste groepen opnieuw op en
@@ -5150,13 +5150,13 @@ function find(id){return kids.find(k=>k.id===id)}
 function closeModal(){document.getElementById('modal').classList.add('hidden')}
 document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
 function repairBuiltInDemoPlanningHard(){
-  const DEMO_GROUP_TARGET=4; // V991: 200 kinderen over maximaal 50 chauffeurs verdelen.
+  const DEMO_GROUP_TARGET=4; // V991: 300 kinderen over maximaal 50 chauffeurs verdelen.
   // V990: chauffeur rijdt bij voorkeur binnen één plaats; kinderen wonen verspreid over verschillende straten.
   const demoKids=kids.filter(k=>{
     const n=parseInt(String(k.id).slice(1),10);
-    return /^k[0-9]+$/.test(String(k.id)) && Number.isInteger(n) && n>=1 && n<=200 && active(k);
+    return /^k[0-9]+$/.test(String(k.id)) && Number.isInteger(n) && n>=1 && n<=300 && active(k);
   });
-  if(demoKids.length!==200)return 0;
+  if(demoKids.length!==300)return 0;
   const available=driverNames.filter(d=>!isDriverUnavailable(d)&&!isBusUnavailable(d));
   if(!available.length)return 0;
   const distance=(a,b)=>geoDistanceKm(a,b);
@@ -5215,10 +5215,10 @@ function repairBuiltInDemoPlanningHard(){
 function repairDemoRouteConflictsHard(){
   // V990: echte conflictvrije verdeling. Niet alleen de routevolgorde wijzigen:
   // als twee opeenvolgende ophaalmomenten fysiek niet haalbaar zijn, verplaatsen
-  // we het kind naar een andere beschikbare bus. Met 50 bussen voor 200 demo-
+  // we het kind naar een andere beschikbare bus. Met 50 bussen voor 300 demo-
   // kinderen is daar bewust voldoende capaciteit voor.
   const demoKids=kids.filter(k=>/^k[0-9]+$/.test(String(k.id))&&active(k));
-  if(demoKids.length!==200)return 0;
+  if(demoKids.length!==300)return 0;
 
   const routeOf=d=>demoKids.filter(k=>k.driver===d).sort((a,b)=>(a.timeMin||0)-(b.timeMin||0));
   const valid=(q,d)=>{
@@ -5301,7 +5301,7 @@ setTimeout(()=>{
 
 // V844: nooit terugvallen op verzonnen adressen of centrum-offsets.
 setTimeout(()=>{
-  const demo=kids.filter(k=>/^k[0-9]+$/.test(String(k.id))&&Number(k.id.slice(1))>=1&&Number(k.id.slice(1))<=200);
+  const demo=kids.filter(k=>/^k[0-9]+$/.test(String(k.id))&&Number(k.id.slice(1))>=1&&Number(k.id.slice(1))<=300);
   const located=demo.filter(k=>Number.isFinite(k.lat)&&Number.isFinite(k.lon)&&k.pickupAddress&&k.demoStreet&&k.demoTown);
   if(located.length<demo.length){
     console.warn('V844: '+located.length+'/'+demo.length+' demo-adressen hebben een echte PDOK-locatie; overige kinderen blijven ongepositioneerd.');
