@@ -5542,7 +5542,9 @@ async function runBestPlanningV1024(){
     }
     // Conservative relocation pass: test complete hypothetical changes and
     // restore all route fields exactly after each test.
+    let relocationPassesCompleted=0;
     relocationSearch: for(let pass=0;pass<12;pass++){
+      relocationPassesCompleted=pass+1;
       const current=v1024StrictScore();
       let best=null;
       kidSearch: for(const kid of kids.filter(k=>active(k)&&k.driver)){
@@ -5578,6 +5580,11 @@ async function runBestPlanningV1024(){
       best.targetTrial.forEach((k,i)=>{const real=kids.find(x=>x.id===k.id);if(real)real.routeOrder=i+1;});
       moved++;
     }
+    // V1054: als alle 12 verbeteringsrondes een echte verbetering vonden,
+    // bewaar de tussenstand en start automatisch een volgende zoekronde.
+    // De strikte totaalscore moet per geaccepteerde wijziging dalen; zodra
+    // geen veilige verbetering meer bestaat, stopt de AI vanzelf.
+    if(relocationPassesCompleted===12){budgetReached=true;relocationBudgetReached=true;}
     // LIVE: probeer reeds toegewezen late ritten voorzichtig eerder te plannen.
     // Alleen wijzigingen behouden die de totaalscore verbeteren zonder meer conflicten/langere routes.
     let repairedAssignedDeadlines=0;
