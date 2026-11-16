@@ -288,6 +288,12 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 
 <main>
 <section id="planner" class="page active"><div id="plannerDelayAlerts"></div>
+<div class="card" id="chauffeursHubDemoBridgeV1" style="border:2px solid #176b4d;background:#f4faf6;margin-bottom:12px">
+<h3 style="margin-top:0">🚐 ChauffeursHub-koppeling · test</h3>
+<p class="muted">Alleen de fictieve demo-opdracht wordt getoond. Deze teststatussen wijzigen nog geen echte kind- of ritgegevens in Taxi Planner.</p>
+<div class="actions"><button type="button" class="primary" onclick="refreshChauffeursHubDemoV1()">↻ Status ophalen uit ChauffeursHub</button></div>
+<div id="chauffeursHubDemoStatusV1" class="small" role="status" aria-live="polite" style="margin-top:10px">Nog geen teststatus opgehaald.</div>
+</div>
 <div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Planner Dashboard</h2><div class="actions"><button class="primary" onclick="runBestPlanningV1024()">🤖 AI plannen & controleren</button>
 
 
@@ -6169,5 +6175,22 @@ window.simulateSafeDeadlinePlanV1050=simulateSafeDeadlinePlanV1050;
 
 
 
+<script>
+async function refreshChauffeursHubDemoV1(){
+ const box=document.getElementById('chauffeursHubDemoStatusV1');
+ if(!box)return;
+ box.textContent='Teststatus ophalen…';
+ try{
+  const response=await fetch('https://chauffeurshub-api-meringa100-cmyk.vercel.app/api/demo-rit?cache='+Date.now(),{cache:'no-store'});
+  const trip=await response.json();
+  if(!response.ok)throw new Error(trip.error||'HTTP '+response.status);
+  if(trip.environment!=='demo'||trip.tripId!=='DEMO-EMMEN-001'||!Array.isArray(trip.stops))throw new Error('Onbekende of niet-toegestane testopdracht.');
+  const labels={waiting:'Wachtend',picked:'Opgehaald',absent:'Niet aanwezig',delay:'Vertraging',school:'Op school'};
+  const rows=trip.stops.map(stop=>'<div style="padding:8px 0;border-top:1px solid #dce8df"><b>'+String(stop.label||stop.stopId).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))+'</b> · '+(labels[stop.status]||'Onbekend')+'</div>').join('');
+  box.innerHTML='<div style="font-weight:800;color:#176b4d">✓ Verbonden · '+trip.tripId+'</div><div class="muted">Chauffeur: '+String(trip.driverName||'Demo').replace(/[&<>"']/g,'')+' · '+String(trip.serviceDate||'')+'</div>'+rows+'<div class="muted" style="margin-top:8px">Terugmeldingen: '+(trip.events||[]).length+'</div>';
+ }catch(error){box.textContent='Koppeling niet bereikbaar: '+(error.message||'onbekende fout')}
+}
+window.refreshChauffeursHubDemoV1=refreshChauffeursHubDemoV1;
+</script>
 </body>
 </html>
