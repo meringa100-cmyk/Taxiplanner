@@ -291,7 +291,7 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 <div class="card" id="chauffeursHubDemoBridgeV1" style="border:2px solid #176b4d;background:#f4faf6;margin-bottom:12px">
 <h3 style="margin-top:0">🚐 ChauffeursHub-koppeling · test</h3>
 <p class="muted">Alleen de fictieve demo-opdracht wordt getoond. Deze teststatussen wijzigen nog geen echte kind- of ritgegevens in Taxi Planner.</p>
-<div class="actions"><button type="button" class="primary" onclick="refreshChauffeursHubDemoV1()">↻ Status ophalen uit ChauffeursHub</button></div>
+<div class="actions"><button type="button" class="primary" onclick="refreshChauffeursHubDemoV1()">↻ Status ophalen uit ChauffeursHub</button><button type="button" onclick="resetChauffeursHubDemoV1()">🧹 Demo volledig resetten</button></div>
 <div id="chauffeursHubDemoStatusV1" class="small" role="status" aria-live="polite" style="margin-top:10px">Nog geen teststatus opgehaald.</div>
 </div>
 <div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Planner Dashboard</h2><div class="actions"><button class="primary" onclick="runBestPlanningV1024()">🤖 AI plannen & controleren</button>
@@ -6176,6 +6176,24 @@ window.simulateSafeDeadlinePlanV1050=simulateSafeDeadlinePlanV1050;
 
 
 <script>
+async function resetChauffeursHubDemoV1(){
+ const box=document.getElementById('chauffeursHubDemoStatusV1');
+ if(!box)return;
+ if(!confirm('Weet je zeker dat je de fictieve demo-opdracht wilt resetten? Beide teststops worden Wachtend en alle oude demo-terugmeldingen worden gewist. Echte Taxi Planner-gegevens worden niet gewijzigd.'))return;
+ box.textContent='Demo-opdracht veilig resetten…';
+ try{
+  const response=await fetch('https://chauffeurshub-api-meringa100-cmyk.vercel.app/api/demo-rit',{
+   method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({environment:'demo',tripId:'DEMO-EMMEN-001',action:'reset'})
+  });
+  const result=await response.json();
+  if(!response.ok||!result.ok)throw new Error(result.error||'HTTP '+response.status);
+  await refreshChauffeursHubDemoV1();
+  if(!box.textContent.includes('Terugmeldingen: 0'))throw new Error('Reset uitgevoerd, maar de lege status kon niet worden bevestigd.');
+ }catch(error){box.textContent='Reset mislukt: '+(error.message||'onbekende fout')}
+}
+window.resetChauffeursHubDemoV1=resetChauffeursHubDemoV1;
+
 async function refreshChauffeursHubDemoV1(){
  const box=document.getElementById('chauffeursHubDemoStatusV1');
  if(!box)return;
