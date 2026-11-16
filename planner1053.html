@@ -6205,7 +6205,7 @@ async function refreshChauffeursHubDemoV1(){
   if(trip.environment!=='demo'||trip.tripId!=='DEMO-EMMEN-001'||!Array.isArray(trip.stops))throw new Error('Onbekende of niet-toegestane testopdracht.');
   const labels={waiting:'Wachtend',picked:'Opgehaald',absent:'Niet aanwezig',delay:'Vertraging',school:'Op school'};
   const rows=trip.stops.map(stop=>'<div style="padding:8px 0;border-top:1px solid #dce8df"><b>'+String(stop.label||stop.stopId).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))+'</b> · '+(labels[stop.status]||'Onbekend')+'</div>').join('');
-  box.innerHTML='<div style="font-weight:800;color:#176b4d">✓ Verbonden · '+trip.tripId+'</div><div class="muted">Chauffeur: '+String(trip.driverName||'Demo').replace(/[&<>"']/g,'')+' · '+String(trip.serviceDate||'')+'</div>'+rows+'<div class="muted" style="margin-top:8px">Terugmeldingen: '+(trip.events||[]).length+'</div>';
+  box.innerHTML='<div style="font-weight:800;color:#176b4d">✓ Verbonden · '+trip.tripId+'</div><div class="muted">Chauffeur: '+String(trip.driverName||'Demo').replace(/[&<>"']/g,'')+' · '+String(trip.serviceDate||'')+'</div>'+rows+(trip.tripStatus==='completed'?'<div style="margin-top:10px;padding:10px;border-radius:9px;background:#e9f6ed;color:#176b4d;font-weight:800">✓ Rit afgerond · Aankomst op school gemeld'+(trip.completedAt?' · '+new Date(trip.completedAt).toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'}):'')+'</div>':'')+'<div class="muted" style="margin-top:8px">Terugmeldingen: '+(trip.events||[]).length+'</div>';
  }catch(error){box.textContent='Koppeling niet bereikbaar: '+(error.message||'onbekende fout')}
 }
 window.refreshChauffeursHubDemoV1=refreshChauffeursHubDemoV1;
