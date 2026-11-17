@@ -288,6 +288,13 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 
 <main>
 <section id="planner" class="page active"><div id="plannerDelayAlerts"></div>
+
+<div class="card" id="hubIncomingRequestsV1" style="border:2px solid #176b4d;background:#f4faf6">
+<h3 style="margin-top:0">📥 Nieuwe adresaanvragen uit ChauffeursHub</h3>
+<p class="muted">Aanvragen komen eerst hier binnen. Na overname worden ze als onbezet kind/rit in de planning gezet; wijs daarna een chauffeur en tijden toe.</p>
+<div class="actions"><button class="primary" type="button" onclick="loadHubIncomingRequestsV1()">↻ Aanvragen ophalen</button></div>
+<div id="hubIncomingRequestsListV1" class="small" role="status" aria-live="polite" style="margin-top:10px">Nog niet opgehaald.</div>
+</div>
 <div class="card" id="chauffeursHubDemoBridgeV1" style="border:2px solid #176b4d;background:#f4faf6;margin-bottom:12px">
 <h3 style="margin-top:0">🚐 ChauffeursHub-koppeling · test</h3>
 <p class="muted">Alleen de fictieve demo-opdracht wordt getoond. Deze teststatussen wijzigen nog geen echte kind- of ritgegevens in Taxi Planner.</p>
@@ -6209,6 +6216,43 @@ async function refreshChauffeursHubDemoV1(){
  }catch(error){box.textContent='Koppeling niet bereikbaar: '+(error.message||'onbekende fout')}
 }
 window.refreshChauffeursHubDemoV1=refreshChauffeursHubDemoV1;
+</script>
+
+<script id="hub-incoming-requests-v1">
+async function loadHubIncomingRequestsV1(){
+ const box=document.getElementById('hubIncomingRequestsListV1');if(!box)return;
+ box.textContent='Aanvragen ophalen…';
+ try{
+  const r=await fetch('https://chauffeurshub-api-meringa100-cmyk.vercel.app/api/rit-aanvragen?status=pending&v='+Date.now(),{cache:'no-store'});
+  const data=await r.json();if(!r.ok||!data.ok)throw new Error(data.error||'HTTP '+r.status);
+  const rows=Array.isArray(data.requests)?data.requests:[];
+  if(!rows.length){box.innerHTML='<p>Geen openstaande aanvragen. ✓</p>';return;}
+  box.innerHTML=rows.map(x=>'<article style="padding:11px;margin:8px 0;background:#fff;border:1px solid #dce5dc;border-radius:10px"><b>'+hubReqEscV1(x.childName||'Naam niet opgegeven')+'</b><br>'+hubReqEscV1(x.address)+'<br><small>Bestemming: '+hubReqEscV1(x.destination||'Nog niet opgegeven')+' · '+hubReqEscV1(new Date(x.createdAt).toLocaleString('nl-NL'))+'</small>'+(x.note?'<p style="margin:6px 0">'+hubReqEscV1(x.note)+'</p>':'')+'<div class="actions"><button class="primary" type="button" onclick="acceptHubIncomingRequestV1(\''+encodeURIComponent(x.requestId)+'\')">✓ Overnemen in planning</button><button type="button" onclick="closeHubIncomingRequestV1(\''+encodeURIComponent(x.requestId)+'\')">Afwijzen</button></div></article>').join('');
+ }catch(e){box.textContent='Aanvragen niet bereikbaar: '+(e.message||'fout');}
+}
+function hubReqEscV1(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+async function reviewHubIncomingRequestV1(id,decision){
+ const r=await fetch('https://chauffeurshub-api-meringa100-cmyk.vercel.app/api/rit-aanvragen',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'review',requestId:decodeURIComponent(id),decision})});
+ const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'HTTP '+r.status);return d.request;
+}
+async function acceptHubIncomingRequestV1(id){
+ try{
+  const request=await reviewHubIncomingRequestV1(id,'approved');
+  const kid={id:'hub-'+request.requestId,name:request.childName||('Nieuwe aanvraag '+request.requestId),childName:request.childName||'',address:request.address,pickupAddress:request.address,destination:request.destination||'',school:request.destination||'',destinationAddress:request.destination||'',note:request.note||'',status:'waiting',driver:'',timeMin:420,time:'07:00',routeOrder:9999,source:'ChauffeursHub-aanvraag'};
+  if(!Array.isArray(kids))throw new Error('De planningsgegevens zijn niet beschikbaar.');
+  if(kids.some(k=>String(k.id)===String(kid.id))){alert('Deze aanvraag staat al in de planning.');await loadHubIncomingRequestsV1();return;}
+  kids.push(kid);saveState();renderAll();await loadHubIncomingRequestsV1();
+  alert('Aanvraag overgenomen in Taxi Planner. Wijs nu een chauffeur en een passende ophaaltijd toe; de rit is nog niet naar een chauffeur verstuurd.');
+ }catch(e){alert('Overnemen mislukt: '+(e.message||'onbekende fout'));}
+}
+async function closeHubIncomingRequestV1(id){
+ if(!confirm('Deze aanvraag afwijzen en uit de openstaande lijst halen?'))return;
+ try{await reviewHubIncomingRequestV1(id,'rejected');await loadHubIncomingRequestsV1();}
+ catch(e){alert('Afwijzen mislukt: '+(e.message||'fout'));}
+}
+window.loadHubIncomingRequestsV1=loadHubIncomingRequestsV1;
+window.acceptHubIncomingRequestV1=acceptHubIncomingRequestV1;
+window.closeHubIncomingRequestV1=closeHubIncomingRequestV1;
 </script>
 </body>
 </html>
