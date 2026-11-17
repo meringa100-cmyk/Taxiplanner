@@ -6253,6 +6253,8 @@ async function closeHubIncomingRequestV1(id){
 window.loadHubIncomingRequestsV1=loadHubIncomingRequestsV1;
 window.acceptHubIncomingRequestV1=acceptHubIncomingRequestV1;
 window.closeHubIncomingRequestV1=closeHubIncomingRequestV1;
+/* V2: houd de aanvraagwachtrij automatisch actueel, zonder de bestaande planning te wijzigen. */
+if(!window.__hubRequestRefreshV2){window.__hubRequestRefreshV2=true;setTimeout(loadHubIncomingRequestsV1,1200);setInterval(()=>{if(document.visibilityState==='visible')loadHubIncomingRequestsV1()},30000);}
 </script>
 </body>
 </html>
