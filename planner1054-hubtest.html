@@ -6300,21 +6300,28 @@ async function publishPlannerRidesToHubV1(){
  finally{if(button)button.disabled=false;}
 }
 async function pullHubRideStatusesV1(){
+ const report=message=>hubPlannerStatusV1(message);
  try{
   const response=await fetch(HUB_PLANNER_DEMO_API_V1+'?mode=statuses',{cache:'no-store'});
   const data=await response.json();
   if(!response.ok||!data.ok)throw new Error(data.error||'Status ophalen mislukt');
-  const byId=new Map((data.statuses||[]).map(x=>[String(x.id),x]));
-  let changed=0;
+  const incoming=Array.isArray(data.statuses)?data.statuses:[];
+  const byId=new Map(incoming.filter(x=>x&&x.id!=null).map(x=>[String(x.id),x]));
+  if(!Array.isArray(kids))throw new Error('De lokale rittenlijst is niet beschikbaar.');
+  let changed=0,matched=0;
   kids.forEach(k=>{
+   if(!k||k.id==null)return;
    const update=byId.get(String(k.id));
    if(!update)return;
+   matched++;
    if(['waiting','picked','absent','school','loose','delay'].includes(update.status)&&k.status!==update.status){k.status=update.status;changed++;}
-   if(Number(k.delay)!==Number(update.delay||0)){k.delay=Number(update.delay)||0;changed++;}
+   const nextDelay=Math.max(0,Math.min(240,Number(update.delay)||0));
+   if(Number(k.delay||0)!==nextDelay){k.delay=nextDelay;changed++;}
   });
-  if(changed){saveState();renderAll();}
-  hubPlannerStatusV1('Statussen opgehaald. '+changed+' wijzigingen verwerkt vanuit ChauffeursHub.');
- }catch(error){hubPlannerStatusV1('Status ophalen mislukt: '+(error.message||'onbekende fout'),true);}
+  if(changed)saveState();
+  try{if(changed)renderAll();report('Statussen opgehaald: '+incoming.length+' meldingen ontvangen, '+matched+' ritten herkend en '+changed+' wijzigingen opgeslagen.');}
+  catch(renderError){report('Statussen zijn opgeslagen ('+changed+' wijzigingen), maar het scherm kon niet volledig vernieuwen. Ververs de Planner-pagina.');}
+ }catch(error){report('Status ophalen mislukt: '+(error.message||'onbekende fout'),true);}
 }
 window.publishPlannerRidesToHubV1=publishPlannerRidesToHubV1;
 window.pullHubRideStatusesV1=pullHubRideStatusesV1;
