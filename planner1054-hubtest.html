@@ -6275,7 +6275,7 @@ async function publishPlannerRidesToHubV1(){
  const button=document.querySelector('#hubPlannerSyncV1 button');
  if(button)button.disabled=true;
  try{
-  const rides=kids.filter(k=>k&&k.driver&&['waiting','picked','absent','school','loose'].includes(k.status)).map(k=>{
+  const rides=kids.filter(k=>k&&k.driver&&['waiting','picked','absent','school','loose','delay'].includes(k.status)).map(k=>{
    const driver=String(k.driver||'');
    const match=driver.match(/(\d{4,8})$/);
    return {
@@ -6309,7 +6309,7 @@ async function pullHubRideStatusesV1(){
   kids.forEach(k=>{
    const update=byId.get(String(k.id));
    if(!update)return;
-   if(['waiting','picked','absent','school','loose'].includes(update.status)&&k.status!==update.status){k.status=update.status;changed++;}
+   if(['waiting','picked','absent','school','loose','delay'].includes(update.status)&&k.status!==update.status){k.status=update.status;changed++;}
    if(Number(k.delay)!==Number(update.delay||0)){k.delay=Number(update.delay)||0;changed++;}
   });
   if(changed){saveState();renderAll();}
