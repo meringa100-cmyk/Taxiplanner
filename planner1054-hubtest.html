@@ -6266,7 +6266,7 @@ window.closeHubIncomingRequestV1=closeHubIncomingRequestV1;
 if(!window.__hubRequestRefreshV2){window.__hubRequestRefreshV2=true;setTimeout(loadHubIncomingRequestsV1,1200);setInterval(()=>{if(document.visibilityState==='visible')loadHubIncomingRequestsV1()},30000);}
 
 /* ChauffeursHub demo bridge V1: deelt alleen de bestaande fictieve Planner-ritten. */
-const HUB_PLANNER_DEMO_API_V1='https://chauffeurshub-g871e4glt-meringa100-cmyk.vercel.app/api/planner-demo-ritten';
+const HUB_PLANNER_DEMO_API_V1='https://chauffeurshub-api-git-feature-secure-dri-be1094-meringa100-cmyk.vercel.app/api/planner-demo-ritten';
 function hubPlannerStatusV1(message,isError=false){
  const el=document.getElementById('hubPlannerSyncStatusV1');
  if(el){el.textContent=message;el.style.color=isError?'#b42318':'#1769aa';}
