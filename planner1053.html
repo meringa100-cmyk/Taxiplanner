@@ -616,7 +616,7 @@ async function geocodeExactDemoAddresses(){
       const key=hit.address.toLowerCase();
       if(seen.has(key))continue;
       seen.add(key);
-      const match=hit.address.match(/\\s(\d+[a-zA-Z]?)\\s*,/);
+      const match=hit.address.match(/\s(\d+[a-zA-Z]?)\s*,/);
       all.push({town,street,number:match?match[1]:'',address:hit.address,lat:hit.lat,lon:hit.lon});
       if(all.length>=8)break;
     }
@@ -2191,7 +2191,7 @@ async function runDayStartCheck(){
   // V885: maak bestaande detailregels veilig aanklikbaar via event listeners.
   // Geen inline onclick-HTML: zo blijft de rest van de planner intact.
   box.querySelectorAll('.daystart-item.daystart-detail').forEach(item=>{
-    const raw=item.textContent.replace(/^\\s*↳\\s*/, '').trim();
+    const raw=item.textContent.replace(/^\s*↳\s*/, '').trim();
     const child=kids.find(k=>raw.startsWith(String(k.name||'Naam onbekend')));
     const driver=driverNames.find(d=>raw.includes(d));
     if(!child&&!driver)return;
@@ -6277,8 +6277,8 @@ async function publishPlannerRidesToHubV1(){
  try{
   const rides=kids.filter(k=>k&&k.driver&&['waiting','picked','absent','school','loose','delay'].includes(k.status)).map(k=>{
    const driver=String(k.driver||'');
-   const match=driver.match(/(\\d{4,8})$/);
-   return {id:String(k.id||''),childName:String(k.name||''),address:String(k.pickupAddress||k.address||''),destination:String(k.destinationAddress||k.destination||k.school||''),time:String(k.time||''),driver,driverNumber:match?match[1]:'',driverName:driver.replace(/\\s*[—-]\\s*\\d{4,8}$/,''),routeOrder:Number(k.routeOrder)||9999,status:String(k.status||'waiting'),delay:Number(k.delay)||0};
+   const match=driver.match(/(\d{4,8})$/);
+   return {id:String(k.id||''),childName:String(k.name||''),address:String(k.pickupAddress||k.address||''),destination:String(k.destinationAddress||k.destination||k.school||''),time:String(k.time||''),driver,driverNumber:match?match[1]:'',driverName:driver.replace(/\s*[—-]\s*\d{4,8}$/,''),routeOrder:Number(k.routeOrder)||9999,status:String(k.status||'waiting'),delay:Number(k.delay)||0};
   }).filter(x=>x.id&&x.driverNumber);
   const response=await fetch(HUB_PLANNER_DEMO_API_V1,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'publish',rides})});
   const data=await response.json();
