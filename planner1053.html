@@ -301,6 +301,15 @@ details.collapsible-section[open]>.collapsible-header .collapsible-arrow{transfo
 <div class="actions"><button type="button" class="primary" onclick="refreshChauffeursHubDemoV1()">↻ Status ophalen uit ChauffeursHub</button><button type="button" onclick="resetChauffeursHubDemoV1()">🧹 Demo volledig resetten</button></div>
 <div id="chauffeursHubDemoStatusV1" class="small" role="status" aria-live="polite" style="margin-top:10px">Nog geen teststatus opgehaald.</div>
 </div>
+<div class="card" id="hubPlannerSyncV1" style="border:2px solid #1769aa;background:#f3f8fd;margin-bottom:12px">
+<h3 style="margin-top:0">🔄 ChauffeursHub · huidige ritplanning</h3>
+<p class="muted">Publiceer de huidige fictieve ritten uit deze Planner. ChauffeursHub kan daarna per bestaand chauffeursnummer de bijbehorende ritten tonen. Statussen uit ChauffeursHub kun je hier terughalen. Dit is uitsluitend een testkoppeling.</p>
+<div class="actions">
+<button type="button" class="primary" onclick="publishPlannerRidesToHubV1()">⬆️ Huidige ritten publiceren</button>
+<button type="button" onclick="pullHubRideStatusesV1()">⬇️ Chauffeursstatussen ophalen</button>
+</div>
+<div id="hubPlannerSyncStatusV1" class="small" role="status" aria-live="polite" style="margin-top:10px">Nog niet gesynchroniseerd.</div>
+</div>
 <div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Planner Dashboard</h2><div class="actions"><button class="primary" onclick="runBestPlanningV1024()">🤖 AI plannen & controleren</button>
 
 
@@ -6255,6 +6264,51 @@ window.acceptHubIncomingRequestV1=acceptHubIncomingRequestV1;
 window.closeHubIncomingRequestV1=closeHubIncomingRequestV1;
 /* V2: houd de aanvraagwachtrij automatisch actueel, zonder de bestaande planning te wijzigen. */
 if(!window.__hubRequestRefreshV2){window.__hubRequestRefreshV2=true;setTimeout(loadHubIncomingRequestsV1,1200);setInterval(()=>{if(document.visibilityState==='visible')loadHubIncomingRequestsV1()},30000);}
+
+/* ChauffeursHub demo bridge V1: alleen fictieve ritten, per chauffeur gegroepeerd. */
+const HUB_PLANNER_DEMO_API_V1='https://chauffeurshub-api-meringa100-cmyk.vercel.app/api/planner-demo-ritten';
+function hubPlannerStatusV1(message,isError=false){
+ const el=document.getElementById('hubPlannerSyncStatusV1');
+ if(el){el.textContent=message;el.style.color=isError?'#b42318':'#1769aa';}
+}
+async function publishPlannerRidesToHubV1(){
+ const button=document.querySelector('#hubPlannerSyncV1 button');
+ if(button)button.disabled=true;
+ try{
+  const rides=kids.filter(k=>k&&k.driver&&['waiting','picked','absent','school','loose','delay'].includes(k.status)).map(k=>{
+   const driver=String(k.driver||'');
+   const match=driver.match(/(\\d{4,8})$/);
+   return {id:String(k.id||''),childName:String(k.name||''),address:String(k.pickupAddress||k.address||''),destination:String(k.destinationAddress||k.destination||k.school||''),time:String(k.time||''),driver,driverNumber:match?match[1]:'',driverName:driver.replace(/\\s*[—-]\\s*\\d{4,8}$/,''),routeOrder:Number(k.routeOrder)||9999,status:String(k.status||'waiting'),delay:Number(k.delay)||0};
+  }).filter(x=>x.id&&x.driverNumber);
+  const response=await fetch(HUB_PLANNER_DEMO_API_V1,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'publish',rides})});
+  const data=await response.json();
+  if(!response.ok||!data.ok)throw new Error(data.error||'Publiceren mislukt');
+  hubPlannerStatusV1('Gepubliceerd: '+data.count+' ritten voor '+data.drivers+' chauffeurs. ChauffeursHub kan nu de ritten ophalen.');
+ }catch(error){hubPlannerStatusV1('Koppeling niet bereikbaar: '+(error.message||'onbekende fout'),true);}
+ finally{if(button)button.disabled=false;}
+}
+async function pullHubRideStatusesV1(){
+ try{
+  const response=await fetch(HUB_PLANNER_DEMO_API_V1+'?mode=statuses',{cache:'no-store'});
+  const data=await response.json();
+  if(!response.ok||!data.ok)throw new Error(data.error||'Status ophalen mislukt');
+  const incoming=Array.isArray(data.statuses)?data.statuses:[];
+  const byId=new Map(incoming.filter(x=>x&&x.id!=null).map(x=>[String(x.id),x]));
+  if(!Array.isArray(kids))throw new Error('De lokale rittenlijst is niet beschikbaar.');
+  let changed=0,matched=0;
+  kids.forEach(k=>{
+   if(!k||k.id==null)return;
+   const update=byId.get(String(k.id));if(!update)return;matched++;
+   if(['waiting','picked','absent','school','loose','delay'].includes(update.status)&&k.status!==update.status){k.status=update.status;changed++;}
+   const delay=Math.max(0,Math.min(240,Number(update.delay)||0));
+   if(Number(k.delay||0)!==delay){k.delay=delay;changed++;}
+  });
+  if(changed){saveState();renderAll();}
+  hubPlannerStatusV1('Statussen opgehaald: '+incoming.length+' meldingen, '+matched+' ritten herkend, '+changed+' wijzigingen opgeslagen.');
+ }catch(error){hubPlannerStatusV1('Status ophalen mislukt: '+(error.message||'onbekende fout'),true);}
+}
+window.publishPlannerRidesToHubV1=publishPlannerRidesToHubV1;
+window.pullHubRideStatusesV1=pullHubRideStatusesV1;
 </script>
 </body>
 </html>
