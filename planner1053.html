@@ -6294,12 +6294,12 @@ async function pullHubRideStatusesV1(){
   const data=await response.json();
   if(!response.ok||!data.ok)throw new Error(data.error||'Status ophalen mislukt.');
   const incoming=Array.isArray(data.statuses)?data.statuses:[];
-  const byRideAndDriver=new Map(incoming.filter(x=>x&&x.id!=null&&/^\\d{4,8}$/.test(String(x.driverNumber||''))).map(x=>[String(x.id)+'|'+String(x.driverNumber),x]));
+  const byRideAndDriver=new Map(incoming.filter(x=>x&&x.id!=null&&/^\d{4,8}$/.test(String(x.driverNumber||''))).map(x=>[String(x.id)+'|'+String(x.driverNumber),x]));
   if(!Array.isArray(kids))throw new Error('De lokale rittenlijst is niet beschikbaar.');
   let changed=0,matched=0,unmatched=0;
   kids.forEach(k=>{
    if(!k||k.id==null)return;
-   const driverMatch=String(k.driver||'').match(/(\\d{4,8})$/);
+   const driverMatch=String(k.driver||'').match(/(\d{4,8})$/);
    if(!driverMatch){unmatched++;return;}
    const update=byRideAndDriver.get(String(k.id)+'|'+driverMatch[1]);
    if(!update){unmatched++;return;}
@@ -6310,7 +6310,7 @@ async function pullHubRideStatusesV1(){
    if(Number(k.delay||0)!==delay){k.delay=delay;changed++;}
   });
   if(changed){saveState();renderAll();}
-  hubPlannerStatusV1('Statussen opgehaald: '+incoming.length+' meldingen, '+matched+' ritten op ID + chauffeursnummer herkend, '+changed+' wijzigingen opgeslagen'+(unmatched?'; '+unmatched+' niet gekoppeld.':' .'));
+  hubPlannerStatusV1('Statussen opgehaald: '+incoming.length+' meldingen, '+matched+' ritten op ID + chauffeursnummer herkend, '+changed+' wijzigingen opgeslagen'+(unmatched?'; '+unmatched+' niet gekoppeld.':''));
  }catch(error){hubPlannerStatusV1('Status ophalen mislukt: '+(error.message||'onbekende fout'),true);}
 }
 async function resetHubDemoStatusesV1(){
