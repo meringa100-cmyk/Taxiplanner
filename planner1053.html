@@ -2669,6 +2669,11 @@ function distanceFromEmmen(k){
 function routeMinutesBetween(a,b,driverIndex){
   const pa=coordForKid(a,driverIndex,0);
   const pb=coordForKid(b,driverIndex,0);
+  // V1053.2: een rit zonder bruikbare coördinaten mag de AI-planning
+  // niet afbreken. Gebruik dan dezelfde conservatieve reistijd-fallback.
+  if(!Array.isArray(pa)||!Array.isArray(pb)||
+     !Number.isFinite(pa[0])||!Number.isFinite(pa[1])||
+     !Number.isFinite(pb[0])||!Number.isFinite(pb[1])) return 15;
   const km=geoDistanceKm({lat:pa[1],lon:pa[0]},{lat:pb[1],lon:pb[0]});
   return Number.isFinite(km)?Math.max(1,Math.ceil(km/35*60)):15;
 }
